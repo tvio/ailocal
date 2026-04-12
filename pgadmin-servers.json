@@ -1,0 +1,14 @@
+{
+  "Servers": {
+    "1": {
+      "Name": "ailocal-postgres",
+      "Group": "Servers",
+      "Host": "postgres",
+      "Port": 5432,
+      "MaintenanceDB": "ailocal",
+      "Username": "ailocal",
+      "SSLMode": "prefer",
+      "PassFile": "/tmp/pgpass"
+    }
+  }
+}
