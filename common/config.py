@@ -12,11 +12,12 @@ CSV_DIR = DATA_DIR / "csv"
 OLLAMA_TIMEOUT = 120
 
 # Modely
-MODEL_EMBED = "nomic-embed-text"       # embedding 768 dimenzí
-MODEL_CHAT = "gemma3:12b"             # generativní (český text, extrakce, vision)
+MODEL_EMBED = "qwen3-embedding:8b"      # embedding, nativní dimenze (viz EMBED_DIMENSION)
+#MODEL_CHAT = "qwen2.5:72b"         # generativní (český text, extrakce, vision)
+MODEL_CHAT = "qwen3:32b"       #test, mensi na pomalou pamet
 MODEL_LIGHT = "ministral-3:latest"     # lehký model
 
-EMBED_DIMENSION = 768
+EMBED_DIMENSION = 4096
 
 # --- PostgreSQL ---
 PG_HOST = "localhost"
@@ -28,5 +29,5 @@ PG_DATABASE = "ailocal"
 PG_DSN = f"postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}"
 
 # --- Chunking ---
-CHUNK_SIZE = 500          # znaků na chunk
+CHUNK_SIZE = 300          # znaků na chunk
 CHUNK_OVERLAP = 50        # překryv mezi chunky

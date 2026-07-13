@@ -6,24 +6,28 @@ Dva přístupy:
   2. LLM-based – model dostane text a instrukci "Vytáhni pouze indikace"
 
 Použití:
-  # Všechny sekce do DB (výchozí chování):
-  uv run python demo03_pdf_section_extract.py SPC_0254048_PARALEN.pdf
+  # Všechny PDF v data/pdf/ (výchozí chování, bez -s):
+  uv run python demo03_pdf_section_extract.py
+
+  # Jeden konkrétní soubor:
+  uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf
 
   # Jen jedna sekce:
-  uv run python demo03_pdf_section_extract.py SPC_0254048_PARALEN.pdf --section kontraindikace
+  uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf --section kontraindikace
 
   # Jen regex (bez LLM) – rychlé:
-  uv run python demo03_pdf_section_extract.py SPC_0254048_PARALEN.pdf --method regex
+  uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf --method regex
 
   # Jen LLM extrakce:
-  uv run python demo03_pdf_section_extract.py SPC_0254048_PARALEN.pdf --method llm --section indikace
+  uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf --method llm --section indikace
 
   # Bez ukládání do DB:
-  uv run python demo03_pdf_section_extract.py SPC_0254048_PARALEN.pdf --no-save
+  uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf --no-save
 """
 
 import re
 import sys
+import time
 import argparse
 from pathlib import Path
 
@@ -133,7 +137,10 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="UC3 – Extrakce konkrétní sekce z PDF"
     )
-    parser.add_argument("pdf", help="Název PDF souboru (hledá se v data/pdf/)")
+    parser.add_argument(
+        "-s", "--file", default="all",
+        help="Název PDF souboru (hledá se v data/pdf/), nebo 'all' pro všechny PDF v adresáři (výchozí: all)",
+    )
     parser.add_argument("--section", default=None, help="Jen konkrétní sekce (výchozí: všechny)")
     parser.add_argument("--method", choices=["regex", "llm", "both"], default="both", help="Metoda extrakce (výchozí: both)")
     parser.add_argument("--model", default=MODEL_CHAT, help=f"Model pro LLM extrakci (výchozí {MODEL_CHAT})")
@@ -147,7 +154,9 @@ def _save_extrakt(
 ) -> None:
     """Uloží extrakt do DB s embeddingem."""
     embed_input = text[:6000] if len(text) > 6000 else text
+    t0 = time.perf_counter()
     vec = embed_text(embed_input, base_url=base_url)
+    embed_s = time.perf_counter() - t0
     conn = get_connection()
     insert_extrakt(
         conn,
@@ -158,7 +167,7 @@ def _save_extrakt(
         sekce_vector=vec,
     )
     conn.close()
-    print(f"  💾 [{section}/{typ_extraktu}] Uloženo do DB ({len(vec)} dim)")
+    print(f"  💾 [{section}/{typ_extraktu}] Uloženo do DB ({len(vec)} dim, {embed_s:.1f}s embedding)")
 
 
 def extract_and_save(
@@ -188,63 +197,56 @@ def extract_and_save(
 
     # LLM
     if method in ("llm", "both"):
-        llm_result = extract_section_llm(
-            full_text, section, model=model, base_url=base_url,
-        )
+        t0 = time.perf_counter()
+        try:
+            llm_result = extract_section_llm(
+                full_text, section, model=model, base_url=base_url,
+            )
+        except Exception as e:
+            llm_s = time.perf_counter() - t0
+            print(f"  ✗ [{section}] LLM:   chyba po {llm_s:.1f}s: {e}")
+            return results
+        llm_s = time.perf_counter() - t0
+
         # Validace: odmítnout prázdné, krátké a odmítavé odpovědi
         refusal_markers = ["nenalezeno", "chybí", "nemám", "nemohu", "omlouvám", "nemůžu"]
         is_refusal = any(m in llm_result.lower() for m in refusal_markers) if llm_result else True
         if llm_result and len(llm_result.strip()) > 20 and not is_refusal:
-            print(f"  ✓ [{section}] LLM:   {len(llm_result)} znaků")
+            print(f"  ✓ [{section}] LLM:   {len(llm_result)} znaků ({llm_s:.1f}s)")
             results["llm"] = llm_result
             if save:
                 _save_extrakt(llm_result, section, "llm",
                               document_name=document_name, base_url=base_url)
         else:
             reason = "odmítnutí" if is_refusal else "příliš krátká odpověď"
-            print(f"  ✗ [{section}] LLM:   {reason}")
+            print(f"  ✗ [{section}] LLM:   {reason} ({llm_s:.1f}s)")
 
     return results
 
 
-def main() -> None:
-    args = parse_args()
-    pdf_path = Path(args.pdf)
-    if not pdf_path.exists():
-        pdf_path = PDF_DIR / args.pdf
-    if not pdf_path.exists():
-        print(f"Chyba: soubor '{args.pdf}' nenalezen (ani v {PDF_DIR}/).", file=sys.stderr)
-        sys.exit(1)
-
+def process_pdf(
+    pdf_path: Path,
+    *,
+    sections_to_extract: list[str],
+    method: str,
+    model: str,
+    base_url: str,
+    save: bool,
+) -> dict[str, dict[str, str]]:
+    """Zpracuje jeden PDF soubor – extrakce textu + všech požadovaných sekcí."""
     document_name = pdf_path.stem
-    save = not args.no_save
-    sections_to_extract = [args.section] if args.section else list(SECTION_PATTERNS.keys())
-
-    print("=" * 60)
-    print("UC3 – Extrakce konkrétní sekce z PDF")
-    print("=" * 60)
     print(f"\n📄 Soubor:  {pdf_path}")
-    print(f"🔍 Sekce:   {', '.join(sections_to_extract)}")
-    print(f"⚙️  Metoda:  {args.method}")
-    print(f"💾 DB:      {'ano' if save else 'ne'}")
 
-    # Extrakce celého textu
-    print("\nExtrahuji text z PDF...")
     full_text = extract_full_text(pdf_path)
     print(f"  ✓ {len(full_text):,} znaků extrahováno")
 
-    base_url = get_ollama_url()
-    print(f"  ✓ Ollama: {base_url}")
-
-    # Extrakce sekcí
-    print(f"\n{'='*60}")
     extracted = {}  # {section: {typ_extraktu: text}}
     for section in sections_to_extract:
         results = extract_and_save(
             full_text, section,
             document_name=document_name,
-            method=args.method,
-            model=args.model,
+            method=method,
+            model=model,
             base_url=base_url,
             save=save,
         )
@@ -252,12 +254,65 @@ def main() -> None:
             extracted[section] = results
         print()
 
+    return extracted
+
+
+def resolve_pdf_paths(file_arg: str) -> list[Path]:
+    """Vrátí seznam PDF k zpracování – 'all' = všechny v PDF_DIR, jinak jeden soubor."""
+    if file_arg.lower() == "all":
+        pdf_paths = sorted(PDF_DIR.glob("*.pdf"))
+        if not pdf_paths:
+            print(f"Chyba: v '{PDF_DIR}' nejsou žádné PDF soubory.", file=sys.stderr)
+            sys.exit(1)
+        return pdf_paths
+
+    pdf_path = Path(file_arg)
+    if not pdf_path.exists():
+        pdf_path = PDF_DIR / file_arg
+    if not pdf_path.exists():
+        print(f"Chyba: soubor '{file_arg}' nenalezen (ani v {PDF_DIR}/).", file=sys.stderr)
+        sys.exit(1)
+    return [pdf_path]
+
+
+def main() -> None:
+    args = parse_args()
+    pdf_paths = resolve_pdf_paths(args.file)
+    save = not args.no_save
+    sections_to_extract = [args.section] if args.section else list(SECTION_PATTERNS.keys())
+
+    print("=" * 60)
+    print("UC3 – Extrakce konkrétní sekce z PDF")
+    print("=" * 60)
+    print(f"\n📂 PDF souborů: {len(pdf_paths)}")
+    print(f"🔍 Sekce:   {', '.join(sections_to_extract)}")
+    print(f"⚙️  Metoda:  {args.method}")
+    print(f"💾 DB:      {'ano' if save else 'ne'}")
+
+    base_url = get_ollama_url()
+    print(f"  ✓ Ollama: {base_url}")
+
+    print(f"\n{'='*60}")
+    all_extracted = {}  # {document_name: {section: {typ_extraktu: text}}}
+    for i, pdf_path in enumerate(pdf_paths, 1):
+        print(f"[{i}/{len(pdf_paths)}]")
+        extracted = process_pdf(
+            pdf_path,
+            sections_to_extract=sections_to_extract,
+            method=args.method,
+            model=args.model,
+            base_url=base_url,
+            save=save,
+        )
+        all_extracted[pdf_path.stem] = extracted
+
     # Souhrn
     print("=" * 60)
-    print(f"📊 Extrahováno {len(extracted)}/{len(sections_to_extract)} sekcí")
-    for sec, variants in extracted.items():
-        for typ, text in variants.items():
-            print(f"  • {sec}/{typ}: {len(text)} znaků")
+    for doc_name, extracted in all_extracted.items():
+        print(f"📊 {doc_name}: {len(extracted)}/{len(sections_to_extract)} sekcí")
+        for sec, variants in extracted.items():
+            for typ, text in variants.items():
+                print(f"  • {sec}/{typ}: {len(text)} znaků")
 
     if save:
         conn = get_connection()

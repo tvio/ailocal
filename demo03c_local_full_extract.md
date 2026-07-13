@@ -1,5 +1,15 @@
 # UC3c – Lokální model bez regexu: Výsledky testu
 
+> **Update (DGX Spark, qwen2.5:72b, num_ctx 32768):** Původní test níže (gemma3:12b, 12 GB VRAM, `num_ctx: 8192`) selhal – viz "Závěr". Na DGX Sparku s `qwen2.5:72b` a server-side `OLLAMA_CONTEXT_LENGTH=32768` (systemd `override.conf`) demo03c už funguje: model dostane mnohem víc kontextu a je řádově výkonnější. I tak ale 32k tokenů není nekonečno – SPC dokumenty mají někdy 90k+ znaků (~30k tokenů), takže se celý dokument pořád nemusí vejít najednou spolu se system promptem a rezervou na odpověď.
+>
+> **Řešení: rozdělení dokumentu na části.** `extract_section_local()` teď dokument nejdřív rozseká přes `chunk_text()` (`common/pdf_utils.py`) na kusy o `CHUNK_CHARS = 15000` znacích s `CHUNK_OVERLAP_CHARS = 2000` překryvem (řez na hranici slova, stejná logika jako v demo01). Model pak sekci hledá postupně část po části – u každé části dostane prompt "pokud sekce je tady, vytáhni ji, jinak odpověz NENALEZENO" a vrátí se první platný (ne-odmítavý, dost dlouhý) nález.
+>
+> **V čem se tohle liší od demo03's regexu:** demo03 používá regex k **nalezení** hranic sekce (hledá nadpisy typu "4.8 Nežádoucí účinky"). Chunking v demo03c regex k nalezení sekce nepoužívá vůbec – kusy se řežou čistě podle velikosti/pozice v textu, bez ohledu na to, kde skutečně sekce začíná a končí. Najít a vytáhnout sekci pořád dělá výhradně model, jen v menších dávkách. `CHUNK_OVERLAP_CHARS = 2000` je pojistka, aby se sekce nerozdělila přesně na hranici dvou kusů (podobně jako overlap u embedding chunkování v demo01/02).
+>
+> **Proč zrovna 15 000 znaků na kus:** je to výrazně pod limitem 32768 tokenů (≈ 32k × 3 zn./token pro češtinu ≈ 98k zn. teoretické maximum), s velkou rezervou na system prompt, instrukce a generovanou odpověď – ne proto, že by se víc nevešlo, ale aby zbyl bezpečný prostor a odpovědi modelu nebyly tak pomalé jako při běhu na hraně kontextového okna.
+>
+> **Cena za robustnost:** u velkých dokumentů se sekce hledá ve víc kusech místo jednoho volání – worst case (sekce nenalezena v žádné části) je `počet_sekcí × počet_kusů` LLM volání místo `počet_sekcí`. Pro malé dokumenty (< 15 000 zn.) žádný rozdíl není, `chunk_text()` vrátí jediný kus = celý dokument.
+
 ## Účel testu
 
 Ověřit, zda lokální gemma3:12b zvládne extrakci sekcí z celého SPC dokumentu **bez regex preprocessingu** – tedy stejný přístup jako demo03b (OpenAI API), ale na lokálním HW.

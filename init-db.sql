@@ -17,15 +17,16 @@ CREATE TABLE IF NOT EXISTS document_chunks (
     page_number INTEGER,
     content TEXT NOT NULL,
     content_hash TEXT NOT NULL,
-    embedding vector(768),
+    embedding vector(4096),
     metadata JSONB DEFAULT '{}',
     created_at TIMESTAMP DEFAULT NOW(),
     UNIQUE(document_name, chunk_index)
 );
 
--- Index pro vektorové vyhledávání (cosine similarity)
-CREATE INDEX IF NOT EXISTS idx_chunks_embedding
-    ON document_chunks USING hnsw (embedding vector_cosine_ops);
+-- Pozn.: HNSW/IVFFlat indexy v pgvector podporují max. 2000 dimenzí. Nativní
+-- 4096 dim qwen3-embedding:8b dává výrazně lepší kvalitu vyhledávání než ořez
+-- na 1024 (ověřeno – ořez otáčel pořadí relevantní/irelevantní), takže jedeme
+-- bez ANN indexu (sequential scan; pro objem dat v demech bez dopadu).
 
 -- Index pro filtrování podle dokumentu
 CREATE INDEX IF NOT EXISTS idx_chunks_document
@@ -39,8 +40,8 @@ CREATE TABLE IF NOT EXISTS extrakty (
     typ_extraktu        TEXT NOT NULL DEFAULT 'regex', -- regex / llm
     sekce_text          TEXT NOT NULL,            -- originální odborný text sekce
     zjednoduseni        TEXT,                     -- zjednodušený text pro laika (demo04)
-    sekce_vector        vector(768),              -- embedding originální sekce
-    zjednoduseni_vector vector(768),              -- embedding zjednodušeného textu
+    sekce_vector        vector(4096),              -- embedding originální sekce
+    zjednoduseni_vector vector(4096),              -- embedding zjednodušeného textu
     sekce_fts           tsvector                  -- fulltext index originální sekce
         GENERATED ALWAYS AS (to_tsvector('czech_unaccent', sekce_text)) STORED,
     zjednoduseni_fts    tsvector                  -- fulltext index zjednodušení
@@ -48,13 +49,6 @@ CREATE TABLE IF NOT EXISTS extrakty (
     created_at          TIMESTAMPTZ DEFAULT now(),
     UNIQUE(document_name, typ_sekce, typ_extraktu)
 );
-
--- Vektorový index pro sémantické vyhledávání v extraktech
-CREATE INDEX IF NOT EXISTS idx_extrakty_sekce_vector
-    ON extrakty USING hnsw (sekce_vector vector_cosine_ops);
-
-CREATE INDEX IF NOT EXISTS idx_extrakty_zjednoduseni_vector
-    ON extrakty USING hnsw (zjednoduseni_vector vector_cosine_ops);
 
 -- GIN indexy pro fulltext vyhledávání
 CREATE INDEX IF NOT EXISTS idx_extrakty_sekce_fts
@@ -74,7 +68,7 @@ CREATE TABLE IF NOT EXISTS extrakty_json (
     typ_sekce       TEXT NOT NULL,           -- indikace, davkovani, kontraindikace, vedlejsi_ucinky, slozeni, interakce
     typ_modelu      TEXT NOT NULL,           -- openai(gpt-5.4-nano), ollama(gemma3:12b)
     sekce_json      JSONB NOT NULL,          -- strukturovaný výstup (text, tabulky, metadata)
-    embedding       vector(768),             -- embedding text_content + tabulky (pro demo05b)
+    embedding       vector(4096),             -- embedding text_content + tabulky (pro demo05b)
     created_at      TIMESTAMPTZ DEFAULT now(),
     UNIQUE(document_name, typ_sekce, typ_modelu)
 );
@@ -84,9 +78,6 @@ CREATE INDEX IF NOT EXISTS idx_extrakty_json_document
 
 CREATE INDEX IF NOT EXISTS idx_extrakty_json_gin
     ON extrakty_json USING gin (sekce_json);
-
-CREATE INDEX IF NOT EXISTS idx_extrakty_json_embedding
-    ON extrakty_json USING hnsw (embedding vector_cosine_ops);
 
 -- Tabulka pro strukturované zjednodušení sekcí (demo04)
 CREATE TABLE IF NOT EXISTS simplify (

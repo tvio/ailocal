@@ -29,7 +29,7 @@ import argparse
 import requests
 from pathlib import Path
 
-from common.config import MODEL_CHAT
+from common.config import MODEL_CHAT, OLLAMA_TIMEOUT
 from common.ollama_client import get_ollama_url
 from common.db_postgres import (
     get_connection, get_json_extracts, insert_simplify, get_simplify_stats,
@@ -293,9 +293,8 @@ Vrať POUZE validní JSON."""
         ],
         "stream": False,
         "format": "json",
-        "options": {"num_ctx": 8192},
     }
-    resp = requests.post(f"{url}/api/chat", json=payload, stream=False, timeout=120)
+    resp = requests.post(f"{url}/api/chat", json=payload, stream=False, timeout=OLLAMA_TIMEOUT)
     resp.raise_for_status()
     return json.loads(resp.json()["message"]["content"])
 

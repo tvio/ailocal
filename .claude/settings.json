@@ -1,0 +1,28 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "WebFetch(domain:deepwiki.com)",
+      "WebFetch(domain:ollama.com)",
+      "Bash(docker compose *)",
+      "Bash(docker exec *)",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" -X POST http://10.6.38.10:11434/api/embed -d '{\"model\":\"qwen3-embedding:8b\",\"input\":\"test\",\"dimensions\":1024}')",
+      "Bash(curl -s -X POST http://10.6.38.10:11434/api/embed -d '{\"model\":\"qwen3-embedding:8b\",\"input\":\"test\",\"dimensions\":1024}')",
+      "Bash(python -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\('dim:', len\\(d['embeddings'][0]\\)\\)\")",
+      "Bash(uv run *)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf --method regex --no-save)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03_pdf_section_extract.py --method regex --no-save --section indikace)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03_pdf_section_extract.py -s SPC_0254048_PARALEN.pdf --method llm --no-save --section vedlejsi_ucinky)",
+      "Bash(curl -s -X POST http://10.6.38.10:11434/api/chat -d '{\"model\":\"qwen2.5:72b\",\"messages\":[{\"role\":\"user\",\"content\":\"Odpověz jen číslem: kolik je 2+2?\"}],\"stream\":false}')",
+      "Bash(python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python -c ' *)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03c_local_full_extract.py SPC_0254048_PARALEN.pdf --section vedlejsi_ucinky --no-save)",
+      "WebFetch(domain:www.serverman.co.uk)",
+      "WebFetch(domain:www.lmsys.org)",
+      "Bash(curl -s http://10.6.38.10:11434/api/tags)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03d_json_extract.py SPC_0500874_ZYPADHERA.pdf --mode local --section kontraindikace --no-save --model gemma3:27b)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03d_json_extract.py SPC_0500874_ZYPADHERA.pdf --mode local --section kontraindikace --no-save --model qwen3:32b)",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python demo03d_json_extract.py SPC_0500874_ZYPADHERA.pdf --mode local --section davkovani --no-save --model qwen3:32b)"
+    ]
+  }
+}

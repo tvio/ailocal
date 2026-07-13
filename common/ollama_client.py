@@ -6,7 +6,7 @@ from pathlib import Path
 
 import requests
 
-from common.config import OLLAMA_TIMEOUT, MODEL_EMBED, MODEL_CHAT
+from common.config import OLLAMA_TIMEOUT, MODEL_EMBED, MODEL_CHAT, EMBED_DIMENSION
 from ollama_health import get_working_url
 
 
@@ -31,7 +31,7 @@ def embed_text(text: str, *, model: str = MODEL_EMBED, base_url: str | None = No
     url = base_url or get_ollama_url()
     resp = requests.post(
         f"{url}/api/embed",
-        json={"model": model, "input": text},
+        json={"model": model, "input": text, "dimensions": EMBED_DIMENSION},
         timeout=OLLAMA_TIMEOUT,
     )
     resp.raise_for_status()
@@ -45,7 +45,7 @@ def embed_texts(texts: list[str], *, model: str = MODEL_EMBED, base_url: str | N
     url = base_url or get_ollama_url()
     resp = requests.post(
         f"{url}/api/embed",
-        json={"model": model, "input": texts},
+        json={"model": model, "input": texts, "dimensions": EMBED_DIMENSION},
         timeout=OLLAMA_TIMEOUT,
     )
     resp.raise_for_status()
@@ -65,18 +65,25 @@ def chat(
     base_url: str | None = None,
     stream: bool = False,
     options: dict | None = None,
+    think: bool | None = None,
 ) -> str:
-    """Pošle prompt modelu a vrátí odpověď jako string."""
+    """Pošle prompt modelu a vrátí odpověď jako string.
+
+    think=False vypne "thinking" mode u hybridních reasoning modelů (Qwen3, DeepSeek-R1).
+    U některých Qwen3 variant je API parametr nespolehlivý (viz ollama#12610) – pokud
+    záleží na rychlosti, přidej navíc "/nothink" do promptu/system zprávy jako pojistku.
+    """
     url = base_url or get_ollama_url()
     messages = []
     if system:
         messages.append({"role": "system", "content": system})
     messages.append({"role": "user", "content": prompt})
 
-    default_options = {"num_ctx": 8192}
-    if options:
-        default_options.update(options)
-    payload = {"model": model, "messages": messages, "stream": stream, "options": default_options}
+    # num_ctx se explicitně nenastavuje – bez zadání se použije server default
+    # (OLLAMA_CONTEXT_LENGTH v systemd override.conf na Ollama serveru).
+    payload = {"model": model, "messages": messages, "stream": stream, "options": options or {}}
+    if think is not None:
+        payload["think"] = think
 
     resp = requests.post(
         f"{url}/api/chat",

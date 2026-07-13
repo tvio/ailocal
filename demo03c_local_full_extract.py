@@ -1,16 +1,19 @@
 #!/usr/bin/env python3
-"""UC3c – Extrakce sekcí z PDF lokálním modelem BEZ regexu.
+"""UC3c – Extrakce sekcí z PDF lokálním modelem BEZ regex hledání sekce.
 
-Na rozdíl od demo03 (regex + LLM čištění) toto demo:
-  - Posílá CELÝ dokument do lokálního modelu (Ollama)
-  - Nepoužívá regex – model sám najde a extrahuje sekci
+Na rozdíl od demo03 (regex najde sekci, LLM ji jen vyčistí) toto demo:
+  - Nepoužívá regex k VYHLEDÁNÍ sekce – o to se stará model
+  - Dokument se ale rozseká na větší kusy (CHUNK_CHARS, hranice slov) a sekce
+    se v nich hledá postupně – u velkých PDF by se celý text nevešel do
+    kontextového okna modelu najednou
   - Ukládá do stejné DB tabulky s typem "ollama-full({model})"
 
 Účel: Porovnání s demo03 (regex+LLM) a demo03b (OpenAI API).
-Ukázka limitů lokálního modelu na velkém kontextu.
 
-⚠️  Na 12 GB VRAM s gemma3:12b a num_ctx=8192 se vejde ~10–12k znaků.
-    Větší dokumenty budou tiše oříznuty nebo způsobí swapování.
+⚠️  num_ctx se nenastavuje explicitně – použije se server default
+    (OLLAMA_CONTEXT_LENGTH v systemd override.conf na Ollama serveru, teď 32768).
+    CHUNK_CHARS je nastavené výrazně pod tímhle limitem, ať zbyde rezerva na
+    system prompt a generovanou odpověď.
 
 Použití:
   uv run python demo03c_local_full_extract.py SPC_0254048_PARALEN.pdf
@@ -19,12 +22,13 @@ Použití:
 """
 
 import sys
+import time
 import argparse
 from pathlib import Path
 
 from common.config import MODEL_CHAT, PDF_DIR
 from common.ollama_client import get_ollama_url, chat, embed_text
-from common.pdf_utils import extract_full_text
+from common.pdf_utils import extract_full_text, chunk_text
 from common.db_postgres import get_connection, insert_extrakt, get_extrakty_stats
 
 # SPC sekce – stejné jako v demo03
@@ -37,12 +41,28 @@ SECTION_LABELS = {
     "slozeni": "Kvalitativní a kvantitativní složení (2)",
 }
 
+# Velikost kusu pro LLM okno – výrazně větší než embedding CHUNK_SIZE (300 zn.),
+# protože tady nejde o sémantickou granularitu, ale o to, kolik textu se najednou
+# vejde modelu do kontextu spolu se system promptem a rezervou na odpověď.
+CHUNK_CHARS = 15000
+CHUNK_OVERLAP_CHARS = 2000  # ať se sekce nerozdělí přesně na hranici kusu
+
+REFUSAL_MARKERS = ["nenalezeno", "chybí", "nemám", "nemohu", "omlouvám", "nemůžu"]
+
+
+def _is_valid_result(text: str) -> bool:
+    """Ověří, že odpověď modelu není prázdná, příliš krátká, nebo odmítnutí."""
+    if not text or len(text.strip()) <= 20:
+        return False
+    return not any(m in text.lower() for m in REFUSAL_MARKERS)
+
 
 def extract_section_local(full_text: str, section: str, *, model: str, base_url: str) -> str:
-    """Extrahuje sekci z celého dokumentu lokálním modelem.
+    """Extrahuje sekci z dokumentu lokálním modelem – bez regex vyhledání sekce.
 
-    Posílá celý text dokumentu – žádný regex preprocessing.
-    Model sám najde a extrahuje požadovanou sekci.
+    Dokument se rozseká na části (chunk_text, hranice slov), protože velké PDF
+    by se nevešly do kontextového okna modelu najednou. Sekce se hledá postupně
+    v jednotlivých částech, vrací se první platný nález.
     """
     label = SECTION_LABELS.get(section.lower(), section)
 
@@ -53,12 +73,22 @@ def extract_section_local(full_text: str, section: str, *, model: str, base_url:
         "Pokud sekci nenajdeš, vrať pouze slovo NENALEZENO."
     )
 
-    prompt = f"""Z následujícího SPC dokumentu vytáhni kompletní obsah sekce „{label}".
-Vrať pouze čistý text sekce, nic jiného.
+    parts = chunk_text(full_text, chunk_size=CHUNK_CHARS, overlap=CHUNK_OVERLAP_CHARS)
 
-{full_text}"""
+    for i, part in enumerate(parts, 1):
+        prompt = f"""Následující text je část {i}/{len(parts)} SPC dokumentu (dokument je rozdělený na více částí po sobě jdoucích, hledaná sekce nemusí být v téhle části).
+Pokud tahle část obsahuje sekci „{label}", vytáhni její kompletní obsah.
+Pokud tahle část sekci neobsahuje, odpověz pouze slovem NENALEZENO.
 
-    return chat(prompt, system=system, model=model, base_url=base_url)
+{part}"""
+        t0 = time.perf_counter()
+        result = chat(prompt, system=system, model=model, base_url=base_url)
+        part_s = time.perf_counter() - t0
+        print(f"      … část {i}/{len(parts)}: {part_s:.1f}s")
+        if _is_valid_result(result):
+            return result
+
+    return "NENALEZENO"
 
 
 def parse_args() -> argparse.Namespace:
@@ -101,7 +131,8 @@ def main() -> None:
 
     base_url = get_ollama_url()
     print(f"  ✓ Ollama: {base_url}")
-    print(f"  ⚠️  Celý text ({len(full_text):,} zn.) jde do modelu BEZ regex ořezu")
+    n_parts = len(chunk_text(full_text, chunk_size=CHUNK_CHARS, overlap=CHUNK_OVERLAP_CHARS))
+    print(f"  ⚠️  Text rozsekán na {n_parts} část(í) po ~{CHUNK_CHARS:,} zn. (bez regex hledání sekce)")
 
     typ_extraktu = f"ollama-full({model})"
 
@@ -110,20 +141,20 @@ def main() -> None:
     extracted = {}
     for section in sections_to_extract:
         try:
+            t0 = time.perf_counter()
             result = extract_section_local(
                 full_text, section, model=model, base_url=base_url,
             )
+            extract_s = time.perf_counter() - t0
 
-            # Validace
-            refusal_markers = ["nenalezeno", "chybí", "nemám", "nemohu", "omlouvám", "nemůžu"]
-            is_refusal = any(m in result.lower() for m in refusal_markers) if result else True
-
-            if result and len(result.strip()) > 20 and not is_refusal:
-                print(f"  ✓ [{section}] {len(result)} znaků")
+            if _is_valid_result(result):
+                print(f"  ✓ [{section}] {len(result)} znaků ({extract_s:.1f}s extrakce celkem)")
                 extracted[section] = result
                 if save:
                     embed_input = result[:6000] if len(result) > 6000 else result
+                    t0 = time.perf_counter()
                     vec = embed_text(embed_input, base_url=base_url)
+                    embed_s = time.perf_counter() - t0
                     conn = get_connection()
                     insert_extrakt(
                         conn,
@@ -134,13 +165,16 @@ def main() -> None:
                         sekce_vector=vec,
                     )
                     conn.close()
-                    print(f"  💾 [{section}/{typ_extraktu}] Uloženo do DB ({len(vec)} dim)")
+                    print(f"  💾 [{section}/{typ_extraktu}] Uloženo do DB ({len(vec)} dim, {embed_s:.1f}s embedding)")
             else:
-                reason = "odmítnutí" if is_refusal else "příliš krátká odpověď"
-                print(f"  ✗ [{section}] {reason}")
+                print(f"  ✗ [{section}] nenalezeno v žádné části (nebo odmítnutí/krátká odpověď) ({extract_s:.1f}s)")
 
         except Exception as e:
             print(f"  ✗ [{section}] Chyba: {e}")
+
+        hotovo = ", ".join(extracted.keys()) if extracted else "zatím nic"
+        stav = "hotovo a uloženo" if save else "hotovo (bez ukládání, --no-save)"
+        print(f"  → dosud {stav}: {len(extracted)}/{len(sections_to_extract)} ({hotovo})")
         print()
 
     # Souhrn

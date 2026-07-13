@@ -11,10 +11,20 @@ Kompletní RAG pipeline:
 Použití:
   uv run python demo05_semantic_search.py "Jaké jsou vedlejší účinky?"
   uv run python demo05_semantic_search.py "Jaké jsou indikace?" --top-k 3
+
+  # Bez RAG – odpověď jen ze znalostí modelu, žádné vyhledávání (pro srovnání):
   uv run python demo05_semantic_search.py "Jaké jsou kontraindikace?" --no-rag
+
+  # Jen similarity search – vypíše nalezené chunky, chat model se nevolá:
+  uv run python demo05_semantic_search.py "Jaké jsou kontraindikace?" --search-only
+
+  # Jiný embedding model pro dotaz:
+  uv run python demo05_semantic_search.py "Jaké jsou indikace?" --embed-model qwen3-embedding:8b
+
   uv run python demo05_semantic_search.py --list-docs
 """
 
+import re
 import sys
 import argparse
 
@@ -43,6 +53,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--embed-model", default=MODEL_EMBED, help=f"Embedding model (výchozí {MODEL_EMBED})")
     parser.add_argument("--document", default=None, help="Filtrovat podle názvu dokumentu")
     parser.add_argument("--no-rag", action="store_true", help="Odpovědět BEZ kontextu (pro porovnání)")
+    parser.add_argument("--search-only", action="store_true",
+                        help="Jen similarity search, bez volání chat modelu (nevygeneruje odpověď)")
     parser.add_argument("--list-docs", action="store_true", help="Zobrazit dokumenty v databázi")
     return parser.parse_args()
 
@@ -82,6 +94,7 @@ def main() -> None:
     print("=" * 60)
     print(f"\n❓ Otázka: {query}")
     print(f"🤖 Model:  {args.model}")
+    print(f"🧬 Embed:  {args.embed_model}")
     print(f"📊 Top-K:  {args.top_k}")
 
     if args.no_rag:
@@ -130,12 +143,17 @@ def main() -> None:
     print()
     for i, r in enumerate(results):
         sim = r["similarity"]
-        preview = r["content"][:100].replace("\n", " ")
+        # celý chunk na jeden řádek – sjednotí whitespace (newlines, víc mezer) na jednu mezeru
+        content_oneline = re.sub(r"\s+", " ", r["content"]).strip()
         doc = r["document_name"]
         page = r.get("page_number", "?")
         print(f"  [{i+1}] Similarity: {sim:.4f} | Dokument: {doc} | Str. {page}")
-        print(f"      {preview}...")
+        print(f"      {content_oneline}")
         print()
+
+    if args.search_only:
+        print("✅ Hotovo! (--search-only: chat model se nevolal)")
+        return
 
     # 3. Sestavení kontextu a generování odpovědi
     print("[3/3] Generuji odpověď s kontextem (RAG)...")

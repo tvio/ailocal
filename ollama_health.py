@@ -6,6 +6,7 @@ import requests
 
 # Pořadí: nejdřív vzdálený, pak localhost
 OLLAMA_CANDIDATES = [
+    "http://10.6.38.10:11434",
     "http://127.0.0.1:11434",
     "http://192.168.1.215:11434",
   

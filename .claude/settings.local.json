@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(docker exec *)",
+      "Bash(uv run python -c ' *)",
+      "Bash(curl -s -w \"\\\\nHTTP_STATUS:%{http_code}\\\\n\" -X POST http://10.6.38.10:11434/api/embed -d '{\"model\":\"qwen2.5:72b\",\"input\":\"test\"}')",
+      "Bash(curl -s http://10.6.38.10:11434/api/version)",
+      "WebSearch",
+      "Bash(PYTHONIOENCODING=utf-8 uv run python -c ' *)"
+    ]
+  }
+}

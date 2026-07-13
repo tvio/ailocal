@@ -41,11 +41,12 @@ Použití:
 
 import json
 import sys
+import time
 import argparse
 import requests
 from pathlib import Path
 
-from common.config import MODEL_CHAT, PDF_DIR
+from common.config import MODEL_CHAT, PDF_DIR, OLLAMA_TIMEOUT
 from common.ollama_client import get_ollama_url, chat
 from common.pdf_utils import extract_full_text
 from common.db_postgres import get_connection, insert_extrakt_json, get_extrakty_json_stats
@@ -57,12 +58,12 @@ KEY_FILE = Path("key.yaml")
 
 # SPC sekce s čísly
 SECTION_LABELS = {
-    "indikace": ("4.1", "Terapeutické indikace"),
-    "kontraindikace": ("4.3", "Kontraindikace"),
-    "davkovani": ("4.2", "Dávkování a způsob podání"),
-    "vedlejsi_ucinky": ("4.8", "Nežádoucí účinky"),
-    "interakce": ("4.5", "Interakce s jinými léčivými přípravky"),
-    "slozeni": ("2", "Kvalitativní a kvantitativní složení"),
+   "indikace": ("4.1", "Terapeutické indikace"),
+   "kontraindikace": ("4.3", "Kontraindikace"),
+   "davkovani": ("4.2", "Dávkování a způsob podání"),
+   "vedlejsi_ucinky": ("4.8", "Nežádoucí účinky"),
+   "interakce": ("4.5", "Interakce s jinými léčivými přípravky"),
+   "slozeni": ("2", "Kvalitativní a kvantitativní složení"),
 }
 
 # JSON schema pro response_format (OpenAI)
@@ -175,17 +176,47 @@ def extract_section_openai(full_text: str, section_key: str, *, api_key: str) ->
     return json.loads(content)
 
 
-def extract_section_local(text: str, section_key: str, *, model: str, base_url: str) -> dict | None:
+def verify_section(raw_text: str, section_key: str, *, model: str, base_url: str) -> bool:
+    """Rychlé LLM ověření, že regexem vytažený text opravdu patří k dané sekci.
+
+    Krátký ANO/NE dotaz – i na velkém lokálním modelu rychlé, protože brzdí
+    délka GENEROVANÉ odpovědi, ne velikost vstupu ani modelu (viz demo03c).
+    """
+    sec_id, sec_name = SECTION_LABELS[section_key]
+    system = "/nothink Jsi expert na SPC dokumenty. Odpovídej pouze slovem ANO nebo NE, nic jiného."
+    prompt = f"""Je následující text opravdu obsahem sekce „{sec_id} {sec_name}" SPC dokumentu
+(ne jiné sekce, ne pouhý odkaz/citace na ni)?
+Odpověz pouze ANO nebo NE.
+
+{raw_text}"""
+    t0 = time.perf_counter()
+    result = chat(prompt, system=system, model=model, base_url=base_url, think=False)
+    verify_s = time.perf_counter() - t0
+    print(f"      ⏱ ověření: {verify_s:.1f}s ({result.strip()[:20]!r})")
+    return result.strip().upper().startswith("ANO")
+
+
+def extract_section_local(
+    text: str, section_key: str, *, model: str, base_url: str, verify: bool = True,
+) -> dict | None:
     """Extrahuje sekci lokálním modelem s regex preprocessingem + JSON mode.
 
     Lokální model dostane regex výřez (ne celý dokument) a instrukci
     vrátit JSON. Ollama JSON mode zajistí validní JSON výstup.
+    Mezi regexem a JSON krokem je volitelné LLM ověření, že regex netrefil
+    špatný text (např. odkaz na sekci místo sekce samotné).
     """
+    t_total = time.perf_counter()
+
     # Regex preprocessing – použijeme extract_section_regex z demo03
     from demo03_pdf_section_extract import extract_section_regex
 
     raw = extract_section_regex(text, section_key)
     if not raw:
+        return None
+
+    if verify and not verify_section(raw, section_key, model=model, base_url=base_url):
+        print(f"  ⚠️  [{section_key}] Regex trefil text, ale LLM ověření ho odmítlo")
         return None
 
     sec_id, sec_name = SECTION_LABELS[section_key]
@@ -217,7 +248,7 @@ Vrať POUZE validní JSON.
     # Ollama JSON mode
     url = base_url or get_ollama_url()
     messages = [
-        {"role": "system", "content": SYSTEM_PROMPT},
+        {"role": "system", "content": f"/nothink {SYSTEM_PROMPT}"},
         {"role": "user", "content": prompt},
     ]
     payload = {
@@ -225,12 +256,17 @@ Vrať POUZE validní JSON.
         "messages": messages,
         "stream": False,
         "format": "json",
-        "options": {"num_ctx": 8192},
+        "think": False,
     }
 
-    resp = requests.post(f"{url}/api/chat", json=payload, stream=False, timeout=120)
+    t0 = time.perf_counter()
+    resp = requests.post(f"{url}/api/chat", json=payload, stream=False, timeout=OLLAMA_TIMEOUT)
     resp.raise_for_status()
+    json_s = time.perf_counter() - t0
     content = resp.json()["message"]["content"]
+
+    total_s = time.perf_counter() - t_total
+    print(f"      ⏱ JSON extrakce: {json_s:.1f}s (celkem regex+ověření+JSON: {total_s:.1f}s)")
 
     return json.loads(content)
 
@@ -257,6 +293,8 @@ def parse_args() -> argparse.Namespace:
                         help="Režim extrakce (výchozí: both)")
     parser.add_argument("--model", default=MODEL_CHAT, help=f"Lokální model (výchozí {MODEL_CHAT})")
     parser.add_argument("--no-save", action="store_true", help="Neukládat do DB")
+    parser.add_argument("--no-verify", action="store_true",
+                        help="Vynechat LLM ověření regex výřezu (výchozí: ověřuje)")
     return parser.parse_args()
 
 
@@ -271,6 +309,7 @@ def main() -> None:
 
     document_name = pdf_path.stem
     save = not args.no_save
+    verify = not args.no_verify
     sections = [args.section] if args.section else list(SECTION_LABELS.keys())
     modes = ["openai", "local"] if args.mode == "both" else [args.mode]
 
@@ -281,6 +320,7 @@ def main() -> None:
     print(f"🔍 Sekce:   {', '.join(sections)}")
     print(f"⚙️  Režim:   {args.mode}")
     print(f"💾 DB:      {'ano' if save else 'ne'}")
+    print(f"🔎 Ověření: {'ano (regex → LLM ověří → JSON)' if verify else 'ne (regex → rovnou JSON)'}")
 
     # Extrakce textu
     print("\nExtrahuji text z PDF...")
@@ -313,7 +353,7 @@ def main() -> None:
                     result = extract_section_openai(full_text, section, api_key=api_key)
                 else:
                     result = extract_section_local(
-                        full_text, section, model=args.model, base_url=base_url,
+                        full_text, section, model=args.model, base_url=base_url, verify=verify,
                     )
 
                 if result and validate_result(result):
