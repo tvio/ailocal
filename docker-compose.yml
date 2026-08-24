@@ -1,29 +1,53 @@
+# Infrastruktura pro localsemantic.
+#
+# POZOR NA NAZVY: nesmi se prekryvat se starym projektem. Na stroji zustaly
+# volumes ailocal_pgdata, ailocal_pgadmin_data, legacy_pgdata,
+# legacy_pgadmin_data a kontejner ailocal-pgadmin. Kdyby se pouzila stejna
+# jmena, Docker RECYKLUJE existujici volume se starou databazi - a protoze
+# init-db.sql se na NEPRAZDNEM volume nespousti, nove tabulky by vubec
+# nevznikly a vypadalo by to jako chyba ve skriptu, ne v nazvech.
+#
+# Pri prvnim spusteni a po KAZDE zmene DDL:
+#     docker compose down -v && docker compose up -d
+# Prepinac -v smaze i volume. Bez nej se schema neaktualizuje.
+#
+# pgpass MUSI existovat jako SOUBOR jeste pred prvnim spustenim. Kdyz
+# chybi, Docker si na jeho miste vyrobi ADRESAR a pgadmin pak nenabehne
+# s nejasnou chybou. Zaklada ho `uv run python priprav_infrastrukturu.py`.
+
+# Jmeno projektu MUSI byt explicitni. Bez nej si ho compose odvodi z nazvu
+# ADRESARE - a ten se jmenuje "ailocal", takze by se nove kontejnery zaradily
+# do stareho projektu a compose by ten stary rozebral (overeno: pri prvnim
+# spusteni zmizel kontejner ailocal-pgadmin). Zadani varovalo pred kolizi
+# jmen volumes a kontejneru, ale jmeno projektu se odvozuje jinde.
+name: localsemantic
+
 services:
   postgres:
     image: pgvector/pgvector:pg17
-    container_name: ailocal-postgres
+    container_name: localsemantic-postgres
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ailocal
-      POSTGRES_PASSWORD: ailocal
-      POSTGRES_DB: ailocal
+      POSTGRES_USER: localsemantic
+      POSTGRES_PASSWORD: localsemantic
+      POSTGRES_DB: localsemantic
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ailocal"]
+      test: ["CMD-SHELL", "pg_isready -U localsemantic"]
       interval: 5s
       timeout: 3s
       retries: 5
 
   pgadmin:
     image: dpage/pgadmin4:latest
-    container_name: ailocal-pgadmin
+    container_name: localsemantic-pgadmin
     restart: unless-stopped
     environment:
-      PGADMIN_DEFAULT_EMAIL: admin@ailocal.cz
+      PGADMIN_DEFAULT_EMAIL: admin@localsemantic.cz
       PGADMIN_DEFAULT_PASSWORD: admin
       PGADMIN_LISTEN_PORT: 5050
       PGADMIN_SERVER_JSON_FILE: /pgadmin4/servers.json
@@ -47,4 +71,6 @@ services:
 
 volumes:
   pgdata:
+    name: localsemantic_pgdata
   pgadmin_data:
+    name: localsemantic_pgadmin_data

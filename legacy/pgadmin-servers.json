@@ -1,12 +1,12 @@
 {
   "Servers": {
     "1": {
-      "Name": "localsemantic-postgres",
+      "Name": "ailocal-postgres",
       "Group": "Servers",
       "Host": "postgres",
       "Port": 5432,
-      "MaintenanceDB": "localsemantic",
-      "Username": "localsemantic",
+      "MaintenanceDB": "ailocal",
+      "Username": "ailocal",
       "SSLMode": "prefer",
       "PassFile": "/tmp/pgpass"
     }

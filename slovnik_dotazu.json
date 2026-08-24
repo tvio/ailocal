@@ -1,0 +1,96 @@
+{
+  "_komentar": "Rozsireni DOTAZU pro hledani: vyraz uzivatele -> formulace, ktera je v textech SPC. NEPLETI se se slovnik_pojmu.json, ten mapuje odborny termin na laicky tvar pro ZOBRAZENI. Tenhle soubor se pouziva JEN pri hledani, do dat se nic nepridava a uzivatel dal vidi vetu z dokumentu. Radky zacinajici podtrzitkem se ignoruji.",
+  "_jak_pridavat": "Klic = jak to napise laik (male pismena). Hodnoty = jak to stoji v SPC. Overit v datech, ze ta formulace v korpusu opravdu je - vymyslena formulace nic nenajde.",
+  "reflux": [
+    "vracení kyselého obsahu ze žaludku do úst",
+    "návrat obsahu žaludku do jícnu",
+    "regurgitace"
+  ],
+  "pálení žáhy": [
+    "pyróza",
+    "pálení žáhy"
+  ],
+  "zácpa": [
+    "zácpa",
+    "obtížné vyprazdňování"
+  ],
+  "rýma": [
+    "ucpaný nos",
+    "zánět sliznice nosu"
+  ],
+  "kopřivka": [
+    "kopřivka",
+    "urtikarie"
+  ],
+  "vysoký tlak": [
+    "vysoký krevní tlak",
+    "hypertenze"
+  ],
+  "cukrovka": [
+    "diabetes mellitus",
+    "cukrovka"
+  ],
+  "zánět průdušek": [
+    "bronchitida",
+    "zánět průdušek"
+  ],
+  "žáha": [
+    "pálení žáhy",
+    "pyróza"
+  ],
+  "říhá": [
+    "časté říhání",
+    "nadměrné říhání"
+  ],
+  "kasl": [
+    "kašel",
+    "vykašlávání hlenu",
+    "zánět průdušek"
+  ],
+  "kasel": [
+    "kašel",
+    "vykašlávání hlenu"
+  ],
+  "ucpan": [
+    "ucpaný nos",
+    "přetížení nosu"
+  ],
+  "zacp": [
+    "zácpa",
+    "obtížné vyprazdňování"
+  ],
+  "alergi": [
+    "alergie",
+    "alergická reakce",
+    "alergická rýma",
+    "úleva od příznaků alergie"
+  ],
+  "styt": [
+    "štítná žláza"
+  ],
+  "stitn": [
+    "štítná žláza"
+  ],
+  "tlak": [
+    "vysoký krevní tlak",
+    "hypertenze"
+  ],
+  "cholesterol": [
+    "zvýšený cholesterol",
+    "krevní tuky"
+  ],
+  "ekzem": [
+    "ekzém",
+    "atopický ekzém"
+  ],
+  "horeck": [
+    "horečka",
+    "zvýšená tělesná teplota"
+  ],
+  "bolest": [
+    "bolest",
+    "bolesti",
+    "tlumení bolesti",
+    "středně silné až silné bolesti"
+  ]
+}

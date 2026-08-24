@@ -2,65 +2,6 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## POZOR – peníze za OpenAI
-
-Na účtu OpenAI je jen pár dolarů. Pro cloudové srovnání používej
-**výhradně `gpt-5-nano`** (`common.config.OPENAI_MODEL`) – je pro tyhle
-úlohy ověřeně dost dobrý a stojí nejmíň. **Nepouštěj `gpt-4o` ani
-`gpt-4o-mini`** – gpt-4o stojí násobně víc a účet by to vyčerpalo.
-Klíč je v `legacy/key.yaml`, načítá se přes `config.nacti_openai_klic()`
-(soubor NENÍ validní YAML mapa, chybí mezera za dvojtečkou).
-
-## Přístupy
-
-Hesla k pgAdminu, Postgresu a Ollamě jsou v **`pristupy.md`**. Klíč
-k OpenAI tam NENÍ, ten je v `legacy/key.yaml`.
-
-## Model pro lokální úlohy
-
-Všechno generativní jede na **`qwen3.5:122b`** (`config.MODEL_HLAVNI`) –
-je to MoE, takže je zároveň nejlepší i nejrychlejší. Embedding dělá
-`bge-m3`, generativní model embedding neumí (vrátí 501).
-
-## Poznatky behem realizace
-Pokud dojde k nejakemu poznatku behem realizace prosim zapis datum, poznatek , pripadne uprava zadani do poznatky.md
-
-Do souboru pis ze kazdy poznatek je vzdy nejvysse nahore.
-
-## Stav projektu
-Casto musim prerusit vyrobu, pakracyji pak jiny den.
-Pri ukonceni cinnosti prosim napsat presny stav do aktualnistav.md.
-Co je ted rozpracovano, pripadne jaky by mel byt dalsi krok.
-
-## Přechod na konkrétní aplikaci — legacy/ obsahuje předchozí poznatky
-
-Tenhle repozitář se posouvá od sady výukových demo skriptů k **konkrétní aplikaci**
-pro nasazení na NVIDIA DGX Spark. Adresář **`legacy/`** je záloha celého projektu
-v jeho demo-fázi (k srpnu 2026) — obsahuje všechny demo skripty, `common/` moduly
-a hlavně dokumentaci s natvrdo vybojovanými poznatky, které by nová implementace
-měla brát v potaz, ne opakovat od nuly:
-
-- **`legacy/demo01_pdf_to_vectors.md`** — historie voleb embedding modelu
-  (nomic-embed-text → qwen2.5:72b slepá ulička → qwen3-embedding:8b), proč
-  Ollama vyžaduje capability `embedding` u modelu, pravidla pro chunkování
-  (proč fixní znakové dělení selhává, proč se přešlo na odstavcové dělení,
-  dva reálné bugy s duplicitou překryvu a nekonečnou smyčkou)
-- **`legacy/demo03c_local_full_extract.md`** — proč lokální model bez regex
-  preprocessingu selhává na dlouhém kontextu, chunkovaný fallback
-- **`legacy/demo05_srovnani_stacku.md`** — podrobné srovnání s alternativním
-  stackem (Docling/pymupdf4llm, Qdrant vs. pgvector, BGE-M3 vs. qwen3-embedding,
-  dense/sparse hybrid, FastEmbed) včetně konkrétních kódových příkladů
-- **`legacy/dalibor.py`** — referenční hybridní ingest pipeline kolegy
-  (Docling + LangChain splitter + BGE-M3/BM25 + Qdrant), včetně vzoru
-  obohacení textu metadaty před embeddingem
-
-**Než navrhneš architekturu nové aplikace, projdi si tuhle dokumentaci** —
-řeší mj. proč `EMBED_DIMENSION` nesmí být ořezaná (Matryoshka truncation
-poškodila kvalitu vyhledávání), proč fixní znakové chunkování rozbíjí krátké
-podsekce, limit pgvector indexů (2000 dim), thinking-mode overhead u Qwen3
-modelů, a memory-bandwidth limity generování na DGX Sparku (~3-6 tok/s u 70B+
-modelů). Neopakuj stejné pokusy/omyly znovu.
-
 ## Commands
 
 ```bash

@@ -1,0 +1,65 @@
+{
+  "_komentar": "ZACHRANNA SIT podle ATC skupiny, NE zdroj indikaci. Pouziva se, jen kdyz hledani nevrati nic nad prahem, a vysledky se ukazuji ODDELENE a oznacene jako odvozene. Do dat se z tohohle souboru NIC nezapisuje - vygenerovany radek indikace by nemel odkaz na SPC a prisli bychom o dohledatelnost.",
+  "_jak_pridavat": "Klic = ATC prefix (SUKL ho prirazuje, je to rizena hodnota). vyrazy = jak o tom mluvi laik. popis = lidsky nazev skupiny do vypisu.",
+  "A02": {
+    "popis": "léčiva na poruchy žaludeční kyselosti",
+    "vyrazy": [
+      "reflux",
+      "žáh",
+      "zah",
+      "kysel",
+      "překysel",
+      "prekysel",
+      "říhá",
+      "riha",
+      "žaludk",
+      "zaludk"
+    ]
+  },
+  "N02": {
+    "popis": "léky proti bolesti a na horečku",
+    "vyrazy": [
+      "bolest",
+      "bolí",
+      "boli",
+      "horečk",
+      "horeck",
+      "teplot",
+      "migrén",
+      "migren"
+    ]
+  },
+  "J01": {
+    "popis": "antibiotika",
+    "vyrazy": [
+      "antibiotik",
+      "infekc",
+      "bakteri",
+      "zánět",
+      "zanet",
+      "hnis"
+    ]
+  },
+  "R01": {
+    "popis": "léčiva na ucpaný nos",
+    "vyrazy": [
+      "rým",
+      "rym",
+      "ucpan",
+      "nos",
+      "smrk"
+    ]
+  },
+  "R06": {
+    "popis": "antihistaminika (léky na alergii)",
+    "vyrazy": [
+      "alergi",
+      "kopřivk",
+      "koprivk",
+      "svědě",
+      "svede",
+      "vyrážk",
+      "vyrazk"
+    ]
+  }
+}

@@ -1,1 +1,1 @@
-"""Sdílené moduly pro ailocal dema."""
+"""Sdílené moduly aplikace localsemantic."""

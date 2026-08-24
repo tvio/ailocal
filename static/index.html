@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Hledání v SPC – localsemantic</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+<div id="start" class="prekryv">
+  <div class="prekryv-obsah">
+    <div class="hodiny"></div>
+    <p id="start-text">aplikace startuje (model se načítá do paměti)</p>
+    <p class="tise">qwen3.5:122b má 87 GB, načtení z disku trvá desítky sekund</p>
+  </div>
+</div>
+
+<header>
+  <h1>Hledání v souhrnech údajů o přípravku</h1>
+  <p class="tise">26 léčiv ze SÚKL · sémantické hledání běžnou češtinou · vše lokálně</p>
+</header>
+
+<main>
+  <form id="form" autocomplete="off">
+    <div class="radek-hledani">
+      <input id="dotaz" type="search" placeholder="hrazené léky na reflux"
+             aria-label="Dotaz">
+      <button type="submit" id="btn-hledat">Hledat</button>
+      <button type="button" id="btn-reset" class="druhotne">Reset</button>
+    </div>
+    <div class="radek-filtr">
+      <label for="sekce">Omezit na sekci:</label>
+      <select id="sekce">
+        <option value="">— bez omezení (rozhodne router) —</option>
+        <option value="indikace">Terapeutické indikace</option>
+        <option value="davkovani">Dávkování</option>
+        <option value="kontraindikace">Kontraindikace</option>
+        <option value="nezadouci_ucinky">Nežádoucí účinky</option>
+      </select>
+      <span class="tise">platí jen na sekční výsledky; filtry z dotazu (Rx/OTC, hrazení, látka) platí dál</span>
+    </div>
+  </form>
+
+  <div id="router" class="router" hidden></div>
+  <div id="hlaska" class="hlaska" hidden></div>
+
+  <div id="pracuje" class="pracuje" hidden>
+    <div class="hodiny maly"></div><span>model pracuje…</span>
+  </div>
+
+  <table id="tabulka">
+    <thead>
+      <tr>
+        <th class="uzky"></th>
+        <th data-sort="nazev">Název</th>
+        <th data-sort="sila">Síla</th>
+        <th data-sort="ucinne_latky">Účinné látky</th>
+        <th data-sort="na_predpis">Výdej</th>
+        <th data-sort="hrazeno">Hrazení</th>
+        <th data-sort="atc">ATC</th>
+        <th data-sort="kod_sukl">Kód SÚKL</th>
+        <th>Nalezeno</th>
+        <th class="uzky">PDF</th>
+      </tr>
+    </thead>
+    <tbody id="telo"></tbody>
+  </table>
+
+  <div id="atc-navrh" class="atc-navrh" hidden></div>
+
+  <nav id="strankovani" class="strankovani"></nav>
+</main>
+
+<footer>
+  <a href="/docs">API dokumentace (Swagger)</a>
+</footer>
+
+<script src="/static/app.js"></script>
+</body>
+</html>

@@ -1,0 +1,59 @@
+[32m[INFO] 2026-08-13 14:19:10,005 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:19:10,013 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:19:10,029 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-13 14:19:10,029 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-13 14:19:10,190 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:19:10,191 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:19:10,192 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-13 14:19:10,192 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-13 14:19:10,320 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:19:10,321 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:19:10,349 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-13 14:19:10,349 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_rec_small.pth[0m
+[transformers] `torch_dtype` is deprecated! Use `dtype` instead!
+==============================================================================
+KROK 1 – konverze SPC do Markdownu (Docling)
+==============================================================================
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  85%|████████▌ | 658/770 [00:00<00:00, 6561.61it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 6552.20it/s]
+  ořez EU: Příloha II na str. 15 – konvertuje se 14 z 46 stran (−70 %)
+[32m[INFO] 2026-08-13 14:19:32,869 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:19:32,870 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:19:32,879 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-13 14:19:32,879 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-13 14:19:32,997 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:19:32,998 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:19:32,999 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-13 14:19:32,999 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-13 14:19:33,097 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:19:33,097 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:19:33,121 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-13 14:19:33,121 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_rec_small.pth[0m
+  ✓ 0254048    28.8s   20,429 zn.    8 str.  ořez: ne (CZ)
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  58%|█████▊    | 447/770 [00:00<00:00, 4458.52it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 4598.76it/s]
+  ořez EU: Příloha II na str. 20 – konvertuje se 19 z 96 stran (−80 %)
+[32m[INFO] 2026-08-13 14:20:00,970 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:20:00,970 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:20:00,978 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-13 14:20:00,978 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_det_small.pth[0m
+[32m[INFO] 2026-08-13 14:20:01,081 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:20:01,082 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:20:01,083 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-13 14:20:01,083 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\ch_ptocr_mobile_v2.0_cls_mobile.pth[0m
+[32m[INFO] 2026-08-13 14:20:01,157 [RapidOCR] base.py:23: Using engine_name: torch[0m
+[32m[INFO] 2026-08-13 14:20:01,157 [RapidOCR] device_config.py:57: Using CPU device[0m
+[32m[INFO] 2026-08-13 14:20:01,175 [RapidOCR] download_file.py:60: File exists and is valid: C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_rec_small.pth[0m
+[32m[INFO] 2026-08-13 14:20:01,176 [RapidOCR] main.py:50: Using C:\python\ailocal\.venv\Lib\site-packages\rapidocr\models\PP-OCRv6_rec_small.pth[0m
+  ✓ 0500896    28.1s   38,846 zn.   46 str.  ořez: str.15 → 14/46
+Loading weights:   0%|          | 0/770 [00:00<?, ?it/s]Loading weights:  98%|█████████▊| 755/770 [00:00<00:00, 7548.28it/s]Loading weights: 100%|██████████| 770/770 [00:00<00:00, 7617.95it/s]
+  ✓ 0500778    42.6s   62,827 zn.   96 str.  ořez: str.20 → 19/96
+
+KONTROLA PILOTU
+------------------------------------------------------------------------------
+kód        nadpisy  tab.  str→map  4.1  4.2  4.3  4.8
+0254048         61     2       61   ✓   ✓   ✓   ✓
+0500896         92     0       84   ✓   ✓   ✓   ✓
+0500778         98     4       93   ✓   ✓   ✓   ✓
+
+Čas konverze: 99.6s celkem, 33.2s na dokument
+  -> odhad pro 50 léčiv:  27.7 min
+  -> odhad pro 500 léčiv: 276.5 min

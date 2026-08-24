@@ -1,21 +1,9 @@
-# Python-generated files
+data/
+.venv
 __pycache__/
 *.py[oc]
-build/
-dist/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
-
-# Secrets
+.mypy_cache/
 key.yaml
 *.key
 pgpass
-
-# Data (PDF, obrázky – stahují se lokálně)
-data/pdf/
-data/images/
-data/emails/
-data/meetings/
+logs/

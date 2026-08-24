@@ -1,0 +1,118 @@
+:root {
+  --ram: #d8dde3;
+  --tise: #6b7580;
+  --zvyraz: #1f6feb;
+  --pozadi-hlavicka: #f4f6f8;
+  --ok: #197c3a;
+  --ne: #9a3412;
+}
+* { box-sizing: border-box; }
+
+/* Atribut `hidden` skryva jen pres display:none z UA stylu, takze ho
+   PREBIJE jakykoli vlastni `display`. Kolecko "model pracuje" ma
+   display:flex a proto se netocilo jen behem dotazu, ale porad.
+   Tohle pravidlo to resi jednou provzdy, at na to nemusim myslet
+   u kazde nove tridy. */
+[hidden] { display: none !important; }
+body {
+  margin: 0; padding: 0 1.5rem 3rem;
+  font: 15px/1.5 -apple-system, "Segoe UI", Roboto, sans-serif;
+  color: #1c2024;
+}
+header { padding: 1.5rem 0 1rem; border-bottom: 1px solid var(--ram); }
+h1 { margin: 0 0 .25rem; font-size: 1.35rem; }
+.tise { color: var(--tise); font-size: .85rem; margin: 0; }
+footer { margin-top: 2rem; font-size: .85rem; }
+
+/* --- formular --- */
+form { margin: 1.25rem 0; }
+.radek-hledani { display: flex; gap: .5rem; }
+#dotaz {
+  flex: 1; padding: .6rem .75rem; font-size: 1rem;
+  border: 1px solid var(--ram); border-radius: 6px;
+}
+#dotaz:focus { outline: 2px solid var(--zvyraz); outline-offset: -1px; }
+button {
+  padding: .6rem 1.1rem; font-size: .95rem; cursor: pointer;
+  border: 1px solid var(--zvyraz); border-radius: 6px;
+  background: var(--zvyraz); color: #fff;
+}
+button.druhotne { background: #fff; color: var(--zvyraz); }
+button:disabled { opacity: .5; cursor: default; }
+.radek-filtr { display: flex; gap: .6rem; align-items: center; margin-top: .6rem; flex-wrap: wrap; }
+select { padding: .35rem .5rem; border: 1px solid var(--ram); border-radius: 6px; }
+
+/* --- hlasky --- */
+.router, .hlaska, .atc-navrh {
+  margin: .75rem 0; padding: .7rem .9rem;
+  border: 1px solid var(--ram); border-radius: 6px; background: var(--pozadi-hlavicka);
+  font-size: .88rem;
+}
+.hlaska.chyba { border-color: var(--ne); color: var(--ne); }
+.router code { background: #fff; padding: .05rem .3rem; border-radius: 3px; }
+.atc-navrh { border-style: dashed; }
+.atc-navrh h3 { margin: 0 0 .4rem; font-size: .9rem; }
+
+/* --- hodiny --- */
+.hodiny {
+  width: 26px; height: 26px; border-radius: 50%;
+  border: 3px solid var(--ram); border-top-color: var(--zvyraz);
+  animation: toc 0.9s linear infinite; margin: 0 auto .8rem;
+}
+.hodiny.maly { width: 16px; height: 16px; border-width: 2px; margin: 0; }
+@keyframes toc { to { transform: rotate(360deg); } }
+.pracuje { display: flex; gap: .5rem; align-items: center; color: var(--tise); margin: .75rem 0; }
+
+.prekryv {
+  position: fixed; inset: 0; z-index: 10;
+  background: rgba(255,255,255,.96);
+  display: flex; align-items: center; justify-content: center; text-align: center;
+}
+.prekryv[hidden] { display: none; }
+.prekryv-obsah p { margin: .3rem 0; }
+
+/* --- tabulka --- */
+table { width: 100%; border-collapse: collapse; font-size: .9rem; }
+th, td { padding: .5rem .55rem; text-align: left; border-bottom: 1px solid var(--ram); vertical-align: top; }
+thead th { background: var(--pozadi-hlavicka); font-weight: 600; white-space: nowrap; }
+th[data-sort] { cursor: pointer; user-select: none; }
+th[data-sort]:hover { color: var(--zvyraz); }
+th[data-sort].aktivni { color: var(--zvyraz); }
+th.uzky { width: 34px; }
+tbody tr.klikaci { cursor: pointer; }
+tbody tr.klikaci:hover { background: #f2f6fb; }
+tbody tr.detail:hover { background: #fbfcfd; }
+.sipka { pointer-events: none; }   /* klik obsluhuje cely radek */
+.nazev { font-weight: 600; }
+.ano { color: var(--ok); }
+.ne { color: var(--ne); }
+.nalez { color: #333; }
+.nalez .znacka {
+  display: inline-block; margin-left: .35rem; padding: .05rem .35rem;
+  background: var(--pozadi-hlavicka); border: 1px solid var(--ram);
+  border-radius: 3px; font-size: .78rem; color: var(--tise);
+}
+
+/* --- rozbalovaci radek --- */
+.sipka {
+  background: none; border: none; color: var(--tise); cursor: pointer;
+  font-size: .8rem; padding: .15rem .3rem; line-height: 1;
+}
+.sipka[aria-expanded="true"] { transform: rotate(180deg); }
+.detail td { background: #fbfcfd; }
+.detail dl { margin: 0; display: grid; grid-template-columns: max-content 1fr; gap: .2rem .9rem; }
+.detail dt { color: var(--tise); }
+.detail dd { margin: 0; }
+.detail h4 { margin: .8rem 0 .3rem; font-size: .85rem; }
+.detail ul { margin: 0; padding-left: 1.1rem; }
+.ikona-pdf {
+  background: none; border: none; cursor: pointer; padding: .2rem;
+  color: var(--zvyraz); font-size: 1.05rem; line-height: 1;
+}
+.ikona-pdf[disabled] { color: var(--ram); cursor: default; }
+
+/* --- strankovani --- */
+.strankovani { display: flex; gap: .35rem; align-items: center; margin-top: 1rem; flex-wrap: wrap; }
+.strankovani button { padding: .3rem .65rem; font-size: .85rem; background: #fff; color: var(--zvyraz); }
+.strankovani button.aktivni { background: var(--zvyraz); color: #fff; }
+.strankovani .tise { margin-left: .5rem; }
