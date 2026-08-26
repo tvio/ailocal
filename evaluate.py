@@ -355,6 +355,7 @@ def test3(prah: float) -> Vysledek:
     for dotaz in NEGATIVNI:
         filtr, _, syrove = rozhodni(dotaz)
         o = hledej(syrove.get("dotaz_text") or dotaz, filtr=filtr,
+                   puvodni_dotaz=dotaz,
                    limit=10, prah=prah)
         if not o.vysledky:
             ok += 1

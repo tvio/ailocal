@@ -73,6 +73,25 @@ Každá nalezená pasáž nese `strana_pdf`. Frontend otevírá
 `/api/pdf/{kod}#page=N` – fragment `#page=` umí vestavěný prohlížeč PDF,
 takže se dokument otevře **rovnou u nalezeného místa**. Ikona je 📝.
 
+### Práh podobnosti jde nastavit z obrazovky
+
+Posuvník **Práh podobnosti** (0 – 0,9, krok 0,05) se posílá jako
+`?prah=`. Výchozí **0,55** je naměřená hodnota, tlačítko vedle ho vrátí.
+
+| práh | „mám reflux" vrátí |
+|---|---|
+| 0,30 | 10 léčiv (i zjevný šum) |
+| **0,55** | **4 léčiva** |
+| 0,75 | 1 léčivo (jen MAALOX 0,86) |
+
+Posun posuvníku jen překresluje číslo; **hledá se až při puštění**
+(`change`, ne `input`) — jinak by každý krok posílal dotaz na model.
+
+**U přesných filtrů se práh neuplatňuje** (název, látka, síla, ATC,
+frekvence) — výběr už udělal filtr. API v tom případě vrátí `prah: 0.0`
+a blok routeru napíše *„práh neuplatněn (filtr je přesný)"*, aby to
+nevypadalo, že posuvník nefunguje.
+
 ### Čtení sekce místo hledání v ní
 
 Když dotaz jmenuje **konkrétní lék a jednu konkrétní sekci**
@@ -120,6 +139,7 @@ Jeden soubor `static/app.js`, žádné závislosti.
 | prvek | chování |
 |---|---|
 | pole dotazu | placeholder `hrazené léky na reflux`, **Enter hledá** |
+| posuvník prahu | 0 – 0,9; hledá se až při puštění; tlačítko vrátí 0,55 |
 | Hledat / Reset | Reset vrátí úvodní výpis a zruší filtr sekce |
 | šipka ▼ vlevo | rozbalí metadata řádku (skóre, cosine, ts_rank, pořadí, strana) |
 | 📝 vpravo | otevře SPC v PDF na příslušné straně |
@@ -141,7 +161,33 @@ si je někdo nerozbalí.
 ## Provoz
 
 `--reload` po čase přestal zabírat a server běžel na starém kódu.
-**Po změně schématu odpovědi radši restartovat.** Zabít ho podle portu
-nemusí jít (`Get-NetTCPConnection` hlásí i mrtvé PID), workery najde:
+**Po změně schématu odpovědi radši restartovat.**
 
-    Get-CimInstance Win32_Process -Filter "Name like '%python%'"
+### Jak na Windows najít a zabít proces (obdoba `ps -ef | grep`)
+
+Vypsat python procesy i s příkazovou řádkou — `Get-Process` sám
+`CommandLine` neukáže, proto `Get-CimInstance`:
+
+    Get-CimInstance Win32_Process -Filter "Name like '%python%'" |
+      Select-Object ProcessId, CommandLine | Format-Table -AutoSize
+
+Zabít všechny uvicorny najednou:
+
+    Get-CimInstance Win32_Process -Filter "Name like '%python%'" |
+      Where-Object { $_.CommandLine -like '*uvicorn*' } |
+      ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+
+Kdo drží port (obdoba `lsof -i :8000`):
+
+    Get-NetTCPConnection -LocalPort 8000 -State Listen |
+      Select-Object LocalPort, OwningProcess
+
+**Pozor:** `Get-NetTCPConnection` občas vrátí PID, který už neexistuje —
+socket je ve stavu, kdy proces skončil, ale port se ještě neuvolnil.
+Když `Stop-Process` hlásí „proces nenalezen" a port pořád odpovídá, jdi
+přes `Win32_Process` výš. Uvicorn navíc drží **dva** procesy (rodič
+a worker), takže je potřeba zabít oba.
+
+Zabití podle PID jde i klasicky:
+
+    taskkill /F /PID 12345

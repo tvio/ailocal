@@ -1,4 +1,4 @@
-# STAV K 24.8.2026 — HOTOVO, PŘIPRAVENO K PŘEDVEDENÍ
+# STAV K 25.8.2026 — HOTOVO, PŘIPRAVENO K PŘEDVEDENÍ
 
 **CLI, API i GUI jsou hotové a odzkoušené. Nic neběží na pozadí.**
 
@@ -15,31 +15,31 @@ Dokumentace: **`scenare.md`** (co zadávat při předvádění), **`gui.md`**
 
 ## Co je hotové
 
-### Data — 26 léčiv
+### Data — 32 léčiv
 
 | krok | skript | výsledek |
 |---|---|---|
 | stažení ze SÚKL | `stahni_data.py` | 26 léčiv vč. SPC PDF |
 | konverze | `konvertuj_spc.py` | Docling, backend `pypdfium2` |
-| sekce + ořez | `extrahuj_sekce.py` | **104/104** |
-| JSON | `extrahuj_json.py` | 104/104 |
+| sekce + ořez | `extrahuj_sekce.py` | **128/128** |
+| JSON | `extrahuj_json.py` | 128/128 |
 | řízené slovníky | `ocisti_json.py` | bez modelu |
 | rozdělení výčtů | `rozdel_vycty.py` | 3 položky → 15 |
 | kontrola proti zdroji | `zkontroluj_json.py` | deterministická |
 | kontrola jiným modelem | `zkontroluj_modelem.py` | gemma4:31b |
-| číselník pojmů | `postav_slovnik.py` | **539 dvojic, 67 ručně** |
+| číselník pojmů | `postav_slovnik.py` | **593 dvojic, 70 ručně** |
 
-Stavy: `ok` 96, `zamitnuto_kontrolou` 6, `castecna` 1, `neovereno` 1.
+Stavy: `ok` 118, `zamitnuto_kontrolou` 9, `castecna` 1.
 
-### Databáze — 1173 hledatelných řádků
+### Databáze — 1 346 hledatelných řádků
 
 | sekce | řádků |
 |---|---|
-| nezadouci_ucinky | 768 |
-| indikace | 155 |
-| kontraindikace | 135 |
-| davkovani | 89 |
-| atributy | 26 |
+| nezadouci_ucinky | 895 |
+| indikace | 166 |
+| kontraindikace | 150 |
+| davkovani | 103 |
+| atributy | 32 |
 
 ### Hledání
 
@@ -52,12 +52,17 @@ Nad tím tři režimy, které vznikly z měření:
 - **řízené hodnoty** — název, látka, síla, ATC, frekvence → práh se
   neuplatňuje, výběr už udělal filtr
 
+**Pojistka proti nedeterminismu routeru:** do hledání jde vždycky i
+**původní věta uživatele** jako další varianta. Router totiž z „bolí mě
+zuby" udělá jednou `bolest zubů`, jindy jen `zuby` — a to má 0,396, tedy
+pod prahem. Bere se maximum přes varianty, takže horší nemůže uškodit.
+
 ### Evaluace (reprodukovatelná, dva běhy dají totéž)
 
 ```
-Invarianty filtru           210/210   100%
-Auto-recall @5               50/50    100%
-Auto-recall @10              54/54    100%
+Invarianty filtru           212/212   100%
+Auto-recall @5               47/47    100%
+Auto-recall @10              56/56    100%
 Negativní dotazy (práh 0,55)  7/8      88%
 Parafráze (ručně)            10/10    100%
 ```
@@ -73,7 +78,34 @@ Jediný neúspěch: `léčba roztroušené sklerózy` → AMOKSIKLAV 0,564
 `api.py` (FastAPI, Swagger na `/docs`) + `static/` (vanilla JS).
 Výpis 26 léčiv A–Z se stránkováním a řazením, hledání s výpisem toho,
 co vrátil router, vynucení sekce, rozbalovací metadata, odkaz do PDF
-na nalezenou stranu, ATC záchranná síť, předehřátí modelu při startu.
+na nalezenou stranu, ATC záchranná síť, **posuvník prahu podobnosti**,
+předehřátí modelu při startu.
+
+---
+
+## ZMĚNY 25.8.
+
+1. **Korpus 26 → 32 léčiv.** Doplněna celá skupina **A07 (průjem)**, aby
+   šla předvést matice filtrů: IMODIUM/ENDITRIL/HIDRASEC (OTC),
+   HIDRASEC PRO DĚTI a ERCEFURYL (Rx), CEDEPOS (Rx **hrazený**).
+   HIDRASEC je zajímavý — tatáž látka je ve 100 mg volně prodejná
+   a ve 30 mg pro děti na předpis.
+2. **Slepený nadpis** `## 4. KLINICKÉ ÚDAJE4.1 TERAPEUTICKÉ INDIKACE`
+   schoval CEDEPOSu celou sekci indikací. Doplněn záložní vzor, který
+   povolí číslo kdekoliv v nadpisu — pouští se až když selže přísný.
+3. **Model přeložil „akutní průjem" jako „náhlý ZÁŠKRT"** (difterii)
+   u ERCEFURYLU. Opraveno v datech i v ručním číselníku. **Prošlo to
+   oběma kontrolami**, protože obě ověřují odborný text proti zdroji —
+   laický tvar se dnes neověřuje nikde. Úkol v `todo.md`.
+4. **`prezentace.md`** — nový dokument pro vedení IT, celý řetězec
+   od A do Z laicky.
+5. **Práh v GUI** — posuvník 0–0,9, výchozí naměřených 0,55.
+6. **Pojistka proti ořezání routerem** — do hledání jde i původní věta
+   uživatele.
+
+**Rozhodnuto nechat tak:** `hrazený lék na průjem` nevrátí nic. CEDEPOS
+má indikaci „infekce Clostridioides difficile", tedy nemocniční infekci,
+ne běžný průjem — laik by ho dostat neměl.
 
 ---
 

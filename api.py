@@ -295,7 +295,7 @@ def hledat(
         vynuceno = True
 
     o = hledej(syrove.get("dotaz_text") or q, filtr=filtr,
-               limit=leciv * pasazi + 40, prah=prah)
+               limit=leciv * pasazi + 40, prah=prah, puvodni_dotaz=q)
     # U cteni sekce se pasaze NEOREZAVAJI - cilem je ukazat ji celou.
     skupiny = seskup(o.vysledky, leciv=leciv,
                      pasazi_na_lecivo=200 if o.cely_usek else pasazi)

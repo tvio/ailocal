@@ -1,7 +1,9 @@
 # TODO 
-0. Udelat popis do MD jako vsechno funguje - cely proces.
-1. Pridat filtr na prah
-2. Pridat antihistmika nejak do indikaci, IPP
+1. 
+1. Upravit hledání dle zjednoduseni
+1. V jakem stavu je kompletni spousteni extrakce a naloadovani databaze. Udelat jeden file
+1. Udelat logovani komple konverze
+2. Udelat logovani komplet od A..Z
 2. Vylepsit vyhledavani, kdyz najde nejaky vysoky rank - tak pridat vsehcno z dane ATC skupiny a lecive latky. 
 4. Proc lek na kasel vraci ACIFEIN
 
@@ -296,11 +298,87 @@ ucinky paralen`.
 Dopad: bez nazvu se nespusti rezim cteni sekce, jede bezne hledani
 a prah orizne vysledek (2 polozky misto 6).
 
+**CASTECNE RESENO 24.8.:** do hledani jde vzdy i puvodni veta uzivatele
+(`hledej(..., puvodni_dotaz=...)`), takze prilis agresivni orez uz
+nezpusobi prazdny vysledek. Ztratu `nazev` to ale neresi - bez nej se
+nespusti rezim cteni sekce.
+
 - [ ] pridat do promptu vyrazny priklad "FREKVENCE + NAZEV LEKU naraz"
 - [ ] zvazit deterministickou pojistku: kdyz se v dotazu vyskytuje slovo,
       ktere se shoduje s nazvem leciva v DB (bez diakritiky, case
       insensitive), doplnit `nazev` i kdyz ho model vynechal
 - [ ] pridat invariant do `evaluate.py` - dnes to zadny test nechyti
+
+## KROK: Overovat LAICKY tvar proti odbornemu
+
+Zjisteno 25.8.: ERCEFURYL mel `doslovne` "Akutní průjem bakteriálního
+původu" (SPRAVNE) a `laicky` "Náhlý ZÁŠKRT způsobený bakteriemi" -
+zaskrt je difterie. **Proslo to obema kontrolami**, protoze obe
+kontroluji odborny text proti zdroji.
+
+Laicky tvar se dnes neoveruje nikde. Ciselnik pojmu to resi jen
+u terminu, ktere se OPAKUJI - jednorazova veta propadne.
+
+- [ ] pustit na dvojice `doslovne` -> `laicky` tutez kontrolu, jakou uz
+      dela `postav_slovnik.py` na terminech (jiny model rozhodne, jestli
+      laicky tvar vecne odpovida odbornemu)
+- [ ] zacit u INDIKACI a KONTRAINDIKACI - tam jsou to cele vety, takze
+      ciselnik je nepokryva
+- [ ] opraveno rucne: ERCEFURYL (v datech i v `slovnik_rucni.json`)
+
+## ~~KROK: Oprava rozbocivosti (hubness)~~ ZAMITNUTO 25.8.
+
+**Nedelat.** Domereno na cele evaluacni sade: pri stejne uspesnosti
+na negativnich dotazech (7/8) padne o jednu parafrazi VIC nez dnes.
+Opravi vybrane pripady, ale zhorsi celek - potresta i legitimni
+obecne odpovedi, protoze ty jsou rozbocovaci ze stejneho duvodu.
+Podrobne v poznatky.md.
+
+### Puvodni zadani (pro pripad, ze by nekdo chtel zkusit jinak)
+
+Zmereno 25.8.: nektere radky jsou blizko VSEMU. "bolestivá menstruace"
+ma prumernou podobnost 0,506 ke 12 nesouvisejicim dotazum, prumer
+korpusu je 0,399 (3,5 smerodatne odchylky).
+
+Po odecteni rozbocivosti:
+
+    kasel + ACIFEIN "bolest hlavy"       0,567 -> 0,013
+    prujem + ACIFEIN "bolest hlavy"      0,546 -> -0,008
+    negativni dotazy celkove             0,50-0,62 -> 0,11-0,24
+    parafraze spravne prvni              7/10 -> 8/10
+
+- [ ] pridat sloupec `hubnost` do `leciva_search`, pocitat pri plneni DB
+      proti PEVNE sade dotazu (varianta "podobnost k ostatnim RADKUM"
+      je HORSI - nadhodnoti velmi specificke texty jako "kopřivka")
+- [ ] **prah preměřit od nuly** - stupnice se posune z ~0,5 na ~0,15
+- [ ] zvazit preskalovani zpatky na 0-1, aby cislo pro uzivatele
+      zustalo nazorne
+- [ ] sada dotazu pro pozadi je NOVY ladici parametr - musi odpovidat
+      tomu, na co se lide ptaji
+
+## KROK: Oddelit text pro ZOBRAZENI od textu pro HLEDANI  << PRIORITA
+
+Nejvetsi zbyvajici zlepseni. Podrobne v poznatky.md.
+
+HIDRASEC PRO DETI ma indikaci na 27 slov a v hledani se nechyta:
+
+    dotaz "průjem u dětí"   dlouha veta 0,623   kratky klic 0,902
+
+Tyka se to 39 % indikaci, 67 % kontraindikaci a 77 % davkovani
+(polozky nad 10 slov).
+
+- [ ] pridat pole `klic` do sablony extrakce (2-4 slova, nazev stavu) -
+      ZADNA volani modelu navic, jen pole navic v existujici sablone
+- [ ] sloupec `hledaci_klic` v `leciva_search`
+- [ ] rozhodnout, CO embedovat:
+      a) jen klic                            - ztrati detail
+      b) klic i cely text jako DVA vektory   - symetricke s dotazem, DOPORUCENO
+      c) klic do vektoru, text do fulltextu  - kompromis zadarmo
+- [ ] `obsah_text` zustava beze zmeny - uzivatel dal vidi PUVODNI zneni
+      a odkaz na stranu SPC. Klic je rejstrikove heslo, ne nahrada obsahu.
+- [ ] u stavajicich dat staci cileny pruchod pres polozky nad ~10 slov
+      (cca 250 polozek)
+- [ ] po zmene preměřit prah a pustit evaluate
 
 ## KROK: Projit ZADANI proti Filtru - co dalsiho chybi?
 

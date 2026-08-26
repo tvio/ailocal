@@ -13,11 +13,12 @@ http://localhost:8000/) — popis obrazovky je v `gui.md`.
 
 ## 1. Co korpus pokrývá
 
-**26 léčiv** (22 + 4 doplněná 24.8.). Rozdělení podle terapeutické oblasti (ATC):
+**32 léčiv** (22 + 4 doplněná 24.8. + 6 na průjem 25.8.). Rozdělení podle terapeutické oblasti (ATC):
 
 | ATC | oblast | léčiva | typické indikace v datech |
 |---|---|---|---|
-| A02 | žaludeční kyselost, reflux | CONTROLOC, MAALOX, OMEPRAZOL | pálení žáhy, reflux, vředy žaludku a dvanáctníku, říhání |
+| A02 | žaludeční kyselost, reflux | CONTROLOC, MAALOX, OMEPRAZOL, GASTROFAIT | pálení žáhy, reflux, vředy žaludku a dvanáctníku, říhání |
+| **A07** | **průjem** | IMODIUM, ENDITRIL, HIDRASEC, HIDRASEC PRO DĚTI, ERCEFURYL, CEDEPOS | akutní průjem, infekční průjem, *C. difficile* |
 | A03 | křeče trávicího ústrojí | ALGIFEN NEO | žlučníkové a ledvinové koliky, bolestivá menstruace, bolest zubů |
 | A06 | zácpa | BISACODYL KRKA | zácpa, příprava na vyšetření střeva |
 | A10 | cukrovka / obezita | ABLYMICO | hubnutí u dospělých a dětí |
@@ -47,6 +48,7 @@ Legenda: ✔ máme · ➕ doplňuje se · ✗ chybí · — v realitě neexistuj
 | **A02** kyselost | ✔ MAALOX, OMEPRAZOL | ✔ CONTROLOC | ✔ **GASTROFAIT** |
 | **N02** bolest | ✔ PARALEN, ACIFEIN, ACYLCOFFIN | ✔ **ULTRACOD** | ✔ **TALVOSILEN FORTE** |
 | **R06** alergie | ✔ **ZYRTEC** | ✔ AERIUS, DITHIADEN | ✗ |
+| **A07** průjem | ✔ IMODIUM, ENDITRIL, HIDRASEC | ✔ **CEDEPOS** | ✔ HIDRASEC PRO DĚTI, ERCEFURYL |
 | J01 antibiotika | — (prakticky neexistuje) | ✔ ABAKTAL | ✔ AMOKSIKLAV |
 | A06 zácpa | ✔ BISACODYL | ✗ | ✗ |
 | R01 nos | ✔ AFRIN, OLYNTH | ✗ | ✗ |
@@ -191,6 +193,53 @@ Ověřeno: `paralen` + vynucená sekce *nežádoucí účinky* dá
 
 Hodí se, když router sekci uhodne jinak, než člověk chtěl.
 
+### F2. Práh podobnosti posuvníkem
+
+Dobře se na tom ukazuje, **proč práh vůbec je** a že je naměřený, ne
+odhadnutý. Dotaz `mám reflux`:
+
+| práh | vrátí |
+|---|---|
+| 0,30 | 10 léčiv — mezi nimi BISACODYL (zácpa) a ACIFEIN (bolest) |
+| **0,55** | **4 léčiva** — MAALOX, OMEPRAZOL, CONTROLOC + 1 |
+| 0,75 | 1 léčivo — jen MAALOX (0,86) |
+
+**Pointa:** systém raději neodpoví, než aby si vymyslel — a kde je ta
+hranice, je vidět na živo.
+
+Druhá pointa: u dotazu s přesným filtrem (`dávkování zyrtec`) se práh
+**neuplatní ani při 0,9** a aplikace to napíše — výběr už udělal filtr,
+podobnost tam nemá co měřit.
+
+### F3. Průjem — celá matice v jedné skupině (nové 25.8.)
+
+Skupina A07 je jediná, kde jsou všechny tři kombinace **a k tomu táž
+látka ve dvou výdejových režimech**.
+
+| dotaz | co vrátí |
+|---|---|
+| `něco na průjem` | ERCEFURYL 0,62, HIDRASEC 0,60, ENDITRIL 0,59, IMODIUM 0,59 |
+| `volně prodejný lék na průjem` | ENDITRIL, IMODIUM, HIDRASEC — samé OTC |
+| `lék na průjem pro děti` | včetně **HIDRASEC PRO DĚTI** |
+| `co může způsobit průjem` | 4 léky se shodou **1,00** — průjem jako nežádoucí účinek |
+| `hrazený lék na průjem` | **nic — a je to správně** |
+
+**Tři pointy:**
+
+1. **HIDRASEC:** tatáž látka (racekadotril) je ve 100 mg **volně
+   prodejná** a ve 30 mg pro děti **na předpis**. Výdej není vlastnost
+   látky, ale konkrétního přípravku — a filtr to rozliší, i když je
+   název skoro stejný.
+2. **`co může způsobit průjem` vs. `něco na průjem`** — táž věc jednou
+   jako nežádoucí účinek, podruhé jako indikace. Router to rozliší
+   z formulace.
+3. **Hrazený lék na průjem neexistuje.** Běžná antidiarrhoika jsou
+   samoléčba, takže je pojišťovna neplatí. Jediný hrazený v A07 je
+   CEDEPOS (vankomycin), ale ten má indikaci *„infekce Clostridioides
+   difficile"* — nemocniční infekci, ne běžný průjem. Systém ho proto
+   nevrátí a **je to správně**: laik hledající lék na průjem nemá
+   dostat vankomycin.
+
 ### G. Skupiny pacientů
 
 ACC má každou indikaci zvlášť pro **dospělé, dospívající a děti od 2 let**.
@@ -235,9 +284,23 @@ Zjištěno měřením, neskrývá se to:
 | `mám ekzém` | ADVANTAN jen 0,59, těsně nad prahem |
 
 | `co dělá amoksiklav s kůží` | router třídu MedDRA vytáhne správně, ale výsledek propadne prahem |
+| `kašel` | druhý výsledek je ACIFEIN „bolest hlavy" (0,57) — viz níž |
 
 První dva jsou vlastnost dat, ne chyba hledání: ABLYMICO opravdu má
 v SPC indikaci na obezitu.
+
+**Proč u `kašel` vyleze ACIFEIN:** krátké názvy příznaků si jsou
+navzájem podobné, protože pro model jsou to všechno „potíže, se kterými
+jde laik do lékárny". Změřeno mezi **nesouvisejícími** příznaky: průměr
+0,485 a 4 z 28 dvojic jsou nad prahem. „Bolest hlavy" je z nich
+nejcentrálnější (0,567 s kašlem, 0,565 s horečkou, 0,552 s ucpaným
+nosem). **Není to chyba dat ani routeru, je to vlastnost embedovacího
+modelu.** V ukázce je to obhajitelné — první výsledek je správný
+a s velkým náskokem (ACC 0,75 proti 0,57).
+
+Odříznout to relativním odstupem nejde, změřeno: `mám horečku` má
+odstup 0,230 a druhý výsledek je přitom **správný**, kdežto `kašel` má
+odstup 0,185 a druhý je šum.
 
 **A jedna nestabilita, o které je dobré vědět:** router občas ztratí
 název léčiva. `časté nežádoucí účinky amoksiklav` vytáhne jednou

@@ -226,6 +226,7 @@ def _podminky(f: Filtr) -> tuple[str, dict]:
 def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
            prah: float = 0.0, vaha_semantika: float = VAHA_SEMANTIKA,
            rrf_k: int = RRF_K, zpusob: str = "rrf",
+           puvodni_dotaz: str | None = None,
            dsn: str = PG_DSN) -> Odpoved:
     """Hybridni hledani. Vraci vysledky serazene podle RRF."""
     from common.ollama_client import embed
@@ -244,17 +245,54 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     # MAALOX na "mám reflux" #19, na "vracení kyselého obsahu..." #1.
     # Rozsiruje se DOTAZ, do dat se nic nepridava (viz common/dotazy.py).
     varianty = rozsir(dotaz)
-    vektory = embed(varianty, model=MODEL_EMBED)
+
+    # POJISTKA PROTI OREZANI ROUTEREM. Router neni deterministicky a stejny
+    # dotaz z nej vyjde ruzne - "bolí mě zuby" da jednou "bolest zubů",
+    # jindy "zuby". A "zuby" ma cosine 0,396, tedy POD prahem, takze se
+    # nenajde NIC, prestoze ACIFEIN bolest zubu leci.
+    #
+    # Puvodni veta uzivatele se proto pridava jako dalsi varianta. Bere se
+    # MAXIMUM pres varianty, takze horsi varianta nemuze uskodit - jen
+    # zachrani pripad, kdy router ustrihl prilis:
+    #     'zuby'  0,396   'bolí mě zuby'  0,845   -> 0,845
+    #     'spát'  0,486   'nemůžu spát'   0,587   -> 0,587
+    # Puvodni veta se pridava JINAK NEZ slovnikove varianty - viz nize.
+    puv = (puvodni_dotaz or "").strip()
+    ma_puvodni = bool(puv) and puv not in varianty
+
+    vektory = embed(varianty + ([puv] if ma_puvodni else []), model=MODEL_EMBED)
 
     kde, par = _podminky(f)
     par.update({"dotaz": dotaz, "n": KANDIDATU})
     for i, v in enumerate(vektory):
         par[f"vek{i}"] = str(v)
 
-    # Bere se NEJLEPSI shoda pres varianty, ne prumer - kdyz jedna
-    # formulace trefi, je to nalez, i kdyz ostatni minou.
-    vyrazy = [f"1 - (s.embedding <=> %(vek{i})s::vector)" for i in range(len(vektory))]
-    cosine_sql = vyrazy[0] if len(vyrazy) == 1 else f"GREATEST({', '.join(vyrazy)})"
+    # SLOVNIKOVE varianty: maximum PO RADCICH. Ruzne leky legitimne
+    # odpovidaji ruznym formulacim - DITHIADEN sedi na "alergicka reakce"
+    # (0,701), ZYRTEC na "uleva od priznaku alergie" (0,699). Kdyby se
+    # vybrala jedna varianta globalne, jeden z nich by se ztratil.
+    n_var = len(varianty)
+    vyrazy = [f"1 - (s.embedding <=> %(vek{i})s::vector)" for i in range(n_var)]
+    cosine_sql = vyrazy[0] if n_var == 1 else f"GREATEST({', '.join(vyrazy)})"
+
+    # PUVODNI VETA: rozhoduje se GLOBALNE, ne po radcich.
+    #
+    # Je to pojistka pro pripad, kdy router ureze prilis ("bolí mě zuby"
+    # -> "zuby", cosine 0,396 misto 0,845). Kdyby ale byla jen dalsi
+    # variantou v maximu po radcich, dostal by KAZDY radek jeden pokus
+    # navic a mohl by si vybrat tu variantu, ktera mu lichoti. Zmereno
+    # na "mám průjem": PARALEN "bolestivá menstruace" si vybral puvodni
+    # vetu (0,554 misto 0,535) a preskocil prah, protoze slovo "mám"
+    # posouva vektor smerem ke stiznostem.
+    #
+    # Proto se porovnavaji NEJLEPSI vysledky obou a pouzije se JEN ten
+    # lepsi:
+    #     'průjem' 0,623  vs  'mám průjem' 0,604   -> router
+    #     'zuby'   0,396  vs  'bolí mě zuby' 0,845 -> puvodni veta
+    if ma_puvodni:
+        cosine_sql = (f"CASE WHEN %(puv_lepsi)s THEN "
+                      f"1 - (s.embedding <=> %(vek{n_var})s::vector) "
+                      f"ELSE {cosine_sql} END")
 
     # Fulltextovy dotaz se prevadi na OR. websearch_to_tsquery slova
     # SLUCUJE pres AND, takze kazde dalsi slovo mnozinu zuzuje - "paralen
@@ -272,6 +310,23 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
             "               '&', '|')",
             (dotaz,),
         ).fetchone()[0]
+
+        # Rozhodnuti, jestli je lepsi puvodni veta nebo text od routeru.
+        # Levne - jen dve agregace nad uz vyfiltrovanou mnozinou.
+        par["puv_lepsi"] = False
+        if ma_puvodni:
+            vyrazy_slovnik = (vyrazy[0] if n_var == 1
+                              else f"GREATEST({', '.join(vyrazy)})")
+            radek = cur.execute(f"""
+                SELECT max({vyrazy_slovnik}),
+                       max(1 - (s.embedding <=> %(vek{n_var})s::vector))
+                FROM leciva_search s JOIN leciva l USING (kod_sukl)
+                WHERE s.embedding IS NOT NULL {kde}
+            """, par).fetchone()
+            if radek and radek[0] is not None and radek[1] is not None:
+                par["puv_lepsi"] = float(radek[1]) > float(radek[0])
+                logger.debug("puvodni veta lepsi: %s (%.3f vs %.3f)",
+                             par["puv_lepsi"], radek[1], radek[0])
 
     # Dva zebricky zvlast, spojene az v Pythonu - v SQL by to slo taky,
     # ale takhle je videt, ktere poradi kterou polozku vytahlo, a da se

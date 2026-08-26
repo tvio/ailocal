@@ -13,10 +13,14 @@ dotaz uživatele
    ├─► ROUTER (qwen3.5:122b)  ── z věty udělá FILTR a vybere SEKCI
    │        │                    a oddělí dotaz_text pro sémantiku
    │        ▼
+   ├─► ROZŠÍŘENÍ DOTAZU       ── dotaz_text + formulace ze SPC
+   │        │                    + PŮVODNÍ věta uživatele
+   │        ▼
    ├─► FILTR (SQL WHERE)      ── omezí kandidáty PŘED hledáním
    │        │
    │        ▼
-   ├─► DVA ŽEBŘÍČKY           ── cosine (bge-m3) + český fulltext
+   ├─► DVA ŽEBŘÍČKY           ── cosine (bge-m3, MAXIMUM přes varianty)
+   │        │                    + český fulltext
    │        │
    │        ▼
    ├─► FÚZE (RRF nebo cosine) ── určí pořadí
@@ -109,27 +113,186 @@ bez filtru                        782 záznamů
 
 ---
 
-## Rozšíření dotazu — hledá se víc formulací naráz
+## Rozšíření dotazu — do vektoru jde víc formulací naráz
 
-Než se dotaz pošle do vektoru, rozšíří se o formulace, které jsou
-v textech SPC (`slovnik_dotazu.json`, `common/dotazy.py`):
+Router má **jeden** textový výstup (`dotaz_text`). Vyhledávání ale
+porovnává **víc variant** a bere nejlepší shodu:
 
-    "mám reflux"  ->  + "vracení kyselého obsahu ze žaludku do úst"
-                      + "návrat obsahu žaludku do jícnu"
-                      + "regurgitace"
+```
+uživatel: "mám reflux"
+     │
+     ▼
+  ROUTER  ──► filtry  (sekce, Rx/OTC, hrazení, látka, síla, frekvence…)
+     └─────► dotaz_text = 'reflux'        ← JEDEN textový výstup
+                  │
+                  ▼
+        ┌─ 'reflux'                                  ← router
+        ├─ 'vracení kyselého obsahu ze žaludku…'     ← slovnik_dotazu.json
+        ├─ 'návrat obsahu žaludku do jícnu'          ← slovnik_dotazu.json
+        ├─ 'regurgitace'                             ← slovnik_dotazu.json
+        └─ 'mám reflux'                              ← původní věta uživatele
+                  │
+                  ▼
+        SQL:  GREATEST( 1-(embedding <=> v1),
+                        1-(embedding <=> v2), … )    ← MAXIMUM, ne průměr
+```
 
-V SQL se pak bere `GREATEST` přes varianty — **nejlepší shoda vyhrává**,
-ne průměr. Když jedna formulace trefí, je to nález, i když ostatní minou.
+**Bere se maximum, ne průměr.** Proto horší varianta nemůže uškodit —
+může jen zachránit případ, kdy ta lepší chybí. Když jedna formulace
+trefí, je to nález, i kdyby ostatní minuly.
 
-Změřeno: MAALOX na „mám reflux" **0,510 → 0,858**. Slovo „reflux" přitom
-v celém MAALOXu není ani jednou.
+### Tři zdroje variant
+
+| zdroj | kolik | k čemu je |
+|---|---|---|
+| router `dotaz_text` | 1 | dotaz očištěný od vaty a od toho, co šlo do filtrů |
+| `slovnik_dotazu.json` | 0–4 | formulace, jak to stojí v textech SPC |
+| **původní věta uživatele** | 1 | pojistka proti tomu, že router ořeže příliš |
+
+### 1. Číselník dotazů (`slovnik_dotazu.json`)
+
+Mapuje **výraz laika → formulaci, která je v SPC**. Není to totéž co
+`slovnik_pojmu` — ten mapuje odborný termín na laický tvar pro
+**zobrazení**, kdežto tenhle se používá **jen při hledání**.
+
+Změřeno na MAALOXu, který má reflux popsaný opisem a slovo „reflux"
+v něm nepadne ani jednou:
+
+| co jde do vektoru | pořadí ze 155 indikací |
+|---|---|
+| `mám reflux` | #19 (0,474) |
+| `regurgitace` — odborné synonymum | #10 (0,488) |
+| **`vracení kyselého obsahu ze žaludku do úst`** | **#1 (0,647)** |
 
 **Nejlepší „synonymum" není odborný termín, ale věta z dokumentu.**
-Vektor porovnává s tím, co v dokumentu opravdu stojí — samotné
-„regurgitace" dá MAALOX na #10, formulace z SPC na #1.
+Vektor porovnává s tím, co v dokumentu opravdu stojí.
 
-**Rozšiřuje se DOTAZ, ne data.** Do textů léčiv se nic nepřidává, takže
-se nic nevymýšlí a u každého výsledku dál sedí odkaz na stranu SPC.
+Klíče jsou **kmeny** („kasl", ne „kašel"), aby prošly skloňováním, a
+porovnávají se **bez diakritiky** — lidé běžně píšou „kaslu". Hodnoty
+diakritiku naopak mají; právě ony ji do hledání vrátí.
+
+**Pozor na příliš obecný klíč.** `"ekzem": [… "zánět kůže"]` začalo
+trefovat AMOKSIKLAV („rozlitého zánětu kůže" = celulitida, bakteriální
+infekce). Do číselníku patří jen formulace, které v datech opravdu
+znamenají totéž.
+
+Soubor **nemá tabulku v DB** — načte se do paměti a cachuje. Úprava se
+projeví po restartu API, bez přeplnění databáze a bez přegenerování
+embeddingů.
+
+### Jak přidat záznam do `slovnik_dotazu.json`
+
+Soubor se **nikdy negeneruje automaticky** — je ručně udržovaný a to je
+záměr. Každý záznam říká „když uživatel napíše tohle, hledej i tamto",
+a to je rozhodnutí, které má udělat člověk.
+
+```json
+"antihistaminik": ["alergická reakce", "úleva od příznaků alergie",
+                   "příznaky alergie", "kopřivka"]
+```
+
+**Klíč = KMEN toho, co napíše laik.** Malá písmena, bez diakritiky.
+Porovnává se jako podřetězec dotazu, taky bez diakritiky.
+
+Proč kmen a ne celé slovo — čeština při skloňování vyhazuje `-e-`:
+
+| uživatel napíše | obsahuje `kasl` | obsahuje `kasel` |
+|---|---|---|
+| pořád ka**šlu** | ano | ne |
+| mám ka**šel** | ne | ano |
+| ka**šle** mi dítě | ano | ne |
+
+Proto jsou v souboru **oba** kmeny (`kasl` i `kasel`). Nejsou to
+překlepy. `antihistaminik` stejně tak pokryje antihistaminikum,
+-a, -em i -u.
+
+**Hodnoty = formulace, které v datech OPRAVDU JSOU.** Vymyšlená
+formulace nenajde nic — vektor porovnává s tím, co v SPC stojí.
+Ověř si to dotazem do DB:
+
+```sql
+SELECT l.nazev, s.obsah_text
+FROM leciva_search s JOIN leciva l USING (kod_sukl)
+WHERE s.sekce = 'indikace' AND l.atc LIKE 'R06%';
+```
+
+**Vyplatí se hodnoty vybrat měřením**, ne odhadem. U antihistaminik
+vyšlo, že každý lék reaguje na jinou formulaci:
+
+| formulace | DITHIADEN | ZYRTEC | AERIUS |
+|---|---|---|---|
+| alergická reakce | **0,701** | 0,543 | 0,521 |
+| úleva od příznaků alergie | 0,522 | **0,699** | 0,583 |
+| příznaky alergie | 0,587 | 0,606 | **0,602** |
+| kopřivka | **1,000** | 0,332 | 0,518 |
+
+Se všemi čtyřmi vyjdou všechna tři léčiva. S jednou by vyšlo jedno.
+
+**Pozor na příliš obecný klíč nebo hodnotu.** `"ekzem": [… "zánět kůže"]`
+začalo trefovat AMOKSIKLAV („rozlitého zánětu kůže" = celulitida, což je
+bakteriální infekce, ne ekzém). Zúženo na `["ekzém", "atopický ekzém"]`.
+
+**Maximálně 4 hodnoty na klíč** (`rozsir(limit=4)`) — víc už jen zdržuje
+embedování a nic nepřidá, protože se stejně bere nejlepší shoda.
+
+**Po úpravě restartovat API** (soubor se cachuje v paměti). Přeplnění
+databáze ani přegenerování embeddingů **není potřeba** — rozšiřuje se
+dotaz, ne data.
+
+### 2. Původní věta uživatele
+
+Router není deterministický. Třikrát po sobě týž dotaz:
+
+| dotaz | běh 1 | běh 2 | běh 3 |
+|---|---|---|---|
+| „bolí mě zuby" | `bolest zubů` | `bolí mě zuby` | **`zuby`** |
+| „pálí mě žáha" | `pálí mě žáha` | `pálí mě` | `žáha` |
+
+A na tom záleží — samotné `zuby` má **0,396, tedy pod prahem**, takže by
+se nenašlo nic, přestože ACIFEIN má „bolest zubů" doslova.
+
+Pravidlo „nezkracuj příznak na jedno slovo" v promptu je, ale model ho
+nedodrží pokaždé. Proto se původní věta přidává jako další varianta:
+
+| ořezané routerem | původní věta | použije se |
+|---|---|---|
+| `zuby` 0,396 | `bolí mě zuby` **0,845** | původní |
+| `spát` 0,486 | `nemůžu spát` **0,536** | původní |
+| `průjem` **0,623** | `mám průjem` 0,604 | router |
+
+### Původní věta se vybírá GLOBÁLNĚ, ne po řádcích
+
+Tohle je důležitý rozdíl proti slovníkovým variantám. Ty se berou
+**maximem po řádcích**, protože různé léky legitimně odpovídají různým
+formulacím. Původní věta je ale **pojistka, ne alternativní formulace** —
+kdyby dostala totéž zacházení, dal by se každému řádku pokus navíc a
+mohl by si vybrat variantu, která mu lichotí.
+
+Změřeno na „mám průjem":
+
+| řádek | „průjem" | „mám průjem" | vybral by si |
+|---|---|---|---|
+| ERCEFURYL — náhlý průjem | **0,623** | 0,604 | průjem |
+| **PARALEN — bolestivá menstruace** | 0,535 | **0,554** | **mám průjem** ← přes práh |
+
+Slovo „mám" posouvá vektor směrem ke stížnostem a „bolestivá menstruace"
+je taky stížnost. Proto se porovnají **nejlepší výsledky obou stran**
+a použije se jen ta lepší. Stojí to jeden agregační dotaz navíc.
+
+**Poučení: nedeterministický článek se nemá opravovat jen promptem.**
+Levnější je udělat systém odolný proti tomu, že se splete — tady stačilo
+nezahodit vstup, který stejně máme.
+
+**Co to stojí:** původní věta obsahuje i slova, která router schválně
+odřezává. „Léčba" je v 33 ze 155 indikací, takže negativní dotaz `léčba
+roztroušené sklerózy` si polepšil z 0,564 na 0,594. Ten dotaz ale padal
+už předtím a evaluace se nezměnila.
+
+### Co se NEROZŠIŘUJE
+
+**Data.** Do textů léčiv se nikdy nic nepřidává. Kdyby ano, přišli
+bychom o dohledatelnost — u každého výsledku se tiskne
+`zdroj … spc.md § 4.1` a vygenerovaný řádek by žádný zdroj neměl.
 
 ## Zdroj hledání — co přesně se prohledává
 

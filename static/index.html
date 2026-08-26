@@ -40,6 +40,23 @@
       </select>
       <span class="tise">platí jen na sekční výsledky; filtry z dotazu (Rx/OTC, hrazení, látka) platí dál</span>
     </div>
+    <div class="radek-filtr">
+      <label for="prah">Práh podobnosti:</label>
+      <input id="prah" type="range" min="0" max="0.9" step="0.05" value="0.55">
+      <output id="prah-hodnota">0.55</output>
+      <button type="button" id="btn-prah-vychozi" class="druhotne maly">0,55</button>
+      <span class="tise">naměřená hodnota je 0,55; nižší pustí víc šumu, vyšší může vyhodit správné.
+        U přesných filtrů (název, látka, síla, ATC, frekvence) se neuplatňuje.</span>
+    </div>
+    <div class="radek-filtr">
+      <label for="jistota">Zvýraznit od:</label>
+      <input id="jistota" type="range" min="0.5" max="0.9" step="0.01" value="0.60">
+      <output id="jistota-hodnota">0.60</output>
+      <span class="legenda"><span class="vzorek jiste"></span> spolehlivé</span>
+      <span class="legenda"><span class="vzorek hranicni"></span> hraniční</span>
+      <span class="tise">jen zvýraznění, nic nefiltruje — při 0,60 je zvýrazněno
+        8 z 10 správných odpovědí a 1 z 8 šumu</span>
+    </div>
   </form>
 
   <div id="router" class="router" hidden></div>
@@ -60,6 +77,7 @@
         <th data-sort="hrazeno">Hrazení</th>
         <th data-sort="atc">ATC</th>
         <th data-sort="kod_sukl">Kód SÚKL</th>
+        <th class="uzky">Shoda</th>
         <th>Nalezeno</th>
         <th class="uzky">PDF</th>
       </tr>

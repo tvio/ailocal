@@ -76,10 +76,24 @@ def _cislo_na_vzor(cislo: str) -> str:
     return "".join(ven)
 
 
-def _vzor_nadpisu(cislo: str, *, markdown: bool) -> re.Pattern:
-    """Nadpis sekce. V markdownu má mřížky, v surovém textu je na začátku řádku."""
+def _vzor_nadpisu(cislo: str, *, markdown: bool,
+                  kdekoliv_v_nadpisu: bool = False) -> re.Pattern:
+    """Nadpis sekce. V markdownu má mřížky, v surovém textu je na začátku řádku.
+
+    `kdekoliv_v_nadpisu` je ZALOHA pro slepene nadpisy. CEDEPOS mel v SPC
+
+        ## 4. KLINICKÉ ÚDAJE4.1 TERAPEUTICKÉ INDIKACE
+
+    tedy dva nadpisy na jednom radku - konvertor je spojil. Cislo "4.1" pak
+    neni na zacatku a prisny vzor ho mine, takze sekce indikaci zmizela
+    (stav chybi_v_dokumentu). Pouziva se AZ KDYZ prisny vzor selze, aby
+    se nezvysilo riziko falesne shody u dokumentu, kde je vse v poradku.
+    """
     vzor = _cislo_na_vzor(cislo)
     if markdown:
+        if kdekoliv_v_nadpisu:
+            return re.compile(rf"^#{{1,6}}[^\n]*?{vzor}(?![0-9])\s*\.?\s*",
+                              re.MULTILINE)
         return re.compile(rf"^#{{1,6}}\s*{vzor}(?![0-9])\s*\.?\s*", re.MULTILINE)
     # \S musí být v lookaheadu, jinak se ukousne první znak názvu sekce.
     # Oddělovač ale MUSÍ umět i konec řádku – v surovém textu z PyMuPDF bývá
@@ -92,12 +106,21 @@ def _vzor_nadpisu(cislo: str, *, markdown: bool) -> re.Pattern:
 def vytahni_sekci(text: str, cislo: str, *, markdown: bool) -> str | None:
     """Vrátí text sekce od jejího nadpisu po nadpis následující sekce."""
     zac = _vzor_nadpisu(cislo, markdown=markdown).search(text)
+    volnejsi = False
+    if not zac and markdown:
+        # Zaloha na slepene nadpisy ("## 4. KLINICKÉ ÚDAJE4.1 INDIKACE").
+        zac = _vzor_nadpisu(cislo, markdown=True,
+                            kdekoliv_v_nadpisu=True).search(text)
+        volnejsi = zac is not None
     if not zac:
         return None
     zbytek = text[zac.end():]
     dalsi = NASLEDUJICI.get(cislo)
     if dalsi:
         kon = _vzor_nadpisu(dalsi, markdown=markdown).search(zbytek)
+        if not kon and volnejsi:
+            kon = _vzor_nadpisu(dalsi, markdown=True,
+                                kdekoliv_v_nadpisu=True).search(zbytek)
         if kon:
             return zbytek[: kon.start()].strip()
     # Není-li následující nadpis (poslední sekce / jiné číslování), vezmi

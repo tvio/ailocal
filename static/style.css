@@ -41,6 +41,26 @@ button.druhotne { background: #fff; color: var(--zvyraz); }
 button:disabled { opacity: .5; cursor: default; }
 .radek-filtr { display: flex; gap: .6rem; align-items: center; margin-top: .6rem; flex-wrap: wrap; }
 select { padding: .35rem .5rem; border: 1px solid var(--ram); border-radius: 6px; }
+input[type="range"] { width: 190px; accent-color: var(--zvyraz); }
+output#prah-hodnota {
+  min-width: 3.2em; font-variant-numeric: tabular-nums; font-weight: 600;
+  color: var(--zvyraz);
+}
+button.maly { padding: .2rem .5rem; font-size: .8rem; }
+
+/* --- pasma jistoty (jen vizualne, nic to nefiltruje) --- */
+.legenda { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem;
+           color: var(--tise); }
+.vzorek { width: 12px; height: 12px; border-radius: 3px; border: 1px solid var(--ram); }
+.vzorek.jiste { background: #e6f3ea; border-color: var(--ok); }
+.vzorek.hranicni { background: #fff; }
+
+tbody tr.jiste td:first-child { box-shadow: inset 3px 0 0 var(--ok); }
+tbody tr.jiste .nazev { font-weight: 700; }
+tbody tr.jiste .skore { color: var(--ok); font-weight: 700; }
+tbody tr.hranicni .nazev { font-weight: 400; color: var(--tise); }
+tbody tr.hranicni .nalez { color: var(--tise); }
+.skore { font-variant-numeric: tabular-nums; }
 
 /* --- hlasky --- */
 .router, .hlaska, .atc-navrh {

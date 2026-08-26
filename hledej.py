@@ -272,6 +272,7 @@ def main() -> int:
         kw["vaha_semantika"] = a.vaha_semantika
 
     o = hledej(syrove.get("dotaz_text") or dotaz, filtr=filtr,
+               puvodni_dotaz=dotaz,
                limit=REZERVA, prah=a.prah, **kw)
     leciva = seskup(o.vysledky, leciv=a.leciv)
 

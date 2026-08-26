@@ -5,6 +5,642 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-08-25 — NÁVRH: extrakci do cloudu, hledání nechat lokálně
+
+Myšlenka: extrakci může dělat cloud, embedding a hledání ať zůstane
+lokální. Extrakce je **jednorázová**, kdežto na hledání se poveze
+**tuna dotazů**.
+
+**Je to dobré rozdělení a stojí na dvou nezávislých osách.**
+
+### 1. Náklad: jednorázový vs. trvalý
+
+| část | kdy běží | cloud znamená |
+|---|---|---|
+| **extrakce** | jednou na dokument | **ohraničená částka**, pak nic |
+| **embedding dotazu + router** | u KAŽDÉHO dotazu | **trvalý náklad**, roste s užíváním |
+
+Odhad ceny extrakce celého registru (6 766 dokumentů × 4 sekce =
+27 064 volání, změřeno 2 537 vstupních a 400 výstupních tokenů na sekci):
+
+| model | vstup | výstup | celkem |
+|---|---|---|---|
+| **gpt-5-nano** | 3,43 $ | 4,33 $ | **7,76 $** |
+| gpt-4o-mini | 10,30 $ | 6,50 $ | 16,79 $ |
+| gpt-4o | 171,65 $ | 108,26 $ | **279,91 $** |
+
+Lokálně na DGX: **0 $, ale 120 hodin**, po které je stroj obsazený.
+
+**Za osm dolarů se ušetří pět dní výpočtu.** To je poměr, který se
+těžko obhajuje opačně — pokud tedy kvalita sedí, což změřené není.
+
+### 2. Soukromí: co se posílá ven
+
+Tahle osa je důležitější a **jde ruku v ruce s tou první**:
+
+| část | co by šlo ven | jak často |
+|---|---|---|
+| extrakce | text SPC — **veřejný dokument SÚKL** | jednou |
+| hledání | **dotaz uživatele** — „mám průjem", „nemůžu spát" | pokaždé |
+
+Dotazy uživatelů jsou **zdravotní údaje o konkrétním člověku**.
+Posílat je ven při každém hledání je úplně jiná věc než jednou odeslat
+veřejný dokument, který si kdokoli stáhne ze SÚKL.
+
+**Obě osy tedy ukazují stejným směrem** a to je na tom nejsilnější:
+extrakce je jednorázová i neosobní, hledání je opakované i osobní.
+
+### Co NENÍ změřené
+
+**Kvalita cloudové extrakce.** Zatím se měřilo jen embedování
+(`text-embedding-3-small` je horší než bge-m3, `3-large` prohrává na
+laických parafrázích) — u **extrakce** srovnání chybí úplně.
+
+Neví se tedy:
+
+- jestli cloudový model vytáhne sekce **správněji** než qwen3.5:122b
+- jestli dělá **míň** takových chyb, jako byl „záškrt" místo průjmu
+- jestli zvládne češtinu v laickém tvaru líp
+- jaká je skutečná cena (odhad výš stojí na tokenech z jedné sekce)
+
+**Bez měření se to rozhodnout nedá** — a je to přesně ten druh
+rozhodnutí, kde se vyplatí měřit, protože chyba se propíše do všech
+dat naráz.
+
+Zapsáno jako úkol do `todo.md`.
+
+### Pozor na peníze
+
+Na účtu jsou jednotky dolarů, takže i ten odhad 7,76 $ za gpt-5-nano
+je **nad rámec toho, co tam je**. Měření kvality se dá udělat na
+vzorku (deset dokumentů = pár centů), ostrý běh potřebuje navýšení.
+
+---
+
+## 2026-08-25 — Kolik by stálo zpracovat CELÝ registr: 6 766 dokumentů, ne 65 tisíc
+
+Úvaha na konci dne: DGX je úzké hrdlo, v extrakci jsou nedodělky a
+registrovaných léčiv je asi 65 tisíc kódů SÚKL, které se navíc každý
+týden mění — takže je to jen na hraní.
+
+Všechno platí, **jen to číslo 65 tisíc je zavádějící**. Změřeno na
+staženém poolu (`data/pool_leciv.json`):
+
+| | kódů |
+|---|---|
+| kódů SÚKL celkem | **69 355** |
+| z toho **fakticky dodávaných** (`je_dodavka`) | **9 639** |
+| **různých registračních čísel** = různých SPC | **6 766** |
+| různých názvů | 4 713 |
+
+Většina těch 69 tisíc jsou **balení téhož přípravku** — jiná velikost,
+jiný obal, ale **totéž SPC**. Na jednu registraci vychází 1,4 kódu.
+A velká část je registrovaná, ale nedodává se.
+
+**Skutečná práce je tedy 6 766 dokumentů.**
+
+### Čas na jednom DGX
+
+Počítáno z naměřených hodnot (konverze 9 s/dokument, extrakce 16 s/sekci
+× 4 sekce):
+
+| krok | hodin | dnů |
+|---|---|---|
+| konverze PDF | 16,9 | 0,7 |
+| extrakce modelem | 120,3 | 5,0 |
+| **celkem** | **137** | **5,7** |
+
+**Jeden víkend plus pár dní**, jednorázově. Kdyby se hnalo všech 69 355
+kódů, je to 59 dnů — proto se **musí deduplikovat na registrace**, ne na
+kódy. To je nejlevnější optimalizace, jaká tu je: **desetinásobek času
+ušetřený jedním `DISTINCT`.**
+
+Týdenní změny se navíc dotknou jen toho, co se opravdu změnilo, takže
+inkrementální běh jsou minuty.
+
+### Kde je limit doopravdy
+
+**Není to výkon, je to kvalita extrakce.** Na 32 lécích se dnes našly:
+
+- záškrt místo průjmu (chybný laický překlad)
+- slepený nadpis `## 4. KLINICKÉ ÚDAJE4.1 …`
+- OCR záměna `4.l` místo `4.1`
+- ztracená část výčtu u TALVOSILENU
+- „obecní skupina" místo „obecná"
+
+Na 6 766 dokumentech těch vzorů budou desítky a **ruční projití přestane
+být možné**. To je skutečný blocker, ne DGX.
+
+K tomu dvě věci, které se zvětšením korpusu přestanou platit:
+
+1. **Prahy a číselníky jsou naměřené na malém vzorku.** Rozdělení
+   podobností se posune a bude se muset přeměřit všechno.
+2. **Laický tvar se neověřuje.** Při 32 lécích to člověk odchytí okem,
+   při 6 700 ne.
+
+### Jak to formulovat vedení
+
+Ne „je to jen na hraní", ale **ověřený postup na malém vzorku, u kterého
+se ví, co ho zdrží při zvětšení**. Rozdíl je v tom, že čísla výš se dají
+říct konkrétně místo „nevíme".
+
+---
+
+## 2026-08-25 — NÁVRH: oddělit text pro ZOBRAZENÍ od textu pro HLEDÁNÍ
+
+Podnět: dlouhé indikace se v hledání nechytají (HIDRASEC PRO DĚTI se
+nenajde vůbec), ale zkrátit je nejde — uživateli se musí ukázat indikace
+v původní podobě, ne zjednodušená. Řešením by byl **skrytý klíč navázaný
+na tentýž řádek**.
+
+**Je to správná úvaha a je to největší zbývající zlepšení.**
+
+### Změřený rozsah problému
+
+HIDRASEC PRO DĚTI má indikaci na **27 slov**:
+
+    Doplňková léčba akutního průjmu u kojenců starších 3 měsíců a dětí
+    spolu s náhradou ztrát tekutin, když běžné postupy nestačí na
+    zastavení stavu a nelze léčit příčinu
+
+| dotaz | dlouhá věta | krátký klíč „průjem u kojenců a dětí" |
+|---|---|---|
+| průjem | 0,515 | **0,781** |
+| mám průjem | 0,526 | **0,726** |
+| lék na průjem pro děti | 0,594 | **0,767** |
+| průjem u dětí | 0,623 | **0,902** |
+
+Rozdíl je **+0,26**, tedy řád, o kterém se u prahů bavíme celý den.
+
+Netýká se to jednoho léku:
+
+| sekce | položek | nad 10 slov | podíl |
+|---|---|---|---|
+| davkovani | 103 | 80 | **77 %** |
+| kontraindikace | 150 | 101 | **67 %** |
+| indikace | 166 | 65 | **39 %** |
+| nezadouci_ucinky | 895 | 113 | 12 % |
+
+Nežádoucí účinky jsou v pohodě (jsou to krátké termíny). Problém mají
+indikace, kontraindikace a dávkování.
+
+### Návrh: dvě pole na tomtéž řádku
+
+    obsah_text     -> co uživatel VIDÍ
+                      celá indikace, dohledatelná do SPC na stranu
+    hledaci_klic   -> co se EMBEDUJE a jde do fulltextu
+                      2-4 slova, název stavu ("průjem u dětí")
+
+Uživatel dál dostane **původní znění**, jen se k němu dojde přes krátký
+klíč. **Dohledatelnost zůstává** — nic se nevymýšlí, klíč je jen
+rejstříkové heslo, ne náhrada obsahu.
+
+### Jak klíč získat
+
+Model už dnes vrací `doslovne` i `laicky`. Stačí **jedno pole navíc**
+v existující šabloně (`klic`), takže **žádná volání modelu navíc** —
+u nových léčiv to vznikne rovnou. U stávajících dat by stačil cílený
+průchod jen přes položky nad ~10 slov, tedy zhruba 250 položek.
+
+### Otevřená otázka: co přesně embedovat
+
+| varianta | co umí | co ztratí |
+|---|---|---|
+| a) jen klíč | nejlepší na krátké dotazy | detail z dlouhé věty se nenajde |
+| b) **klíč i celý text jako DVA vektory**, bere se lepší | obojí | dvojnásobek vektorů |
+| c) klíč do vektoru, celý text do fulltextu | kompromis zadarmo | detail jen na přesné slovo |
+
+**Varianta b je symetrická s tím, co už děláme na straně dotazu** —
+tam se taky porovnává víc formulací a bere se nejlepší shoda. Tady by
+totéž platilo na straně dat. Vektorů by bylo ~2 700 místo 1 346, což je
+při 20 s na přepočet celého korpusu zanedbatelné.
+
+### Proč to je lepší než ostatní zvažované úpravy
+
+Dnes se zkoušely tři věci a jen tahle míří na příčinu:
+
+| úprava | výsledek |
+|---|---|
+| oprava rozbočivosti | **zamítnuto** — opravila případy, zhoršila celek |
+| globální výběr původní věty | **hotovo** — pomohlo, ale je to drobnost |
+| **oddělit klíč od zobrazení** | míří na **ředění dlouhými větami**, což je hlavní příčina |
+
+Ředění je přitom jev, který se dnes ukázal **pětkrát**: MAALOX/reflux,
+ACIFEIN/kašel, ERCEFURYL vs HIDRASEC u průjmu, CONTROLOC u „bolest
+břicha", a teď HIDRASEC PRO DĚTI.
+
+**Není to ladění vah. Je to změna toho, CO se ukládá** — a to je jediná
+věc, která zatím pokaždé zabrala.
+
+---
+
+## 2026-08-25 — Oprava rozbočivosti ZAMÍTNUTA: opravila jednotlivé případy, ale zhoršila celek
+
+Doměřeno to, co jsem měl změřit hned: **jak si oprava rozbočivosti vede
+na celé evaluační sadě, ne jen na vybraných případech.**
+
+**Vede si hůř.** Doporučení z předchozího zápisu se tímto ruší.
+
+| práh | parafráze | negativní |
+|---|---|---|
+| **dnešní stav (holý cosine)** | | |
+| 0,55 | **9/10** | **7/8** |
+| 0,50 | 10/10 | 5/8 |
+| **s opravou rozbočivosti** | | |
+| 0,15 | 9/10 | 5/8 |
+| **0,17** | **8/10** | **7/8** |
+| 0,24 | 3/10 | 8/8 |
+
+Při stejné úspěšnosti na negativních dotazech (7/8) padne s opravou
+o jednu parafrázi víc. **Nic se nezískalo.**
+
+### Proč to vypadalo slibně a přitom není
+
+Rozsahy se po opravě **překryjí víc**, ne míň:
+
+| | rozsah |
+|---|---|
+| parafráze (mají projít) | 0,128 – 0,315 |
+| negativní (nemají projít) | 0,112 – 0,236 |
+
+Překryv 0,128–0,236 je skoro celý rozsah parafrází. Holý cosine odděluje
+lépe.
+
+**Chyba v mém uvažování:** měřil jsem, jestli oprava spraví
+**konkrétní viditelné případy** (ACIFEIN u „kašel", PARALEN u „průjem")
+— a ty spraví, přesvědčivě. Z toho jsem usoudil, že pomůže celkově.
+Nepomůže: potlačí sice rozbočovače, ale zároveň **potrestá i legitimní
+obecné odpovědi**, protože ty jsou rozbočovači ze stejného důvodu.
+
+„Bolest hlavy" je blízko všemu — a zároveň je to **správná odpověď** na
+spoustu dotazů. Odečtením se potrestá v obou rolích.
+
+### Co z toho platí dál
+
+- **Nález o rozbočovačích platí** — rozdíl 0,506 vs 0,399 je změřený
+  a vysvětluje, proč šum leze nahoru.
+- **Řešení ne.** Odečíst rozbočivost plošně znamená potrestat i to,
+  co potrestat nemá.
+- Zůstává tedy druhá půlka problému, na kterou řešení **existuje**:
+  **ředění dlouhými větami**. Krátký zápis pojmu se hledá líp než jeho
+  dlouhý opis — a to jde ovlivnit tím, CO se ukládá, ne tím, jak se
+  počítá skóre.
+
+**Poučení: opravit vybrané případy není totéž co zlepšit systém.**
+Vybrané případy si člověk vybírá podle toho, že ho zaujaly — a to je
+zkreslený vzorek. Rozhodnout smí jen měření na celé sadě.
+
+---
+
+## 2026-08-25 — Původní věta se má vybírat GLOBÁLNĚ, ne po řádcích
+
+Podnět: do hledání jdou dva vstupy, „mám průjem" i „průjem". Ta lepší
+z nich by měla vyhrát a druhá se zahodit — a evidentně se to neděje.
+
+**Byla to trefa.** Maximum se bralo **po řádcích**, takže si každý řádek
+vybral tu variantu, která mu nejvíc lichotí:
+
+| řádek | „průjem" | „mám průjem" | vybral si |
+|---|---|---|---|
+| ERCEFURYL — náhlý průjem | **0,623** | 0,604 | průjem |
+| **PARALEN — bolestivá menstruace** | 0,535 | **0,554** | **mám průjem** |
+
+PARALEN si vybral původní větu a **přeskočil práh**. Slovo „mám" totiž
+posouvá vektor směrem ke stížnostem a „bolestivá menstruace" je taky
+stížnost, kdežto „náhlý průjem způsobený bakteriemi" je odborný popis.
+
+Globálně je přitom lepší varianta jasná: „průjem" má top 0,623,
+„mám průjem" jen 0,604.
+
+### Proč to NEJDE zobecnit na slovníkové varianty
+
+Nejdřív jsem zkusil vybírat globálně **jednu variantu ze všech** včetně
+slovníkových. **Rozbilo by to hlavní přínos rozšiřování:**
+
+| dotaz „antihistaminikum" | max po řádcích | jen nejlepší varianta |
+|---|---|---|
+| DITHIADEN — kopřivka | 1,000 | 1,000 |
+| **ZYRTEC** | **0,699** | **0,471** ← pod prahem |
+| **AERIUS** | 0,602 | **0,518** ← pod prahem |
+
+Globálně vyhraje „kopřivka" (přesná shoda s DITHIADENEM), takže by se
+hledalo jen jí — a ze tří antihistaminik by zbylo jedno. **Různé léky
+legitimně odpovídají různým formulacím**, právě proto tam maximum po
+řádcích je.
+
+### Řešení: dvě různá pravidla pro dva různé účely
+
+| vstup | pravidlo | proč |
+|---|---|---|
+| router + **slovníkové varianty** | maximum **po řádcích** | různé léky sedí na různé formulace |
+| **původní věta uživatele** | vybrat **globálně** | je to pojistka, ne další formulace |
+
+Původní věta je totiž **záchrana pro případ, kdy router uřízne příliš** —
+ne alternativní způsob, jak tutéž věc říct. Nemá tedy dávat každému řádku
+pokus navíc.
+
+Porovnají se nejlepší výsledky obou stran a použije se **jen ta lepší**:
+
+| dotaz | top routeru | top původní | použije se |
+|---|---|---|---|
+| mám průjem | **0,623** | 0,604 | router |
+| bolí mě zuby | 0,396 | **0,845** | původní |
+| pálí mě žáha | 0,599 | **0,783** | původní |
+| nemůžu po prášcích spát | 0,486 | **0,536** | původní |
+
+Stojí to jeden agregační dotaz navíc nad už vyfiltrovanou množinou.
+
+### Výsledek
+
+`mám průjem` vrátí čtyři léčiva z A07 a **PARALEN je pryč**. Případy,
+kde router ořezal příliš, zůstávají zachráněné.
+
+Evaluace beze změny: 212/212, recall 100 %, parafráze 10/10,
+negativní 7/8.
+
+**Poučení: „vezmi to nejlepší ze všeho" není zadarmo.** Každý vstup navíc
+je pokus navíc — a pokus navíc dostane i šum. Pokud vstup není
+rovnocennou alternativou, ale pojistkou, musí se rozhodovat globálně.
+
+---
+
+## 2026-08-25 — Šum jde odstranit: některé řádky jsou ROZBOČOVAČE
+
+> **POZDĚJI ZAMÍTNUTO** — viz zápis „Oprava rozbočivosti ZAMÍTNUTA"
+> výš. Nález o rozbočovačích platí, navržené řešení ne.
+
+
+Dotaz zněl: „mám průjem" vrátí HIDRASEC 0,572 a hned za ním PARALEN
+„bolestivá menstruace" 0,554. Rozdíl **0,018**. Dá se s tím něco dělat?
+
+**Ano, dá.** Dřív jsem to odepsal jako vlastnost modelu — to byl ukvapený
+závěr.
+
+### Nález: podobnost není u všech řádků souměřitelná
+
+Změřeno na 12 vzájemně nesouvisejících dotazech, průměrná podobnost
+každého řádku ke VŠEM z nich:
+
+| průměr | řádek |
+|---|---|
+| **0,548** | ACIFEIN — bolest hlavy |
+| **0,506** | PARALEN — bolestivá menstruace |
+| 0,486 | BISACODYL — zácpa spojená s bolestí |
+| … | |
+| 0,319 | ALGESAL — revmatická bolest svalů a kloubů |
+
+Průměr korpusu **0,399**, směrodatná odchylka **0,031**.
+
+„Bolestivá menstruace" je tedy **3,5 σ nad průměrem** — je blízko úplně
+všemu. Je to jev známý jako **hubness**: ve vysokorozměrném prostoru
+vzniknou body, které se objevují v okolí kdečeho.
+
+### Oprava: odečíst rozbočivost
+
+    skóre = cos(dotaz, řádek) − průměrná podobnost řádku k pozadí
+
+| dotaz | šum | surové | opravené |
+|---|---|---|---|
+| kašel | ACIFEIN „bolest hlavy" | 0,567 | **0,013** |
+| kašel | PARALEN „bolestivá menstruace" | 0,516 | **0,003** |
+| průjem | ACIFEIN „bolest hlavy" | 0,546 | **−0,008** |
+
+Správné odpovědi přitom zůstaly nahoře — u „průjem" jsou první čtyři
+místa všechna z A07.
+
+### Pozadí musí být z DOTAZŮ, ne z korpusu
+
+Zkoušel jsem i klasickou definici (podobnost řádku k ostatním **řádkům**)
+a je **horší**: nadhodnotí velmi specifické texty. „Kopřivka" má nejnižší
+rozbočivost (0,301), takže se po odečtení vyhoupla na 5. místo u dotazu
+„kašel", se kterým nemá nic společného.
+
+Rozhoduje tedy **rozdělení skutečných dotazů**, ne rozdělení dat.
+
+### Dopad na evaluační sadu
+
+**Negativní dotazy** (nemají projít) — celé rozdělení kleslo:
+
+| dotaz | surové | opravené |
+|---|---|---|
+| léčba roztroušené sklerózy | 0,624 | 0,236 |
+| něco na osteoporózu | 0,535 | 0,126 |
+| něco na HIV | 0,499 | 0,112 |
+
+**Parafráze** (musí zůstat nahoře), měřeno na první pozici:
+
+| | surové | opravené |
+|---|---|---|
+| správně první | 7/10 | **8/10** |
+
+Zlepšily se dvě („mám bolesti kloubů" → ACIFEIN, „mám zanesené průdušky"
+→ ACC), zhoršila jedna („mám rýmu" → AERIUS místo AFRINu).
+
+### Co by to stálo
+
+1. **Nový sloupec** s rozbočivostí, počítá se při plnění DB proti pevné
+   sadě dotazů. Za běhu je to jen čtení sloupce, tedy zadarmo.
+2. **Práh se musí přeměřit od nuly** — stupnice se posune z ~0,5 na ~0,15.
+3. **Číslo, které vidí uživatel, ztratí názornost.** „Shoda 0,229" se
+   vysvětluje hůř než „0,623". Šlo by přeškálovat zpátky na 0–1.
+4. Sada dotazů pro pozadí je **nový laditelný parametr** — je potřeba,
+   aby odpovídala tomu, na co se lidé ptají.
+
+**Neimplementováno** — je to zásah do řazení a před ukázkou by se musel
+přeměřit práh. Zapsáno jako úkol.
+
+**Poučení: „je to vlastnost modelu" je pohodlný závěr.** Tady stačilo
+změřit, jestli je ten jev rovnoměrný — a nebyl.
+
+---
+
+## 2026-08-25 — Slepený nadpis schoval sekci a model přeložil průjem jako záškrt
+
+Při doplňování korpusu o léky na průjem (A07) vypadly dvě chyby, každá
+jiného druhu.
+
+### 1. `## 4. KLINICKÉ ÚDAJE4.1 TERAPEUTICKÉ INDIKACE`
+
+CEDEPOS měl v převedeném SPC **dva nadpisy slepené na jednom řádku** —
+konvertor je spojil. Číslo `4.1` tedy nebylo na začátku a přísný vzor
+`^#{1,6}\s*4\.1` ho minul. Sekce indikací **zmizela** a stav byl
+`chybi_v_dokumentu`, přestože v dokumentu je.
+
+Je to **druhá varianta** téhož problému jako OCR záměna `4.l` místo `4.1`
+o den dřív. Vzor sekce je jediný klíč, podle kterého se sekce pozná, a
+každá jeho odchylka je tichá.
+
+**Oprava:** záložní vzor, který povolí číslo **kdekoliv v nadpisu**:
+
+    ^#{1,6}[^\n]*?4\.1(?![0-9])
+
+Pouští se **až když selže přísný vzor**, aby se u dokumentů, které jsou
+v pořádku, nezvýšilo riziko falešné shody. Ověřeno: CEDEPOS 266 znaků,
+poměr zdrojů u zbytku korpusu beze změny.
+
+### 2. „Akutní průjem" → „náhlý ZÁŠKRT"
+
+ERCEFURYL má ve zdroji
+
+    Akutní průjem bakteriálního původu bez známek invaze.
+
+a model z toho laicky udělal
+
+    Náhlý záškrt způsobený bakteriemi, u kterého nejsou příznaky
+    pronikání bakterií do krevního řečiště.
+
+**Záškrt je difterie.** Průjem s difterií nemá společného nic.
+
+### Proč to prošlo oběma kontrolami
+
+| kontrola | co dělá | proč to nechytila |
+|---|---|---|
+| deterministická | `doslovne` proti zdroji | `doslovne` je **správně** |
+| jiným modelem | položky proti zdroji | kontroluje taky odborný text |
+
+**Laický tvar se proti odbornému nikde neověřuje.** To není jednorázový
+překlep, ale díra v návrhu — všechny kontroly míří na kotvu ke zdroji,
+protože ta jde ověřit strojově. Překlad se ověřit strojově nedá, tak se
+neověřuje vůbec.
+
+Číselník pojmů to řeší jen částečně: kontroluje dvojice, ale jen ty,
+které se **opakují**. Věta jako tahle je v korpusu jednou.
+
+**Opraveno** ručně v datech **a zároveň v `slovnik_rucni.json`** (69 → 70
+položek), takže oprava přežije přeextrahování.
+
+Do `todo.md` přibyl úkol na systémové řešení. Nabízí se pustit na dvojice
+`doslovne` → `laicky` tutéž kontrolu, jakou už dělá `postav_slovnik.py`
+na termínech — jen ne na termíny, ale na věty.
+
+### Korpus po doplnění
+
+32 léčiv, 1 346 řádků. A07 je kompletní:
+
+| lék | výdej | hrazení |
+|---|---|---|
+| IMODIUM, ENDITRIL, HIDRASEC | OTC | nehrazený |
+| HIDRASEC PRO DĚTI, ERCEFURYL | Rx | nehrazený |
+| CEDEPOS | Rx | **hrazený** |
+
+**HIDRASEC je zajímavý sám o sobě:** tatáž látka (racekadotril) je ve
+100 mg volně prodejná a ve 30 mg pro děti na předpis. Výdej tedy není
+vlastnost látky, ale konkrétního přípravku.
+
+**`hrazený lék na průjem` schválně nevrací nic.** CEDEPOS má indikaci
+„léčba infekce způsobené bakterií Clostridioides difficile" a slovo
+„průjem" v ní není. Rozhodnuto **nechat tak** — je to antibiotikum na
+nemocniční infekci, ne lék na běžný průjem, a laik by ho dostat neměl.
+Je to zároveň dobrá ukázka toho, že pojišťovna platí až závažný stav.
+
+---
+
+## 2026-08-24 — Proč „kašel" vrací ACIFEIN: krátké příznaky si jsou podobné všechny
+
+Dotaz: proč na `kašel` vyleze ACIFEIN (analgetikum). Odpověď: **není to
+chyba dat ani routeru, je to vlastnost embedovacího modelu.**
+
+ACIFEIN se trefil řádkem **„bolest hlavy"** s cosine 0,567. Změřeno
+napřímo:
+
+| text | vs „kašel" |
+|---|---|
+| nemoc dýchacích cest… špatně vykašlává (ACC) | 0,591 |
+| **bolest hlavy** | **0,567** |
+| bolest zubů | 0,479 |
+| bolesti kloubů spojené s virovými infekcemi podobnými chřipce | **0,337** |
+
+Všimni si absurdity: **chřipková** indikace ACIFEINU má 0,337, kdežto
+„bolest hlavy" 0,567. Sémanticky je to obráceně.
+
+### Podobnost mezi NESOUVISEJÍCÍMI krátkými příznaky
+
+| dvojice | cosine |
+|---|---|
+| bolest hlavy ↔ bolest zubů | 0,716 |
+| kašel ↔ bolest hlavy | 0,567 |
+| bolest hlavy ↔ horečka | 0,565 |
+| bolest hlavy ↔ ucpaný nos | 0,552 |
+| … | |
+| bolest zubů ↔ kopřivka | 0,323 |
+
+**Průměr 0,485, a 4 z 28 dvojic jsou NAD prahem 0,55.** Krátké české
+názvy příznaků leží v prostoru blízko u sebe — pro model jsou to všechno
+„potíže, se kterými jde laik do lékárny". A **„bolest hlavy" je z nich
+nejcentrálnější**: je nad prahem s kašlem, horečkou i ucpaným nosem.
+
+Je to odvrácená strana rozdělení vícepojmových řádků — krátké řádky
+hledají líp, ale mají vyšší základní podobnost ke všemu.
+
+### Relativní odstup by to NEVYŘEŠIL — změřeno
+
+Nabízí se odříznout výsledky, které jsou daleko za prvním. Nefunguje:
+
+| dotaz | 1. | 2. | odstup | je druhý správně? |
+|---|---|---|---|---|
+| kašel | 0,752 | 0,567 | 0,185 | **ne** (ACIFEIN) |
+| mám horečku | 0,844 | 0,614 | 0,230 | **ano** (ACYLCOFFIN) |
+| mam alergii | 0,701 | 0,699 | 0,002 | ano |
+
+„Mám horečku" má **větší** odstup než „kašel", a přitom je druhý výsledek
+správný. Odstup tedy šum od signálu neodděluje.
+
+**Zůstává to jako známá vlastnost**, ne jako chyba k opravě. V ukázce
+je to obhajitelné: první výsledek je správný a s velkým náskokem.
+
+---
+
+## 2026-08-24 — Pojistka proti ořezání routerem: hledat i původní větou
+
+Při zkoumání ACIFEINU vyšlo najevo něco horšího: `bolí mě zuby` vracelo
+**nula výsledků**, přestože ACIFEIN má „bolest zubů" doslova.
+
+Příčina je **nedeterminismus routeru**. Třikrát po sobě týž dotaz:
+
+| dotaz | běh 1 | běh 2 | běh 3 |
+|---|---|---|---|
+| „bolí mě zuby" | `bolest zubů` | `bolí mě zuby` | **`zuby`** |
+| „pálí mě žáha" | `pálí mě žáha` | `pálí mě žáha` | `žáha` |
+
+A na tom záleží:
+
+    'bolest zubů'   1,000
+    'bolí mě zuby'  0,845
+    'zuby'          0,396   <- POD prahem, nenajde NIC
+
+Pravidlo „nezkracuj příznak na jedno slovo" v promptu je, ale model ho
+nedodrží pokaždé. Je to třetí projev téhož problému — dřív router ztrácel
+`nazev` a zahazoval diakritiku.
+
+### Oprava: původní věta jde do hledání jako další varianta
+
+Rozšiřování dotazu už bere **maximum přes varianty**, takže horší
+varianta nemůže uškodit. Stačilo mezi ně přidat **původní dotaz
+uživatele** (`hledej(..., puvodni_dotaz=q)`):
+
+| ořezané | původní | výsledek |
+|---|---|---|
+| `zuby` 0,396 | `bolí mě zuby` 0,845 | **0,845** |
+| `spát` 0,486 | `nemůžu spát` 0,587 | **0,587** |
+| `žáha` 0,860 | `pálí mě žáha` 0,860 | 0,860 |
+
+Ověřeno na živém API: `bolí mě zuby` router ořezal na `'zuby'` a přesto
+vrátil **ACIFEIN 0,84**.
+
+### Co to stojí
+
+Jeden negativní dotaz si polepšil z 0,564 na **0,594** — `léčba
+roztroušené sklerózy`, protože původní věta obsahuje slovo „léčba", které
+je v 33 ze 155 indikací. Ten dotaz ale padal už předtím, takže se
+**evaluace nezměnila**: 210/210, recall 100 %, parafráze 10/10,
+negativní 7/8.
+
+**Poučení: nedeterministický článek v řetězci se nemá opravovat jen
+promptem.** Levnější je udělat systém odolný proti tomu, že se splete —
+tady stačilo nezahodit vstup, který stejně máme.
+
+---
+
 ## 2026-08-24 — „Celá sekce" lhala, když ji zúžil další filtr
 
 Hlášení: `časté nežádoucí účinky amoksiklav` vypíše celou sekci, přestože

@@ -2,9 +2,15 @@
 
 // Stav obrazovky. `dotaz === null` znamena uvodni vypis leciv, jinak vysledky
 // hledani - obojI se kresli TOUZ funkci, protoze API vraci stejny tvar.
-const stav = { dotaz: null, sekce: "", strana: 1, razeni: "nazev", smer: "asc" };
+const PRAH_VYCHOZI = 0.55;   // namerena hodnota, viz evaluate.py --prahy
+const stav = { dotaz: null, sekce: "", prah: PRAH_VYCHOZI,
+               strana: 1, razeni: "nazev", smer: "asc" };
 
 const $ = (id) => document.getElementById(id);
+const prahEl = $("prah");
+const prahOut = $("prah-hodnota");
+const jistotaEl = $("jistota");
+const jistotaOut = $("jistota-hodnota");
 
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const esc = (s) => String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, (c) => ESC[c]);
@@ -40,7 +46,7 @@ async function nacti() {
   try {
     const url = stav.dotaz
       ? "/api/hledat?q=" + encodeURIComponent(stav.dotaz) + "&strana=" + stav.strana +
-        (stav.sekce ? "&sekce=" + stav.sekce : "")
+        "&prah=" + stav.prah + (stav.sekce ? "&sekce=" + stav.sekce : "")
       : "/api/leciva?strana=" + stav.strana + "&razeni=" + stav.razeni + "&smer=" + stav.smer;
 
     const odp = await fetch(url);
@@ -66,6 +72,7 @@ function vykresli(d) {
   vykresliAtc(d.atc_navrh);
   vykresliStrankovani(d);
   oznacRazeni();
+  prebarvi();
 
   if (!d.radky.length) {
     $("hlaska").className = "hlaska";
@@ -99,7 +106,11 @@ function vykresliRouter(r, d) {
   }
   if (r.jistota) c.push("jistota <code>" + esc(r.jistota) + "</code>");
   if (r.filtr_popis) c.push("filtr <code>" + esc(r.filtr_popis) + "</code>");
-  c.push("práh <code>" + d.prah + "</code>");
+  // Kdyz filtr obsahuje rizenou hodnotu, prah se NEUPLATNUJE - API vrati 0.
+  // Musi to byt videt, jinak to vypada, ze posuvnik nefunguje.
+  c.push(d.prah > 0
+    ? "práh <code>" + d.prah + "</code>"
+    : 'práh <code>neuplatněn</code> <em>(filtr je přesný)</em>');
   el.innerHTML = c.join(" · ");
   el.hidden = false;
 }
@@ -135,7 +146,10 @@ function radek(r, i, celyUsek, orezan) {
 
   // Rozbaluje CELY radek, ne jen sipka - kliknuti kamkoliv do radku je to,
   // co clovek zkusi jako prvni. Sipka zustava jako vizualni voditko.
-  return '<tr class="klikaci" onclick="prepniRadek(this, &#39;' + id + '&#39;, event)">' +
+  // data-cosine drzi skore, aby slo prebarvit BEZ noveho hledani
+  const c = n && n.cosine !== null && n.cosine !== undefined ? n.cosine : "";
+  return '<tr class="klikaci" data-cosine="' + c +
+    '" onclick="prepniRadek(this, &#39;' + id + '&#39;, event)">' +
     '<td><button class="sipka" aria-expanded="false" aria-controls="' + id +
       '" tabindex="-1">&#9660;</button></td>' +
     '<td class="nazev">' + esc(l.nazev) + "</td>" +
@@ -145,10 +159,12 @@ function radek(r, i, celyUsek, orezan) {
     "<td>" + anoNe(l.hrazeno, "hrazený", "nehrazený") + "</td>" +
     "<td>" + esc(l.atc) + "</td>" +
     "<td>" + esc(l.kod_sukl) + "</td>" +
+    '<td class="skore">' + (n && n.cosine !== null && n.cosine !== undefined
+                            ? n.cosine.toFixed(3) : "—") + "</td>" +
     "<td>" + nalez + "</td>" +
     "<td>" + pdf + "</td>" +
     "</tr>" +
-    '<tr class="detail" id="' + id + '" hidden><td colspan="10">' + detail(r, celyUsek, orezan) + "</td></tr>";
+    '<tr class="detail" id="' + id + '" hidden><td colspan="11">' + detail(r, celyUsek, orezan) + "</td></tr>";
 }
 
 // Metadata jsou schvalne ZABALENA - uvodni vypis a vysledek hledani se tim
@@ -221,6 +237,18 @@ function vykresliStrankovani(d) {
   el.innerHTML = b.join("");
 }
 
+// Prebarveni podle jistoty. Delá se v prohlizeci nad uz nactenymi daty -
+// posun jezdce NESMI poslat novy dotaz na model, je to jen zvyrazneni.
+function prebarvi() {
+  const mez = Number(jistotaEl.value);
+  document.querySelectorAll("tbody tr.klikaci").forEach((tr) => {
+    const c = tr.dataset.cosine;
+    const je = c !== "" && Number(c) >= mez;
+    tr.classList.toggle("jiste", je);
+    tr.classList.toggle("hranicni", c !== "" && !je);
+  });
+}
+
 function oznacRazeni() {
   document.querySelectorAll("th[data-sort]").forEach((th) => {
     const je = !stav.dotaz && th.dataset.sort === stav.razeni;
@@ -280,12 +308,37 @@ $("btn-reset").addEventListener("click", () => {
   $("sekce").value = "";
   stav.dotaz = null;
   stav.sekce = "";
+  stav.prah = PRAH_VYCHOZI;
+  prahEl.value = PRAH_VYCHOZI;
+  prahOut.textContent = PRAH_VYCHOZI.toFixed(2);
   stav.strana = 1;
   stav.razeni = "nazev";
   stav.smer = "asc";
   $("router").hidden = true;
   $("atc-navrh").hidden = true;
   nacti();
+});
+
+
+// Posun jen prekresluje cislo; hledat se jde az pri pusteni mysi (change),
+// jinak by kazdy krok posuvniku poslal dotaz na model.
+prahEl.addEventListener("input", () => {
+  prahOut.textContent = Number(prahEl.value).toFixed(2);
+});
+prahEl.addEventListener("change", () => {
+  stav.prah = Number(prahEl.value);
+  if (stav.dotaz) { stav.strana = 1; nacti(); }
+});
+jistotaEl.addEventListener("input", () => {
+  jistotaOut.textContent = Number(jistotaEl.value).toFixed(2);
+  prebarvi();                       // hned, bez dotazu na server
+});
+
+$("btn-prah-vychozi").addEventListener("click", () => {
+  prahEl.value = PRAH_VYCHOZI;
+  prahOut.textContent = PRAH_VYCHOZI.toFixed(2);
+  stav.prah = PRAH_VYCHOZI;
+  if (stav.dotaz) { stav.strana = 1; nacti(); }
 });
 
 $("sekce").addEventListener("change", () => {

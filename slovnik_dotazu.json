@@ -1,6 +1,6 @@
 {
   "_komentar": "Rozsireni DOTAZU pro hledani: vyraz uzivatele -> formulace, ktera je v textech SPC. NEPLETI se se slovnik_pojmu.json, ten mapuje odborny termin na laicky tvar pro ZOBRAZENI. Tenhle soubor se pouziva JEN pri hledani, do dat se nic nepridava a uzivatel dal vidi vetu z dokumentu. Radky zacinajici podtrzitkem se ignoruji.",
-  "_jak_pridavat": "Klic = jak to napise laik (male pismena). Hodnoty = jak to stoji v SPC. Overit v datech, ze ta formulace v korpusu opravdu je - vymyslena formulace nic nenajde.",
+  "_jak_pridavat": "Klic = KMEN toho, co napise laik (male pismena, bez diakritiky) - cestina pri sklonovani vyhazuje -e-, proto jsou tu oba tvary 'kasl' i 'kasel'. Hodnoty = formulace, ktere v datech OPRAVDU JSOU; vymyslena formulace nenajde nic. Vyplati se je vybrat MERENIM - u antihistaminik reaguje kazdy lek na jinou. Max 4 hodnoty na klic. Po uprave restartovat API (cachuje se v pameti); prehrani DB ani embeddingu potreba NENI. Navod je v hledej.md.",
   "reflux": [
     "vracení kyselého obsahu ze žaludku do úst",
     "návrat obsahu žaludku do jícnu",
@@ -92,5 +92,17 @@
     "bolesti",
     "tlumení bolesti",
     "středně silné až silné bolesti"
+  ],
+  "antihistaminik": [
+    "alergická reakce",
+    "úleva od příznaků alergie",
+    "příznaky alergie",
+    "kopřivka"
+  ],
+    "antihistamika": [
+    "alergická reakce",
+    "úleva od příznaků alergie",
+    "příznaky alergie",
+    "kopřivka"
   ]
 }
