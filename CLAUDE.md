@@ -1,140 +1,181 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+Pokyny pro Claude Code. **Cílem je nemuset znovu odvozovat, co už je
+změřené** — detaily jsou v `poznatky.md`, tady je jen mapa a miny.
 
-## POZOR – peníze za OpenAI
+---
 
-Na účtu OpenAI je jen pár dolarů. Pro cloudové srovnání používej
-**výhradně `gpt-5-nano`** (`common.config.OPENAI_MODEL`) – je pro tyhle
-úlohy ověřeně dost dobrý a stojí nejmíň. **Nepouštěj `gpt-4o` ani
-`gpt-4o-mini`** – gpt-4o stojí násobně víc a účet by to vyčerpalo.
-Klíč je v `legacy/key.yaml`, načítá se přes `config.nacti_openai_klic()`
-(soubor NENÍ validní YAML mapa, chybí mezera za dvojtečkou).
+## Co to je
 
-## Přístupy
+**localsemantic** — sémantické vyhledávání v souhrnech údajů o přípravku
+(SPC) ze SÚKL. Uživatel se ptá běžnou češtinou („mám reflux"), aplikace
+najde odpověď v oficiálních dokumentech a ukáže odkaz na stranu PDF.
 
-Hesla k pgAdminu, Postgresu a Ollamě jsou v **`pristupy.md`**. Klíč
-k OpenAI tam NENÍ, ten je v `legacy/key.yaml`.
+Cílová skupina jsou **laici**. Všechno běží lokálně.
 
-## Model pro lokální úlohy
+Korpus **32 léčiv / 1 346 řádků**. CLI, REST API i webové GUI jsou hotové.
 
-Všechno generativní jede na **`qwen3.5:122b`** (`config.MODEL_HLAVNI`) –
-je to MoE, takže je zároveň nejlepší i nejrychlejší. Embedding dělá
-`bge-m3`, generativní model embedding neumí (vrátí 501).
+---
 
-## Poznatky behem realizace
-Pokud dojde k nejakemu poznatku behem realizace prosim zapis datum, poznatek , pripadne uprava zadani do poznatky.md
+## Dokumentace — čti podle toho, co řešíš
 
-Do souboru pis ze kazdy poznatek je vzdy nejvysse nahore.
+| soubor | k čemu |
+|---|---|
+| **`poznatky.md`** | **nejnovější nahoře.** Co se ukázalo jinak, než čekalo zadání. Vždycky s naměřenými čísly. |
+| `aktualnistav.md` | stav teď + další kroky |
+| `todo.md` | úkoly, nahoře prioritní |
+| `hledej.md` | jak funguje hledání (router, rozšíření dotazu, RRF, práh) |
+| `gui.md` | API a webová aplikace |
+| `scenare.md` | **odzkoušené dotazy pro předvádění** |
+| `prezentace.md` | výklad pro vedení IT, laicky |
+| `stavy.md`, `pristupy.md` | stavy extrakce; hesla a řešení potíží |
+| `zadani.md` | původní zadání + stav kroků |
 
-## Stav projektu
-Casto musim prerusit vyrobu, pakracyji pak jiny den.
-Pri ukonceni cinnosti prosim napsat presny stav do aktualnistav.md.
-Co je ted rozpracovano, pripadne jaky by mel byt dalsi krok.
+**Než začneš něco měnit v hledání nebo extrakci, projdi `poznatky.md`.**
+Většina „dobrých nápadů" už tam je změřená — někdy jako zamítnutá.
 
-## Přechod na konkrétní aplikaci — legacy/ obsahuje předchozí poznatky
+**`legacy/` je mrtvá složka** — záloha demo fáze do srpna 2026. Kód,
+modely, tabulky ani skripty odtud **neplatí**; první verze aplikace je
+hotová a nahradila je. Jediné, co se z `legacy/` používá, je
+`key.yaml`. Nečerpej odtud, pokud tě tam někdo výslovně nepošle.
 
-Tenhle repozitář se posouvá od sady výukových demo skriptů k **konkrétní aplikaci**
-pro nasazení na NVIDIA DGX Spark. Adresář **`legacy/`** je záloha celého projektu
-v jeho demo-fázi (k srpnu 2026) — obsahuje všechny demo skripty, `common/` moduly
-a hlavně dokumentaci s natvrdo vybojovanými poznatky, které by nová implementace
-měla brát v potaz, ne opakovat od nuly:
+---
 
-- **`legacy/demo01_pdf_to_vectors.md`** — historie voleb embedding modelu
-  (nomic-embed-text → qwen2.5:72b slepá ulička → qwen3-embedding:8b), proč
-  Ollama vyžaduje capability `embedding` u modelu, pravidla pro chunkování
-  (proč fixní znakové dělení selhává, proč se přešlo na odstavcové dělení,
-  dva reálné bugy s duplicitou překryvu a nekonečnou smyčkou)
-- **`legacy/demo03c_local_full_extract.md`** — proč lokální model bez regex
-  preprocessingu selhává na dlouhém kontextu, chunkovaný fallback
-- **`legacy/demo05_srovnani_stacku.md`** — podrobné srovnání s alternativním
-  stackem (Docling/pymupdf4llm, Qdrant vs. pgvector, BGE-M3 vs. qwen3-embedding,
-  dense/sparse hybrid, FastEmbed) včetně konkrétních kódových příkladů
-- **`legacy/dalibor.py`** — referenční hybridní ingest pipeline kolegy
-  (Docling + LangChain splitter + BGE-M3/BM25 + Qdrant), včetně vzoru
-  obohacení textu metadaty před embeddingem
+## Peníze a bezpečnost
 
-**Než navrhneš architekturu nové aplikace, projdi si tuhle dokumentaci** —
-řeší mj. proč `EMBED_DIMENSION` nesmí být ořezaná (Matryoshka truncation
-poškodila kvalitu vyhledávání), proč fixní znakové chunkování rozbíjí krátké
-podsekce, limit pgvector indexů (2000 dim), thinking-mode overhead u Qwen3
-modelů, a memory-bandwidth limity generování na DGX Sparku (~3-6 tok/s u 70B+
-modelů). Neopakuj stejné pokusy/omyly znovu.
+**POZOR NA PENÍZE:** na účtu OpenAI jsou **jednotky dolarů**. Pro cloud
+používej **výhradně `gpt-5-nano`** (`config.OPENAI_MODEL`). `gpt-4o` ani
+`gpt-4o-mini` nepouštět. Klíč je v `legacy/key.yaml`, načítá se přes
+`config.nacti_openai_klic()` (soubor **není validní YAML**, chybí mezera
+za dvojtečkou).
 
-## Commands
+Embeddingy jsou jiný produkt a jsou o dva řády levnější — zákaz míří na
+chat. I tak měř jen na vzorku.
+
+Hesla k Postgresu, pgAdminu a Ollamě jsou v **`pristupy.md`**.
+
+---
+
+## Modely
+
+| model | k čemu |
+|---|---|
+| `qwen3.5:122b` (`MODEL_HLAVNI`) | extrakce, zjednodušení, router |
+| `gemma4:31b` (`MODEL_KONTROLY`) | kontrola — **záměrně JINÝ** než ten, co data vyrobil |
+| `bge-m3` (`MODEL_EMBED`) | embedding, 1024 dim |
+
+**Generativní model embedding neumí** — vrátí 501 lokálně, 403 na OpenAI.
+
+Modely běží na DGX Sparku. Ollama je odloží po ~5 min nečinnosti, proto
+`keep_alive: 2h` a předehřátí při startu (`ollama_client.priprav_modely()`).
+
+---
+
+## Příkazy
 
 ```bash
-# Install dependencies
-uv sync
-
-# Start infrastructure (Postgres 17 + pgvector + PgAdmin)
 docker compose up -d
-
-# Stop infrastructure
-docker compose down
-
-# Check Ollama availability (prints working URL or exits 1)
-uv run python ollama_health.py
-
-# Download sample data from SÚKL API (pharmaceutical SPC PDFs)
-uv run python create_sample_data.py            # 5 drugs (default)
-uv run python create_sample_data.py --count 10
-uv run python create_sample_data.py --codes 0258021 0241858
-
-# Run any demo script
-uv run python demo01_pdf_to_vectors.py SPC_0254048_PARALEN.pdf
-uv run python demo05_semantic_search.py "Jaké jsou vedlejší účinky Paralenu?"
-uv run python demo12_text_to_sql.py --setup && uv run python demo12_text_to_sql.py "Kteří zákazníci utratili nejvíc?" --execute
+uv run uvicorn api:app --port 8000     # GUI + Swagger na /docs
+uv run python hledej.py "mám reflux"   # CLI
+uv run python log_hledani.py "..."     # podrobný log jednoho hledání
+uv run python pipeline.py --stav
+uv run python evaluate.py
 ```
 
-## Architecture
+### Po ZMĚNĚ DAT vždy v tomhle pořadí
 
-This is a collection of 12 standalone demo scripts (Czech: "dema") demonstrating local LLM use cases for enterprise scenarios. Everything runs locally — no data leaves the network.
+```bash
+uv run python ocisti_json.py --zapis
+uv run python naplni_db.py --znovu          # --znovu POVINNĚ
+uv run python vytvor_embeddingy.py
+uv run python evaluate.py
+```
 
-### Infrastructure
+---
 
-- **Postgres 17 + pgvector** (Docker): stores document chunks with 768-dim embeddings, section extracts, JSON extracts, and simplified texts across four tables: `document_chunks`, `extrakty`, `extrakty_json`, `simplify`.
-- **Ollama**: local LLM runtime. `ollama_health.py` probes candidates in order (`127.0.0.1:11434`, then `192.168.1.215:11434`) and returns the first available URL. All `common/` modules call this at runtime.
-- **PgAdmin**: http://localhost:5050 (`admin@ailocal.cz` / `admin`)
-- **DB credentials**: `ailocal/ailocal` on `localhost:5432/ailocal`. A read-only role `readonly/readonly` exists for the Text-to-SQL sandbox (demo12).
+## Pravidla, která stála nejvíc času
 
-### `common/` — shared modules
+### Měření
 
-| Module | Purpose |
+- **Pusť `evaluate.py` po KAŽDÉ změně** promptu, modelu, chunkování,
+  vah nebo prahu. Je reprodukovatelný, dva běhy dají totéž.
+- **Testovací případy ověřuj proti datům, nevymýšlej je.** Stalo se
+  třikrát, že „negativní" dotaz v datech byl.
+- **Opravit vybrané případy není totéž co zlepšit systém.** Případy si
+  člověk vybírá podle toho, že ho zaujaly — zkreslený vzorek.
+  Rozhoduje měření na celé sadě. (Takhle padla oprava hubness.)
+- **„Je to vlastnost modelu" je pohodlný závěr.** Než ho napíšeš, změř,
+  jestli je ten jev rovnoměrný.
+
+### Data
+
+- **`naplni_db.py` bez `--znovu` data TIŠE ZDVOJÍ.** Skript to nově
+  odmítne, ale pořadí výš je bezpečnější.
+- **Přeextrahování chyby neopraví**, jen je přesune jinam.
+- **Ruční opravy patří do `slovnik_rucni.json`**, ne do generovaného
+  slovníku — jinak je příští běh přepíše.
+- **Poměr zdrojů sekcí je regresní test.** `extrahuj_sekce.py` vypisuje
+  `docling_md=… pymupdf_raw=…`; skoková změna = něco se rozbilo.
+
+### Čeština a texty
+
+- **Diakritika je drahá.** Její ztráta stojí ~0,2 podobnosti a u „kašel"
+  vrátí jiný lék. Router ji obcas zahodí, proto
+  `router.obnov_diakritiku()`.
+- **Klíče slovníku dotazů jsou KMENY** („kasl" i „kasel"), protože
+  čeština při skloňování vyhazuje `-e-`. Nejsou to překlepy.
+- **Do dotazu pro vektor nesmí slovo, které je v datech skoro všude**
+  („léčba" je v 33 ze 155 indikací).
+- **Dlouhá věta ředí význam.** Každé slovo navíc stojí 0,03–0,05.
+  Tohle je nejčastější příčina špatných výsledků — projevilo se pětkrát.
+
+### Provoz
+
+- **Po změně schématu odpovědi restartuj API.** `--reload` po čase
+  přestane zabírat a server běží na starém kódu. Postup na zabití
+  procesů na Windows je v `gui.md`.
+- **Nepouštěj dlouhé běhy přes `tail`** — buffer schová průběh i chyby.
+- **`num_ctx` nejít pod 16384** — Ollama delší prompt tiše usekne.
+
+### Komunikace
+
+- **Popisek je součást odpovědi, ne dekorace.** Když text tvrdí něco
+  jiného než data, hledá se chyba tam, kde není. Stalo se třikrát
+  za den.
+- **Když operace trvá dlouho, musí být vidět proč.** Mlčící aplikace
+  vypadá jako rozbitá.
+
+---
+
+## Změřené slepé uličky — NEZKOUŠET ZNOVU
+
+| co | proč ne |
 |---|---|
-| `config.py` | Single source of truth for paths, model names (`MODEL_EMBED=nomic-embed-text`, `MODEL_CHAT=gemma3:12b`, `MODEL_LIGHT=ministral-3:latest`), DB DSN, chunk size (500 chars, 50 overlap) |
-| `ollama_client.py` | Thin wrapper over Ollama REST API: `embed_text()`, `embed_texts()` (batch), `chat()`, `chat_with_history()`, `vision()` |
-| `pdf_utils.py` | PDF text extraction (PyMuPDF) and chunking |
-| `db_postgres.py` | All pgvector operations: insert/search chunks, insert/search extracts, hybrid search (RRF combining cosine + Czech fulltext), JSON extract CRUD, simplification storage |
+| **oprava hubness** (odečíst „rozbočivost") | spraví jednotlivé případy, ale na celé sadě je horší: 8/10 parafrází místo 9/10 při stejných negativních |
+| **vybrat jednu variantu dotazu globálně** | ze tří antihistaminik by zbylo jedno; různé léky odpovídají různým formulacím |
+| **cloudové embeddingy** | `3-small` horší než bge-m3 ve 4 z 5 dotazů, `3-large` prohrává na laických parafrázích |
+| **pymupdf4llm** místo Doclingu | 3× rychlejší, ale slévá frekvence do odstavců |
+| **`frekvence_rank_max` na vzácný konec** | „vzácné" pak vrátí i velmi časté — přesný opak |
+| **mechanické dělení výčtů podle čárek** | uškodí ve 3 z 5 případů; dělí to model |
 
-### Demo pipeline progression
+---
 
-The demos build on each other in a logical sequence:
-1. **demo01–02**: PDF → text chunks → embeddings → `document_chunks` table
-2. **demo03–03d**: Extract specific SPC sections (regex vs. LLM vs. OpenAI vs. local) → `extrakty` / `extrakty_json` tables
-3. **demo04**: Simplify medical text for lay readers → `simplify` table
-4. **demo05–05x**: Semantic search / RAG over stored vectors, including hybrid search (semantic + Czech FTS via RRF)
-5. **demo06–12**: Standalone demos (vision, MCP protocol, Oracle vs Postgres benchmarking, ticket classification, meeting summary, anomaly detection, text-to-SQL)
+## Nedodělky, o kterých se ví
 
-### Key patterns
+- **Laický tvar se neověřuje** proti odbornému. Model přeložil „akutní
+  průjem" jako „náhlý záškrt" a prošlo to oběma kontrolami.
+- **Router není deterministický** — občas ztratí název léčiva nebo ořeže
+  dotaz na jedno slovo. Částečně řešeno pojistkou s původní větou.
+- **Prahy a číselníky jsou naměřené na 32 lécích.** Na tisících se budou
+  muset přeměřit.
 
-- Every demo imports from `common/` — never add infrastructure logic directly to demo scripts.
-- `ollama_client.get_ollama_url()` is called lazily at request time, not at import time; this allows scripts to import safely even when Ollama is offline.
-- The DB schema is applied via `init-db.sql` mounted into the Docker container's `initdb.d/`; it is **not** re-run on existing volumes. To reset: `docker compose down -v && docker compose up -d`.
-- `chat()` defaults to `stream=False`; pass `stream=True` to print tokens as they arrive.
-- Hybrid search in `db_postgres.hybrid_search()` uses RRF (Reciprocal Rank Fusion) with configurable `sem_weight` (0–1).
+---
 
-### Models required in Ollama
+## Zápisky
 
-```
-nomic-embed-text   # embeddings (768-dim)
-gemma3:12b         # primary chat/vision model
-ministral-3:latest # lightweight model
-qwen3:14b          # used in some demos
-```
-
-### Data directories (git-ignored, created locally)
-
-- `data/pdf/` — downloaded SPC PDFs from SÚKL API
-- `data/images/` — images for vision demo (demo06)
-- `data/emails/`, `data/meetings/` — inputs for demo09/demo10
+- **`poznatky.md`** — každý poznatek s datem, **nejnovější nahoře**,
+  vždy s naměřenými čísly. Když něco vyjde jinak, než zadání čekalo,
+  patří to sem.
+- **`aktualnistav.md`** — při ukončení práce zapiš přesný stav: co je
+  rozpracované a jaký je další krok. Práce se často přerušuje.
+- **`todo.md`** — úkoly; prioritní nahoře.
