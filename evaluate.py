@@ -426,8 +426,13 @@ def zmer_prahy() -> None:
             o = hledej(dotaz, filtr=Filtr(sekce=["indikace"]), limit=60, prah=prah)
             if any(l.nazev in ocekavane for l in seskup(o.vysledky, leciv=5)):
                 p += 1
+        # puvodni_dotaz MUSI byt predany stejne jako v test3, jinak tabulka
+        # meri jinou cestu, nez ktera se pak pousti. Puvodni veta obsahuje
+        # i slova, ktera router odrezava ("léčba"), takze bez ni vychazi
+        # negativni dotazy optimisticteji, nez jsou.
         n = sum(1 for d, (f, t) in neg.items()
-                if not hledej(t, filtr=f, limit=10, prah=prah).vysledky)
+                if not hledej(t, filtr=f, limit=10, prah=prah,
+                              puvodni_dotaz=d).vysledky)
         pozn = ""
         if p == len(PARAFRAZE) and n == len(NEGATIVNI):
             pozn = "<- oboje 100 %"
@@ -453,7 +458,7 @@ def main() -> int:
     # Prah 0,50 je ZMERENY, ne odhadnuty: pri nem sedi 9/10 parafrazi
     # i 8/8 negativnich dotazu. Zadani odhadovalo 0,7 - to by dalo
     # 1 parafrazi z 10.
-    ap.add_argument("--prah", type=float, default=0.55)
+    ap.add_argument("--prah", type=float, default=0.60)
     ap.add_argument("--zpusob", choices=["rrf", "cosine"], default="rrf")
     ap.add_argument("--prahy", action="store_true", help="změřit práh podobnosti")
     ap.add_argument("--vahy", action="store_true", help="porovnat způsoby řazení")

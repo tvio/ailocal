@@ -272,7 +272,13 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     # (0,701), ZYRTEC na "uleva od priznaku alergie" (0,699). Kdyby se
     # vybrala jedna varianta globalne, jeden z nich by se ztratil.
     n_var = len(varianty)
-    vyrazy = [f"1 - (s.embedding <=> %(vek{i})s::vector)" for i in range(n_var)]
+    # Kazda varianta se porovnava s OBEMA vektory radku - s textem
+    # i s klicem - a bere se lepsi. Klic tim muze jen pomoci: u dotazu
+    # na detail z dlouhe vety vyhraje obsah_text, u kratkeho dotazu klic.
+    # Radky bez klice maji embedding_klic NULL, proto COALESCE.
+    vyrazy = [f"GREATEST(1 - (s.embedding <=> %(vek{i})s::vector), "
+              f"COALESCE(1 - (s.embedding_klic <=> %(vek{i})s::vector), -1))"
+              for i in range(n_var)]
     cosine_sql = vyrazy[0] if n_var == 1 else f"GREATEST({', '.join(vyrazy)})"
 
     # PUVODNI VETA: rozhoduje se GLOBALNE, ne po radcich.
@@ -291,7 +297,8 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     #     'zuby'   0,396  vs  'bolí mě zuby' 0,845 -> puvodni veta
     if ma_puvodni:
         cosine_sql = (f"CASE WHEN %(puv_lepsi)s THEN "
-                      f"1 - (s.embedding <=> %(vek{n_var})s::vector) "
+                      f"GREATEST(1 - (s.embedding <=> %(vek{n_var})s::vector), "
+                      f"COALESCE(1 - (s.embedding_klic <=> %(vek{n_var})s::vector), -1)) "
                       f"ELSE {cosine_sql} END")
 
     # Fulltextovy dotaz se prevadi na OR. websearch_to_tsquery slova
@@ -319,7 +326,8 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
                               else f"GREATEST({', '.join(vyrazy)})")
             radek = cur.execute(f"""
                 SELECT max({vyrazy_slovnik}),
-                       max(1 - (s.embedding <=> %(vek{n_var})s::vector))
+                       max(GREATEST(1 - (s.embedding <=> %(vek{n_var})s::vector),
+                           COALESCE(1 - (s.embedding_klic <=> %(vek{n_var})s::vector), -1)))
                 FROM leciva_search s JOIN leciva l USING (kod_sukl)
                 WHERE s.embedding IS NOT NULL {kde}
             """, par).fetchone()

@@ -54,7 +54,8 @@ Popis v `stavy.md`. Zamitnuto je 6 jednotlivych POLOZEK, zadna cela sekce.
 | 20. | Doplneni korpusu na 26 leciv pro demo | `postav_pool.py` | HOTOVO - viz `scenare.md` |
 | 21. | REST API (FastAPI) se Swaggerem na /docs | `api.py` | HOTOVO |
 | 22. | GUI (vanilla JS) | `static/` | HOTOVO - viz `gui.md` |
-| 23. | **TADY JSME** - rucni projiti dat + nedodelky | | zbyva |
+| 23. | KLIC pro hledani + cesky lematizator ve fulltextu | `doplni_klice.py` | HOTOVO 4.9. |
+| 24. | **TADY JSME** - rucni projiti dat + nedodelky | | zbyva |
 
 Krok 18 uzavren 24.8.: opraven router (zapor, lek+priznak), predehrati
 modelu pro GUI, a **dotazen slovnik** (pokryti indikaci 3 % -> 39 %,
@@ -155,6 +156,33 @@ z nej volat predehrati modelu a hledani, je v `aktualnistav.md`.
     jinak je TISE zdvoji.
 19. **REST API + GUI** - `/api/leciva` a `/api/hledat` vraceji TYZ tvar,
     aby frontend kreslil jednu komponentu.
+
+### Zmeny navrhu ze 4.9.2026 (podrobne v poznatky.md)
+
+1. **KLIC PRO HLEDANI** - nove pole `klic` v extrakci indikaci
+   a kontraindikaci: 1-4 slova v 1. pade, nazev stavu. Duvod: dlouha
+   veta redi vyznam. HIDRASEC PRO DETI ma indikaci na 27 slov a na
+   dotaz "průjem" mel 0,515; s klicem 0,807.
+   **Uzivateli se dal zobrazuje PUVODNI text** - klic je rejstrikove
+   heslo, ne nahrada obsahu, takze dohledatelnost do SPC zustava.
+2. **Dva vektory na radek** - nad textem i nad klicem, bere se lepsi.
+   Kdyby se embedoval jen klic, tri z deseti polozek by se zhorsily.
+3. **Deterministicka pojistka** `klic_ma_oporu()` - klic, jehoz slova
+   nejsou v puvodnim textu, se zahazuje. Model ma sklon prekladat
+   "nahoru" (z "kožní vyrážka se svěděním" udelal "chronická
+   idiopatická kopřivka").
+4. **Cesky LEMATIZATOR do fulltextu** (hunspell-cs, 261 tisic slov)
+   pres vlastni image `Dockerfile.postgres`. Postgres ma stemmery pro
+   29 jazyku a cestina mezi nimi NENI - bez toho se 'zahy' v datech
+   nikdy nepotkalo s dotazem 'zaha'. Lematizator vraci 1. PAD, ne
+   useknuty koren.
+5. **Text se indexuje v OBOU podobach**, s diakritikou i bez ni.
+6. **Cesky seznam stop slov** (`tsearch/czech.stop`, 149 tvaru).
+7. **Klic text DOPLNUJE, nenahrazuje.** Prvni verze ho nahrazovala
+   a AFRIN tim prisel v indexu o slovo "rýma".
+8. **Prah zvednut 0,55 -> 0,60** po zavedeni klicu.
+9. **`evaluate.py --prahy` merilo jinou cestu nez ostry test** -
+   nepredavalo puvodni vetu. Srovnano.
 
 ## Krok 5 (slovnik) UZ JE HOTOVY - zmena oproti puvodnimu planu
 

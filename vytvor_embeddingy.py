@@ -77,7 +77,7 @@ def main() -> int:
                 with conn.cursor() as cur:
                     podminka = "" if a.znovu else "AND embedding IS NULL"
                     cur.execute(f"""
-                        SELECT id, sekce, obsah_text FROM leciva_search
+                        SELECT id, sekce, obsah_text, klic FROM leciva_search
                         WHERE kod_sukl = %s {podminka} ORDER BY id
                     """, (kod,))
                     radky = cur.fetchall()
@@ -99,6 +99,18 @@ def main() -> int:
                         cur.executemany(
                             "UPDATE leciva_search SET embedding = %s WHERE id = %s",
                             [(str(v), r[0]) for v, r in zip(vektory, davka)])
+
+                        # DRUHY vektor nad klicem. Pri hledani se bere lepsi
+                        # z obou, takze klic muze jen pomoci: u dotazu na
+                        # detail z dlouhe vety vyhraje obsah_text, u kratkeho
+                        # dotazu klic. Radky bez klice zustanou s NULL.
+                        s_klicem = [r for r in davka if r[3]]
+                        if s_klicem:
+                            vk = embed([r[3] for r in s_klicem], model=a.model)
+                            cur.executemany(
+                                "UPDATE leciva_search SET embedding_klic = %s "
+                                "WHERE id = %s",
+                                [(str(v), r[0]) for v, r in zip(vk, s_klicem)])
                     conn.commit()
                     hotovo += len(davka)
 

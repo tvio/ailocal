@@ -24,7 +24,13 @@ name: localsemantic
 
 services:
   postgres:
-    image: pgvector/pgvector:pg17
+    # Vlastni image: pgvector + cesky slovnik hunspell pro fulltext.
+    # Postgres cestinu mezi svymi 29 stemmery NEMA, takze bez toho se
+    # 'zahy' v datech nepotka s dotazem 'zaha'. Viz Dockerfile.postgres.
+    build:
+      context: .
+      dockerfile: Dockerfile.postgres
+    image: localsemantic/postgres:pg17-cs
     container_name: localsemantic-postgres
     restart: unless-stopped
     environment:

@@ -5,6 +5,415 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-09-22 — Auto-recall se NEDÁ porovnávat mezi běhy. Vzorek se přelosuje při každém `--znovu`
+
+Evaluace dnes dala jiná čísla než `aktualnistav.md`:
+
+| test | zapsáno 4.9. | dnes |
+|---|---|---|
+| Auto-recall @5 | 47/47 100 % | **46/47 98 %** |
+| Auto-recall @10 | 56/56 100 % | **51/51 100 %** |
+| ostatní testy | — | shodné |
+
+Vypadalo to jako regrese. **Není.** Dva běhy po sobě daly bajt po bajtu
+totéž, takže reprodukovatelnost platí — ale jen **uvnitř jednoho stavu
+tabulky**.
+
+### Příčina: `ORDER BY random()` závisí na FYZICKÉM pořadí řádků
+
+`test2` losuje vzorek přes `setseed()` + `ORDER BY random()`. Seed je
+pevný (42), ale `random()` přiřazuje hodnoty v pořadí, v jakém se řádky
+čtou. `naplni_db.py --znovu` tabulku přepíše, pořadí se změní — a vzorek
+je jiný. Změřeno na dočasných tabulkách, tatáž data, tentýž seed:
+
+    vzorek_a | vzorek_b | shodnych
+          60 |       60 |        5     <- z 60 radku se shoduje PET
+
+**Důsledek: postup „po změně dat" z `CLAUDE.md` končí
+`naplni_db.py --znovu` → `vytvor_embeddingy.py` → `evaluate.py`,
+takže KAŽDÁ změna dat vzorek přelosuje.** Číslo před změnou a po ní
+neměří tytéž položky. Rozdíl 47/47 → 46/47 tedy neříká nic o kvalitě
+hledání.
+
+Mění to i výklad pravidla „pusť evaluate po každé změně": u testů 1, 3 a 4
+platí (mají pevné sady), u **testu 2 se porovnávají dvě různé věci**.
+
+- [ ] vzorek přestat losovat z tabulky a **zmrazit do souboru** (seznam
+      `id` nebo rovnou textů), aby byl napříč běhy týž
+- [ ] do výpisu doplnit, na jakém vzorku se měřilo, ať je nesrovnatelnost
+      vidět
+
+### Vedlejší: `--prah` na auto-recall vůbec nepůsobí
+
+`test2` volá `hledej(text, filtr=..., limit=60)` **bez `prah`**, a výchozí
+hodnota v `hledej()` je `0.0`. `a.prah` z příkazové řádky jde jen do
+`test3`. Zvednutí prahu 0,55 → 0,60 tedy auto-recall ovlivnit nemohlo —
+což tu změnu čísel vylučuje jako vysvětlení.
+
+---
+
+## 2026-09-22 — Za chybějícími klíči nestojí pojistka, ale nedeterminismus. A pravidlo „1-4 slova" nevynucuje nikdo
+
+Hypotéza k proměření: zahazuje `klic_ma_oporu()` legitimní klíče, protože
+klíč je laické zjednodušení a nemusí sedět na slova zdroje?
+
+**Neplatí.** Klíč se negeneruje z odborného `doslovne`, ale z **`laicky`**,
+tedy z textu, který už zjednodušený je. Klíč je tak **zkrácení už laické
+věty**, ne další překlad — ta domnělá kolize nevzniká.
+
+| měření | výsledek |
+|---|---|
+| pojistka zahodila (55 položek bez klíče, nový běh) | **0 z 55** |
+| existující klíče s překryvem 1,0 | **150 ze 164** |
+| existující klíče s překryvem pod 0,75 | 10 ze 164 |
+
+Omezení: měřeno, co pojistka dělá **teď**, ne co zahodila při původním
+běhu — to se jen logovalo, v datech to není.
+
+### Skutečná příčina: model není deterministický
+
+Z 55 dlouhých položek bez klíče model **67,3 % vrátil jako `null`**,
+ale při novém běhu by **32,7 % klíč dostalo**. Tytéž položky, tentýž
+prompt, jiný výsledek. **Klíč je dnes loterie, ne vlastnost položky** —
+týž vzor jako u routeru.
+
+### Špatný ukazatel, kterým jsem začal
+
+„Klíč má jen polovina indikací" je zavádějící. Rozpad 316 položek:
+
+| | počet | |
+|---|---|---|
+| má klíč | 164 | 51,9 % |
+| bez klíče, **krátké pod 6 slov — ZÁMĚRNĚ** | 97 | 30,7 % |
+| bez klíče, přesto dlouhé | **55** | **17,4 %** |
+
+Skutečná díra je 17 %, ne 48 %. Krátký text už klíčem je.
+
+### Nová díra 1: délka klíče se nekontroluje
+
+Pojistka ověřuje jen oporu ve zdroji. Pravidlo „1-4 slova" z promptu
+**nevynucuje nikdo**:
+
+    24,4 % klicu (40 ze 164) je DELSICH nez 4 slova
+     8 slov  TALVOSILEN  "středně silná až silná bolest s různou příčinou"
+     7 slov  ACC         "dědičná nemoc s hustým hlenem v plicích"
+     7 slov  OMEPRAZOL   "pálení žáhy a kyselé řinčení do krku"
+
+Jde to proti důvodu, proč klíč existuje („každé slovo navíc stojí
+0,03-0,05"). U ACIFEINU nový běh vyrobil klíč **totožný s celým zdrojem** —
+klíč, který nezkracuje nic.
+
+### Nová díra 2: doplnit chybějící klíče by uškodilo
+
+Těch 18, které by nový běh přidal, jsou skoro samé kontraindikace typu
+„alergie na účinnou látku". Přitom `alergie` už je klíčem **6×**,
+„alergie na léčivou látku" 4×. To je přesně TODO 1 — obecné slovo
+přitáhne celou svou třídu. Podle pravidla 5 tam měl model vracet `null`
+(je to podmínka užití, ne stav) a **původně to udělal správně**.
+
+**Pořadí tedy platí i tady: napřed obecná slova, teprve pak dosazovat
+chybějící klíče.** Naopak by se šum nafoukl.
+
+---
+
+## 2026-09-22 — `init-db.sql` se rozešel s živou databází. Čtyři rozdíly, každý by vrátil regresi
+
+Kontrola schématu proti běžící databázi. **Opravy z 4. 9. jsou v živé
+databázi, ale ne v `init-db.sql`** — zjevně se šly ALTERem přímo do
+Postgresu a do repa se nevrátily. Čistý `docker compose up -d` na novém
+stroji by tedy postavil **horší systém, než jaký je změřený.**
+
+### Čtyři rozdíly
+
+| co | v repu bylo | živě je |
+|---|---|---|
+| `search_fts` | `COALESCE(klic, obsah_text)` — klíč text **nahrazuje** | `klic \|\| ' ' \|\| obsah_text` — doplňuje |
+| mapování tokenů | `word, hword, hword_part` (3 z 9) | všech **9** slovních typů |
+| poslední slovník | holý `simple` | `czech_simple` se `StopWords = czech` |
+| `czech_hunspell` | bez stop slov | `StopWords = czech` |
+
+Změřeno na AFRINU přímo v datech — ta první řádka je přesně ten případ,
+kvůli kterému spadly parafráze 10/10 → 9/10:
+
+    verze z repa   search_fts @@ 'rýma'  ->  f
+    verze živá     search_fts @@ 'rýma'  ->  t
+
+### Image se nikdy nepostavil
+
+`docker-compose.yml` ukazuje na `Dockerfile.postgres`, ale běžící
+kontejner je **stock `pgvector/pgvector:pg17`** z 19. 8. — hunspell do
+něj byl doinstalovaný ručně. `localsemantic/postgres:pg17-cs` v Dockeru
+vůbec neexistoval. Samotný Dockerfile je přitom v pořádku: po
+`docker compose build postgres` (~40 s) a startu čisté databáze z
+opraveného `init-db.sql` sedí **konfigurace i generovaný sloupec na
+znak přesně** se živou databází (25 kontrolních řádků, nula rozdílů).
+
+**Poučení:** dokud se image jednou nepostaví, není ověřené nic z toho,
+co je kolem něj napsané. Tohle přežilo v repu 18 dní jako „hotové".
+
+### Vedlejší nález: klíč má jen polovina položek
+
+Při té kontrole vyšlo najevo, jaké je vlastně pokrytí klíčem:
+
+| sekce | řádků | s klíčem |
+|---|---|---|
+| nezadouci_ucinky | 895 | **0** |
+| indikace | 166 | 90 (54 %) |
+| kontraindikace | 150 | 74 (49 %) |
+| davkovani | 103 | 103 (z pole `pacient`, ne z modelu) |
+| atributy | 32 | 0 |
+
+`embedding_klic` sedí na `klic` přesně, takže data jsou konzistentní.
+Ale **66 % korpusu (nežádoucí účinky) klíč nemá vůbec** a u indikací
+ho nemá skoro polovina. Zlepšení z klíče se tedy zatím týká menšiny
+řádků — což je dobré vědět, než se podle něj bude ladit práh nebo váha
+fulltextu.
+
+---
+
+## 2026-09-04 — Klíč nesmí text NAHRADIT, jen doplnit. A dvě díry, které to odhalilo
+
+Doplnění zápisu o lematizátoru. Po jeho nasazení spadly parafráze
+10/10 → 9/10 na dotazu „mám rýmu" (čekal OLYNTH, dostal AERIUS).
+
+### Příčina: klíč text nahrazoval
+
+TSV se stavělo z `COALESCE(klic, obsah_text)`, takže kde byl klíč,
+původní text z indexu **zmizel**:
+
+    AFRIN  text: „...u ucpaného nosu při senné RÝMĚ, obvyklém nachlazení"
+           klíč: 'ucpaný nos'
+           TSV : 'nos' 'ucpany'        <- slovo „rýma" pryč
+
+AERIUS klíč nedostal (je krátký), nechal si celý text, a byl tak jediný
+se slovem „rýma" v indexu. Proto vyhrál.
+
+**Chyba v úvaze:** soustředil jsem se na to, že dlouhá věta je balast,
+a přehlédl, že obsahuje i **legitimní druhotné pojmy**. AFRIN je na
+ucpaný nos I na rýmu — klíč umí pojmenovat jen jednu věc.
+
+**Oprava:** `klic || ' ' || obsah_text`. Klíč přidá tvar 1. pádu, text
+si nechá slovní zásobu. Parafráze zpět na **10/10**.
+
+### Dvě pasti při zavádění stop slov
+
+**1. `a`, `nebo`, `od` jsou `asciiword`, ne `word`.** Přemapoval jsem
+jen `word`, takže se na čistě ASCII slova slovníky vůbec nedostaly —
+`ts_lexize` je filtroval správně, ale `to_tsvector` ne. Namapovat je
+potřeba všech devět typů tokenů.
+
+**2. Hunspell u krátkých slov přestřeluje:**
+
+    nos   -> 'nos', 'nosit'
+    při   -> 'pře', 'přít'
+    nebo  -> 'ba', 'ben'
+
+Ze 37 služebných slov jich 5 proteče jako nesmyslné lemmy. Nechal jsem
+to — dotaz projde toutéž transformací, takže je to symetrické.
+
+### Výsledek
+
+| | před hunspellem | po |
+|---|---|---|
+| dotazů bez fulltextové shody | 5 z 17 | **1 z 17** |
+| `průjmu` / `žáha` / `reflux` | 0 / 0 / 0 | 29 / 7 / 4 |
+| `ucpaný nos` | 2 | **15**, první AFRIN |
+| parafráze | 9/10 | **10/10** |
+
+Zbylý jediný (`kašel`) není o skloňování — to slovo v datech není.
+
+### Dvě díry, které se tím odhalily
+
+**A) Klíč zvedá i nesouvisející věci.** Dotaz „mám rýmu" se přes
+číselník rozšíří o „zánět sliznice nosu" — a to přitáhne **všechno se
+slovem zánět**:
+
+| cosine | lék | text |
+|---|---|---|
+| 0,726 | OLYNTH | přetížení nosu způsobené zánětem sliznice |
+| **0,692** | **AMOKSIKLAV** | **infekce kostí a kloubů, zejména zánět kosti** |
+| 0,675 | OMEPRAZOL | zánět jícnu |
+| 0,657 | ACC | zánět průdušek |
+
+Je to potřetí týž vzor (po „zánět kůže" a „bolest"): **obecné slovo
+v hodnotě číselníku přitáhne celou svou třídu.**
+
+**B) Rozšíření dotazu nejde do fulltextu.** `hledani.py` staví
+`fts_dotaz` jen z `dotaz`, varianty ze slovníku se použijí **pouze pro
+vektory**. Změřeno na OLYNTHU:
+
+    dotaz 'rýma'                 -> OLYNTH fts =  0,0
+    dotaz 'zánět sliznice nosu'  -> OLYNTH fts = 12,0
+
+Přitom „zánět sliznice nosu" je hodnota ze slovníku PRO „rýmu" a je
+v indikaci OLYNTHU doslova. **Fulltext ji nikdy nedostane.**
+
+Je to promarněná příležitost: číselník byl postavený tak, aby mapoval
+laický výraz na **formulaci z dokumentu** — a přesně na to je fulltext
+nejlepší, protože skóruje binárně.
+
+---
+
+## 2026-09-04 — Český lematizátor do fulltextu: nuly z 5 na 2, ale parafráze 10/10 → 9/10
+
+Fulltext byl na češtinu **rozbitý** a nikdo si toho nevšiml, protože
+mlčel. V TSV bylo `'prujmu'` (2. pád) a dotaz „průjem" dával **nulu** —
+pro Postgres jsou to dvě různá slova.
+
+Příčina: `czech_unaccent` byl jen kopie `simple` + `unaccent`. **Postgres
+má stemmery pro 29 jazyků a čeština mezi nimi není** — název konfigurace
+byl zavádějící, nic českého nedělala.
+
+### Lematizátor, ne stemmer
+
+Rozdíl není terminologický, je praktický:
+
+| | stemmer (ruština, algoritmický) | **lematizátor** (čeština, slovníkový) |
+|---|---|---|
+| изжога, изжоги | → `изжог` — **není to slovo** | — |
+| žáhy, žáhu | — | → **`žáha`** (1. pád) |
+| průjmu, průjmům | — | → **`průjem`** |
+
+Stemmer řeže konce podle pravidel a je mu jedno, jestli výsledek
+existuje. Hunspell má slovník 261 tisíc slov a vrací **skutečný tvar
+z 1. pádu** — přesně to, co člověk napíše do vyhledávače.
+
+Dva důsledky, které stemmer nemá:
+
+1. **Umí vrátit víc kandidátů**, když je tvar dvojznačný:
+   `pálení` → `['pálení', 'pálený']`, `tři` → `['tři', 'třít']`.
+2. **Co nezná, nechá být.** `racekadotril` propadne na unaccent a uloží
+   se celý. Stemmer by název účinné látky rozsekal podle pravidel.
+
+### Nastavení
+
+`hunspell-cs` z Debianu (balíček si sám udělá symlinky v
+`$SHAREDIR/tsearch_data/`), přidaný přes vlastní image
+(`Dockerfile.postgres`), aby `docker compose up` fungoval i na čistém
+stroji.
+
+**POŘADÍ SLOVNÍKŮ JE ZÁSADNÍ:**
+
+    WITH czech_hunspell, unaccent, simple
+
+Postgres zkouší slovníky **postupně** a bere první, který slovo pozná.
+S `unaccent` na prvním místě **hunspell nikdy neběží** — unaccent uspěje
+vždycky. Změřeno: výsledek je pak totožný s holým `simple`.
+
+### Indexuje se text V OBOU PODOBÁCH
+
+Hunspell umí lematizovat jen slovo **s diakritikou** (`žáhy` → `žáha`),
+ale lidé běžně píšou bez ní. Do tsvectoru proto jde text dvakrát:
+
+    klíč „akutní průjem"  ->  'akutní' 'průjem' 'akutni' 'prujem'
+
+Tím se trefí dotaz tak i tak. `unaccent()` je ale `STABLE`, ne
+`IMMUTABLE`, takže ho generovaný sloupec nepustí — musí přes obálku
+`bez_diakritiky()` s explicitně uvedeným slovníkem.
+
+**Past, na kterou jsem naletěl:** první migrace spadla právě na
+`IMMUTABLE` a **rollback vzal s sebou i změnu konfigurace**, kterou jsem
+měl ve stejné transakci. Druhý pokus už ji neobsahoval, takže hunspell
+tiše neběžel a TSV vypadalo nezměněně. Chyba vypadala jako „hunspell
+nefunguje", přitom se jen nikdy nenastavil.
+
+### Výsledek
+
+**Fulltextové nuly z 5 na 2 ze 16 dotazů:**
+
+| dotaz | před | po |
+|---|---|---|
+| `průjmu` | **0** | 29 |
+| `žáha`, `pálí mě žáha` | **0** | 7 |
+| `průjem` / `prujem` | 24 / 24 | 29 / 24 |
+
+Zbylé dvě nuly (`kašel`, `reflux`) **nejsou o skloňování** — ta slova
+v datech nejsou vůbec (ACC má „zánět průdušek", MAALOX „vracení kyselého
+obsahu").
+
+### Cena: parafráze 10/10 → 9/10
+
+`mám rýmu` čekal OLYNTH, dostal AERIUS. Fulltext teď skóruje na víc
+řádcích, takže **víc zasahuje do řazení přes RRF** — dřív mlčel
+a rozhodovala sémantika sama.
+
+Je to přímý důsledek toho, že fulltext začal fungovat. **Váha 20 % byla
+nastavena v době, kdy skoro vždycky vracel nulu** — teď se ozývá, takže
+je otázka, jestli je pořád správná. Neladil jsem ji, aby se z jednoho
+případu nedělal závěr; je to na měření přes `evaluate.py --vahy`.
+
+---
+
+## 2026-09-04 — Ověřeno na 10 položkách: klíč pro hledání funguje, +0,125 a lepší odstup
+
+Před zásahem do extrakce celého korpusu se udělal levný pokus na deseti
+nejdelších indikacích (`test_klice.py`). **Vyplatilo se** — první běh
+odhalil tři vady v pokynu, které by se jinak propsaly do všech dat.
+
+### První běh: model překládá „nahoru"
+
+| text v datech | klíč od modelu | dopad na dotaz |
+|---|---|---|
+| „kožní vyrážka se svěděním" | **„chronická idiopatická kopřivka"** | 0,562 → **0,352** |
+| „…hubnutí u dětí starších 12 let" | **„silná nadváha"** *(ztratil děti)* | 0,597 → **0,426** |
+
+Model nahrazoval laický text odborným a zahazoval skupinu pacientů,
+přestože pokyn obojí zakazoval.
+
+**Oprava pokynu:** výslovně „drž se slov, která jsou v zadaném textu,
+nepřeváděj je na odbornější" + „skupinu pacientů zachovej" s příklady.
+Po opravě klíčů **10/10** (dřív 9/10) a dva ze tří případů se spravily.
+
+### Výsledek po opravě
+
+**Vektor +0,125 průměrně, žádné zhoršení:**
+
+| dotaz | dnes | s klíčem |
+|---|---|---|
+| mám vysoký tlak | 0,564 | **0,858** |
+| mám průjem | 0,526 | **0,774** |
+| vysoký cholesterol | 0,600 | **0,816** |
+| mám vřed na žaludku | 0,651 | **0,797** |
+
+Že se nic nezhoršilo, je zásluha **maxima ze dvou vektorů** (klíč
+i původní text). Kdyby se embedoval jen klíč, tři z deseti položek by
+propadly — proto ta varianta.
+
+**Fulltext: nuly ze 7/10 na 4/10.** U fulltextu je to zásadnější než
+u vektoru: bez 1. pádu se čeština netrefí VŮBEC, protože `czech_unaccent`
+nemá stemming. „Průjem" proti `'prujmu'` v TSV dá nulu.
+
+**Odstup od cizích dotazů se ZVĚTŠIL** — to byla hlavní obava, protože
+krátký obecný text je přesně ten typ, který „plave nahoru ke všemu":
+
+| položka | odstup dnes | s klíčem |
+|---|---|---|
+| HIDRASEC PRO DĚTI | +0,056 | **+0,251** |
+| GASTROFAIT | +0,128 | **+0,253** |
+| ZYRTEC | +0,086 | **+0,229** |
+
+Klíč tedy nejen zvedá správnou odpověď, ale **odděluje ji líp**.
+
+### Co zbylo a jak se to řeší
+
+**ZYRTEC pořád vrací „chronická idiopatická kopřivka"** i po opravě
+pokynu. Model to ví z medicíny a pravidlo v promptu ho nepřebije.
+
+Řeší se **deterministickou pojistkou, ne dalším pravidlem**: klíč, jehož
+slova nejsou v původním textu, se zahodí. Model to nemůže obejít. Je to
+týž princip jako u kontroly `doslovne` proti zdroji.
+
+**Dva řádky se stejným klíčem si konkurují.** V pokusu měly dva řádky
+AMEDA týž klíč „vysoký tuk v krvi" a cizí dotaz porazil správný. Na
+reálném provozu to nevadí (jsou to obě správné odpovědi téhož léku),
+ale ukazuje to, že klíč nemá být tak obecný, aby splynul se sousedem.
+
+**Poučení: pokus na deseti položkách stál 15 minut a našel tři vady
+v promptu.** Kdyby se šlo rovnou na korpus, propsaly by se do 250 položek
+a hledaly by se zpětně.
+
+---
+
 ## 2026-08-25 — NÁVRH: extrakci do cloudu, hledání nechat lokálně
 
 Myšlenka: extrakci může dělat cloud, embedding a hledání ať zůstane

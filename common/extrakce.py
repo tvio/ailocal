@@ -73,12 +73,23 @@ PROMPTY = {
     # aby se nepletly s nazvem pole, ktere je taky "indikace".
     "indikace": (
         "Z textu sekce indikace vytvoř JSON: {\"indikace\": [{...}]}. "
-        "Každý objekt má klíče: doslovne, laicky.\n"
+        "Každý objekt má klíče: doslovne, laicky, klic.\n"
         "- doslovne: JEDNA indikace opsaná ze zdroje DOSLOVA, včetně odborného "
         "termínu. Nezjednodušuj – slouží k ověření proti dokumentu.\n"
         "- laicky: TATÁŽ indikace řečená tak, jak by ji popsal laik, bez latiny "
         "(astma bronchiale → alergické astma, Quinckeho edém → náhlý otok kůže "
         "a sliznic). Když je termín srozumitelný i laikovi, zopakuj ho.\n"
+        "- klic: 1-4 slova pro VYHLEDÁVÁNÍ, název stavu v 1. PÁDĚ "
+        "(\"akutní průjem\", NE \"akutního průjmu\"). "
+        "DRŽ SE SLOV ZE ZADANÉHO TEXTU, nepřeváděj je na odbornější: "
+        "\"kožní vyrážka se svěděním\" -> \"svědivá kožní vyrážka\", "
+        "NE \"chronická idiopatická kopřivka\". "
+        "SKUPINU PACIENTŮ ZACHOVEJ, když je v textu "
+        "(\"...hubnutí u dětí\" -> \"nadváha u dětí\"). "
+        "Vynech slova, která nejsou názvem stavu: léčba, doplňková, "
+        "prevence, dlouhodobé, pokud nelze. "
+        "Když v textu ŽÁDNÝ stav není (je to jen výhrada nebo podmínka), "
+        "klíč vynech.\n"
         "\nKAŽDOU indikaci uveď zvlášť, NESLUČUJ je do jedné položky. "
         "Zdroj je často jedna dlouhá věta – projdi ji celou až do konce.\n"
         "\nINDIKACE JE NEMOC NEBO PŘÍZNAK, na který se lék používá. "
@@ -102,11 +113,15 @@ PROMPTY = {
     ),
     "kontraindikace": (
         "Z textu sekce kontraindikace vytvoř JSON: {\"kontraindikace\": [{...}]}. "
-        "Každý objekt má klíče: doslovne, laicky.\n"
+        "Každý objekt má klíče: doslovne, laicky, klic.\n"
         "- doslovne: JEDEN případ, kdy se lék nesmí užívat, opsaný ze zdroje "
         "DOSLOVA. Nezjednodušuj – slouží k ověření proti dokumentu.\n"
         "- laicky: TENTÝŽ případ řečený laicky (hypersenzitivita → alergie). "
         "Když je srozumitelný i laikovi, zopakuj ho.\n"
+        "- klic: 1-4 slova pro VYHLEDÁVÁNÍ, název stavu v 1. PÁDĚ. "
+        "DRŽ SE SLOV ZE ZADANÉHO TEXTU, nepřeváděj je na odbornější. "
+        "Vynech slova, která nejsou názvem stavu (u, při, v průběhu). "
+        "Když v textu žádný stav není, klíč vynech.\n"
         "\nPOZOR na věkové hranice a smysl vztahu – 'děti do 2 let' znamená "
         "MLADŠÍ než 2 roky, ne starší. Opiš to přesně.\n"
         "\nKAŽDÝ případ uveď zvlášť, NESLUČUJ je do jedné položky.\n"
@@ -289,6 +304,56 @@ def _ocisti_odpoved(s: str) -> str:
 _PRAH_PODOBNOSTI_KLICE = 0.7
 
 
+# --- Klic pro hledani ---------------------------------------------------
+# Klic je 1-4 slova v 1. pade, ktera pojmenovavaji stav. Slouzi VYHRADNE
+# k hledani - uzivateli se dal zobrazuje puvodni text.
+#
+# POJISTKA: model ma sklon prekladat "nahoru". U ZYRTECu udelal
+# z "kožní vyrážka se svěděním" klic "chronická idiopatická kopřivka",
+# coz je pro laika HORSI (0,562 -> 0,352). Pravidlo v promptu to
+# nepreblo, protoze model to vi z mediciny.
+#
+# Proto se klic overuje DETERMINISTICKY: aspon polovina jeho vyznamovych
+# slov musi byt v puvodnim textu. Model to nemuze obejit. Je to tyz
+# princip jako kontrola 'doslovne' proti zdroji.
+
+_KLIC_MIN_PODIL = 0.5
+
+# Kratka a sluzebna slova se do pomeru nepocitaji - "u", "a", "na" jsou
+# skoro vsude a shodu na nich by bylo lacine ziskat.
+_KLIC_VATA = {
+    "a", "i", "u", "v", "na", "se", "si", "s", "k", "o", "do", "od", "po",
+    "pri", "pro", "za", "nebo", "je", "jsou", "ktery", "ktera", "ktere",
+    "lecba", "leceni", "leceni", "prevence",
+}
+
+
+def _slova(text: str) -> set[str]:
+    """Vyznamova slova bez diakritiky, kratka a sluzebna vynechana."""
+    import re
+    import unicodedata
+
+    t = "".join(c for c in unicodedata.normalize("NFD", str(text or ""))
+                if unicodedata.category(c) != "Mn").lower()
+    return {w for w in re.findall(r"[a-z]+", t)
+            if len(w) > 2 and w not in _KLIC_VATA}
+
+
+def klic_ma_oporu(klic: str | None, zdroj: str | None) -> bool:
+    """Ma klic oporu v puvodnim textu? Bez opory se zahazuje."""
+    if not klic or not zdroj:
+        return False
+    sk = _slova(klic)
+    if not sk:
+        return False
+    # Porovnava se po ZACATCICH slov, aby prosly jine pady:
+    # "prujem" (klic) proti "prujmu" (zdroj) ma spolecny zaklad "pruj".
+    sz = _slova(zdroj)
+    shoda = sum(1 for w in sk
+                if any(w[:4] == z[:4] for z in sz) if len(w) >= 4)         + sum(1 for w in sk if len(w) < 4 and w in sz)
+    return shoda / len(sk) >= _KLIC_MIN_PODIL
+
+
 def _oprav_klice(polozka: dict, ocekavane: set[str]) -> dict:
     """Opraví překlepy v názvech klíčů.
 
@@ -429,6 +494,18 @@ def _jeden_pokus(
                 text, kod = normalizuj_skupinu(p.get("skupina"))
                 p["skupina"] = text
                 p["skupina_kod"] = kod
+
+    # Klic bez opory v puvodnim textu se ZAHAZUJE - viz klic_ma_oporu().
+    if nazev_sekce in ("indikace", "kontraindikace"):
+        for p in polozky:
+            if not isinstance(p, dict):
+                continue
+            k = (p.get("klic") or "").strip()
+            zdroj = p.get("laicky") or p.get("doslovne")
+            if k and not klic_ma_oporu(k, zdroj):
+                logger.info("klic %r nema oporu v %r - zahozen", k, str(zdroj)[:60])
+                k = ""
+            p["klic"] = k or None
 
     # Sjednoceni na rizene slovniky. Vsechno nize je DETERMINISTICKE -
     # zadny dalsi model, jen ciselniky. Pousti se pri kazde extrakci, takze

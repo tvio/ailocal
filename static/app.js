@@ -2,7 +2,7 @@
 
 // Stav obrazovky. `dotaz === null` znamena uvodni vypis leciv, jinak vysledky
 // hledani - obojI se kresli TOUZ funkci, protoze API vraci stejny tvar.
-const PRAH_VYCHOZI = 0.55;   // namerena hodnota, viz evaluate.py --prahy
+const PRAH_VYCHOZI = 0.60;   // namerena hodnota, viz evaluate.py --prahy
 const stav = { dotaz: null, sekce: "", prah: PRAH_VYCHOZI,
                strana: 1, razeni: "nazev", smer: "asc" };
 

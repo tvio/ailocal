@@ -393,14 +393,22 @@ def main() -> int:
                         INSERT INTO leciva_search
                             (kod_sukl, extrakt_id, sekce, frekvence, frekvence_rank,
                              organovy_system, sekce_atributy, kontext_text,
-                             obsah_text, strana_pdf)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+                             obsah_text, klic, strana_pdf)
+                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
                     """, (kod, extrakt_id, sekce,
                           p.get("frekvence") if je_nu and isinstance(p, dict) else None,
                           p.get("frekvence_rank") if je_nu and isinstance(p, dict) else None,
                           p.get("organovy_system") if je_nu and isinstance(p, dict) else None,
                           json.dumps(atr, ensure_ascii=False) if atr else None,
-                          kontext(api), obsah, strana))
+                          kontext(api), obsah,
+                          # Klic pro hledani. U davkovani neni z extrakce,
+                          # ale pouzitelny uz mame: skupina pacientu. Cisla
+                          # a davky jsou ve fulltextu jen sum - clovek hleda
+                          # "deti", ne "250 mg".
+                          (p.get("klic") if isinstance(p, dict) else None)
+                          or (p.get("pacient") if sekce == "davkovani"
+                              and isinstance(p, dict) else None),
+                          strana))
                     poc["radky_sekci"] += 1
                     if strana:
                         poc["se_stranou"] += 1

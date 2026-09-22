@@ -223,8 +223,8 @@ def main() -> int:
     # chybou "unrecognized arguments". Zbytek se dosbira z parse_known_args.
     p.add_argument("dotaz", nargs="*", help="text dotazu (uvozovky nejsou nutne)")
     p.add_argument("--leciv", type=int, default=10, help="kolik leciv vratit")
-    p.add_argument("--prah", type=float, default=0.55,
-                   help="minimalni podobnost (vychozi 0.55 - namerena hodnota, viz evaluate.py --prahy; 0 = vypnout)")
+    p.add_argument("--prah", type=float, default=0.60,
+                   help="minimalni podobnost (vychozi 0.60 - namerena hodnota, viz evaluate.py --prahy; 0 = vypnout)")
     p.add_argument("--vaha-semantika", type=float, default=None,
                    help="0..1, kolik vahy ma semantika proti fulltextu")
     p.add_argument("--zpusob", choices=["rrf", "cosine"], default="rrf",

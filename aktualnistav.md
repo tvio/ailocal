@@ -1,4 +1,4 @@
-# STAV K 25.8.2026 — HOTOVO, PŘIPRAVENO K PŘEDVEDENÍ
+# STAV K 4.9.2026 — HOTOVO, PŘIPRAVENO K PŘEDVEDENÍ
 
 **CLI, API i GUI jsou hotové a odzkoušené. Nic neběží na pozadí.**
 
@@ -63,7 +63,7 @@ pod prahem. Bere se maximum přes varianty, takže horší nemůže uškodit.
 Invarianty filtru           212/212   100%
 Auto-recall @5               47/47    100%
 Auto-recall @10              56/56    100%
-Negativní dotazy (práh 0,55)  7/8      88%
+Negativní dotazy (práh 0,60)  7/8      88%
 Parafráze (ručně)            10/10    100%
 ```
 
@@ -80,6 +80,26 @@ Výpis 26 léčiv A–Z se stránkováním a řazením, hledání s výpisem toh
 co vrátil router, vynucení sekce, rozbalovací metadata, odkaz do PDF
 na nalezenou stranu, ATC záchranná síť, **posuvník prahu podobnosti**,
 předehřátí modelu při startu.
+
+---
+
+## ZMĚNY 4.9. — klíč pro hledání a český lematizátor
+
+1. **Klíč pro hledání** (`klic`) u indikací a kontraindikací — 1–4 slova
+   v 1. pádě. **Uživatel dál vidí původní text**, klíč je rejstříkové
+   heslo. HIDRASEC PRO DĚTI na dotaz „průjem" z 0,515 na **0,807**.
+   219 klíčů, ověřeno napřed na 10 položkách (`test_klice.py`).
+2. **Dva vektory na řádek** (text i klíč), bere se lepší — kdyby jen
+   klíč, tři z deseti položek by se zhoršily.
+3. **Deterministická pojistka** `klic_ma_oporu()` — klíč bez opory
+   v původním textu se zahodí. Model překládal „nahoru".
+4. **Český lematizátor ve fulltextu** (hunspell-cs, 261 tis. slov)
+   přes `Dockerfile.postgres`. Postgres češtinu mezi svými 29 stemmery
+   nemá. **Dotazů bez fulltextové shody z 5 na 1 ze 17.**
+5. **Práh 0,55 → 0,60**, přeměřeno.
+
+**Pozor při spouštění:** Postgres se teď **staví z vlastního image**.
+První `docker compose up -d` bude chvíli buildovat.
 
 ---
 
@@ -110,6 +130,18 @@ ne běžný průjem — laik by ho dostat neměl.
 ---
 
 ## DALŠÍ KROKY
+
+### 0. DVĚ VĚCI NAHOŘE V `todo.md` — objeveny 4.9.
+
+- **Klíč zvedá i nesouvisející věci.** „Mám rýmu" → přes slovník
+  „zánět sliznice nosu" → **AMOKSIKLAV „zánět kosti" 0,692**. Potřetí
+  týž vzor: obecné slovo v hodnotě číselníku přitáhne celou svou třídu.
+- **Rozšíření dotazu nejde do fulltextu.** `rýma` → OLYNTH fts 0,0,
+  ale `zánět sliznice nosu` → **12,0**, přestože je to hodnota ze
+  slovníku pro tutéž rýmu. Číselník byl postavený přesně pro tohle
+  a fulltext to nikdy nedostane.
+
+Řešit v tomhle pořadí — druhé bez prvního nafoukne šum i do fulltextu.
 
 ### 1. Ruční projití dat — jediné, co brání „čistému" demu
 

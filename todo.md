@@ -1,11 +1,134 @@
-# TODO 
-1. 
+# TODO ME
 1. Upravit hledání dle zjednoduseni
-1. V jakem stavu je kompletni spousteni extrakce a naloadovani databaze. Udelat jeden file
+1. Sestaveni flow aplikace dle skritpy.md
 1. Udelat logovani komple konverze
 2. Udelat logovani komplet od A..Z
 2. Vylepsit vyhledavani, kdyz najde nejaky vysoky rank - tak pridat vsehcno z dane ATC skupiny a lecive latky. 
 4. Proc lek na kasel vraci ACIFEIN
+
+## TODO: DUPLICITNI RADKY V INDEXU  << TOP
+
+Zmereno 22.9. primo v zive DB.
+
+    sekce             radku  zbytecnych
+    indikace            166    19  (11,4 %)
+    nezadouci_ucinky    895    16  ( 1,8 %)
+
+Nejhorsi je ACC: **27 radku indikaci, ale jen 9 ruznych textu** - kazdy
+TRIKRAT. ACC je tim pro kazdy dotaz na dychaci cesty v indexu 3x.
+Dale OMEPRAZOL FARMAX (indikace), ADVANTAN, ACIFEIN, AMOKSIKLAV,
+ULTRACOD, TALVOSILEN FORTE (nezadouci ucinky).
+
+`naplni_db.py --znovu` to NEOPRAVI - duplicita je uz ve zdrojovem JSON,
+ne v plneni databaze.
+
+- [ ] zjistit, jak duplicity v JSON vznikly (opakovany bezh extrakce?)
+- [ ] deduplikovat v `ocisti_json.py` (deterministicke, bez modelu)
+- [ ] pridat do `evaluate.py` TEST 0 kontrolu na duplicitni radky -
+      dnes to zadny test nechyti
+
+## TODO: POJISTKA U KLICE JE POMEROVA, PUSTI VYMYSLENE SLOVO
+
+Zmereno 22.9. ACC ma klic **"hnil dychacich cest se spatnym vykaslanim"**.
+Zdroj mluvi o HLENU, "hnil" je zkomolenina. Pojistka ji PUSTILA:
+
+    cest        -> ['cest']          ok
+    dychacich   -> ['dychacich']     ok
+    spatnym     -> ['spatne']        ok
+    vykaslanim  -> ['vykaslava']     ok
+    hnil        -> BEZ OPORY         <-- 4/5 = 0,80 >= 0,50 -> proslo
+
+`klic_ma_oporu()` pocita POMER, takze jedno vymyslene slovo se sveze na
+ctyrech spravnych. Je to tyz vzor jako znamy nedodelek "akutni prujem ->
+nahly zaskrt" (laicky tvar se neoveruje).
+
+Odpoved na otazku "neni pojistka moc prisna?": NENI - zahodila 0 z 55.
+Je naopak v tomhle miste moc VOLNA.
+
+- [ ] zvazit pravidlo "ZADNE vyznamove slovo bez opory" misto pomeru
+- [ ] ZMERIT, kolik klicu by takove pravidlo zahodilo, nez se nasadi
+      (pomer 0,5 tam nekdo dal z nejakeho duvodu)
+
+## TODO: KLIC - DELKA SE NEVYNUCUJE A GENEROVANI JE LOTERIE
+
+Zmereno 22.9. Podrobne v `poznatky.md`.
+
+Pojistka `klic_ma_oporu()` NENI viník chybejicich klicu - zahodila
+0 z 55. Klic se dela z `laicky` (uz zjednoduseny text), takze je to
+ZKRACENI, ne dalsi preklad. Skutecne priciny jsou dve jine:
+
+### a) delka klice se nekontroluje
+
+Pojistka overuje jen oporu ve zdroji, pravidlo "1-4 slova" z promptu
+nevynucuje NIKDO:
+
+    24,4 % klicu (40 ze 164) je delsich nez 4 slova
+     8 slov  TALVOSILEN  "středně silná až silná bolest s různou příčinou"
+     7 slov  OMEPRAZOL   "pálení žáhy a kyselé řinčení do krku"
+
+Jde to proti duvodu, proc klic existuje (dlouha veta redi vyznam).
+
+- [ ] pridat do `klic_ma_oporu()` (nebo vedle nej) tvrdy limit na pocet
+      slov - je to deterministicke, model to nemuze obejit
+- [ ] rozhodnout, co s klicem pres limit: zahodit, nebo orezat?
+      ZMERIT obe varianty, nevybirat od stolu
+- [ ] zahodit klic, ktery NENI kratsi nez zdroj (dnes 5 klicu) - takovy
+      klic neusetri nic
+
+### b) generovani klice je nedeterministicke
+
+Z 55 dlouhych polozek bez klice model 67,3 % vratil jako null, ale pri
+novem behu by 32,7 % klic DOSTALO. Tytez polozky, tentyz prompt, jiny
+vysledek. Tyz vzor jako u routeru.
+
+- [ ] POZOR: doplnit tech 55 chybejicich klicu by SKODILO. Je to skoro
+      samá kontraindikace "alergie na účinnou látku", a `alergie` uz je
+      klicem 6x - presne vzor z TODO 1. Az PO vyreseni obecnych slov.
+
+## TODO 1: KLIC ZVEDA I NESOUVISEJICI VECI  << TOP
+
+Zmereno 4.9. Dotaz "mám rýmu" se pres `slovnik_dotazu.json` rozsiri
+o "zánět sliznice nosu" - a to pritahne VSECHNO se slovem zanet:
+
+    0,726  OLYNTH      přetížení nosu způsobené zánětem sliznice   spravne
+    0,692  AMOKSIKLAV  infekce kostí a kloubů, zejména ZÁNĚT KOSTI  SPATNE
+    0,675  OMEPRAZOL   zánět jícnu                                  spatne
+    0,657  ACC         zánět průdušek                               spatne
+
+Je to POTRETI tyz vzor - po "zánět kůže" (trefovalo AMOKSIKLAV)
+a po klici "bolest" (trefovalo vsechno bolestive).
+
+**Obecne slovo v hodnote ciselniku pritahne celou svou tridu.**
+
+- [ ] projit `slovnik_dotazu.json` a najit prilis obecne hodnoty
+      (zanet, bolest, infekce, porucha)
+- [ ] zvazit pravidlo: hodnota musi mit aspon DVE vyznamova slova,
+      z nichz jedno je konkretni (organ, cast tela)
+- [ ] zvazit totez u KLICU z extrakce - OLYNTH ma klic "zánět dutin",
+      AMOKSIKLAV ma zanet v devíti indikacich
+- [ ] pridat do `evaluate.py` test, ktery to chyti automaticky
+
+## TODO 2: ROZSIRENI DOTAZU NEJDE DO FULLTEXTU  << TOP
+
+Zmereno 4.9. `hledani.py` stavi `fts_dotaz` JEN z `dotaz`, varianty ze
+slovniku se pouziji **pouze pro vektory**:
+
+    dotaz 'rýma'                 -> OLYNTH fts =  0,0
+    dotaz 'zánět sliznice nosu'  -> OLYNTH fts = 12,0
+
+Pritom "zánět sliznice nosu" JE hodnota ze slovniku pro "rýmu" a JE
+v indikaci OLYNTHU doslova. Fulltext ji nikdy nedostane.
+
+Promarnena prilezitost: ciselnik byl postaveny tak, aby mapoval laicky
+vyraz na FORMULACI Z DOKUMENTU - a presne na to je fulltext nejlepsi,
+protoze skoruje binarne (0 nebo trefa).
+
+- [ ] poslat do `websearch_to_tsquery` VSECHNY varianty, ne jen `dotaz`
+      (spojit pres OR, stejne jako se dnes spojuji slova)
+- [ ] POZOR: souvisi s TODO 1 - kdyz se do fulltextu dostane obecna
+      hodnota jako "zánět", nafoukne to i tam. Resit v tomto poradi.
+- [ ] premerit prah a vahu fulltextu; dnesnich 20 % bylo nastaveno
+      v dobe, kdy fulltext skoro vzdycky mlcel
 
 ## RUCNE PROJIT – sekce oznacene kontrolou
 

@@ -1,0 +1,18 @@
+# Postgres s pgvector A s ceskym slovnikem pro fulltext.
+#
+# Proc vlastni image: Postgres ma stemmery pro 29 jazyku, cestina mezi
+# nimi NENI. Bez stemmingu se 'zahy' (2. pad v datech) nikdy nepotka
+# s dotazem 'zaha' - pro fulltext jsou to dve ruzna slova.
+#
+# Debian balicek hunspell-cs (261 tisic slov) si sam vytvori symlinky
+# v $SHAREDIR/tsearch_data/, takze staci nainstalovat.
+FROM pgvector/pgvector:pg17
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends hunspell-cs \
+ && rm -rf /var/lib/apt/lists/*
+
+# Cesky seznam stop slov. Postgres ho pro cestinu nema (dodava 15 jazyku,
+# cestina mezi nimi neni). Obsahuje tvary s diakritikou I BEZ ni, protoze
+# text se indexuje v obou podobach.
+COPY tsearch/czech.stop /usr/share/postgresql/17/tsearch_data/czech.stop

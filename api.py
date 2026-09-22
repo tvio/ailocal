@@ -273,7 +273,7 @@ def hledat(
         description=("VYNUTIT sekci a přebít router. Jen jedna. "
                      f"Jedna z: {', '.join(VSECHNY_SEKCE)}")),
     strana: int = Query(1, ge=1),
-    prah: float = Query(0.55, ge=0.0, le=1.0),
+    prah: float = Query(0.60, ge=0.0, le=1.0),
     leciv: int = Query(50, ge=1, le=200, description="kolik léčiv celkem hledat"),
     pasazi: int = Query(3, ge=1, le=10, description="pasáží na léčivo"),
 ) -> Odpoved:

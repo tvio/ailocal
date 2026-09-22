@@ -7,15 +7,60 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 CREATE EXTENSION IF NOT EXISTS unaccent;
 
--- Ceska FTS konfigurace. COPY = simple znamena BEZ stemmingu - cestina
--- nema v Postgresu slovnik, takze se hleda na tvary slov. unaccent resi
--- diakritiku, aby "kuze" naslo "kuze" i "kůže".
+-- Ceska FTS konfigurace: hunspell (lematizace) -> unaccent -> czech_simple.
+--
+-- Postgres ma stemmery pro 29 jazyku a cestina mezi nimi NENI - drivejsi
+-- czech_unaccent byla jen kopie 'simple' + unaccent, tedy nic ceskeho
+-- nedelala. V TSV bylo 'prujmu' (2. pad) a dotaz 'průjem' daval NULU.
+--
+-- Hunspell neni stemmer, ale LEMATIZATOR: ma slovnik 261 tisic slov
+-- a vraci skutecny tvar 1. padu ('žáhy' -> 'žáha'), ne oreznuty zaklad.
+-- Co nezna (nazvy ucinnych latek, zkratky, latina), nechá byt.
+--
+-- POZOR NA PORADI. Postgres zkousi slovniky POSTUPNE a bere prvni, ktery
+-- slovo pozna. Kdyby byl unaccent prvni, uspeje VZDY a hunspell by se
+-- nikdy nespustil - zmereno, vysledek je pak identicky s holym simple.
+--
+-- Hunspell potrebuje diakritiku ('žáhy' -> 'žáha'), takze musi byt prvni.
+-- Slova, ktera nezna (preklepy, zkratky, latina), spadnou na unaccent.
+DO $$ BEGIN
+  CREATE TEXT SEARCH DICTIONARY czech_hunspell (
+      TEMPLATE = ispell, DictFile = cs_cz, AffFile = cs_cz,
+      StopWords = czech);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
+-- Posledni instance MUSI taky zahazovat stop slova. Holy 'simple' je
+-- pousti dal, takze spojky, ktere hunspell odfiltroval, by se do indexu
+-- vratily pres nej - a jeste hur: hunspell u kratkych slov prestreluje
+-- ('nebo' -> 'ba', 'ben'). Viz tsearch/czech.stop.
+DO $$ BEGIN
+  CREATE TEXT SEARCH DICTIONARY czech_simple (
+      TEMPLATE = simple, StopWords = czech);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
+
 DO $$ BEGIN
   CREATE TEXT SEARCH CONFIGURATION czech_unaccent (COPY = simple);
 EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
+--
+-- MAPOVAT JE POTREBA VSECH DEVET SLOVNICH TYPU TOKENU, ne jen 'word'.
+-- 'a', 'nebo', 'od' parser klasifikuje jako ASCIIWORD (nemaji diakritiku),
+-- takze pri mapovani jen 'word' se na ne slovniky vubec nedostaly:
+-- ts_lexize je filtroval spravne, ale to_tsvector ne.
 ALTER TEXT SEARCH CONFIGURATION czech_unaccent
-    ALTER MAPPING FOR word, hword, hword_part WITH unaccent, simple;
+    ALTER MAPPING FOR asciiword, word, numword,
+                      asciihword, hword, numhword,
+                      hword_asciipart, hword_part, hword_numpart
+    WITH czech_hunspell, unaccent, czech_simple;
+
+-- unaccent() je STABLE, ne IMMUTABLE (zavisi na slovniku), takze ho
+-- Postgres nepusti do generovaneho sloupce. Obalka nize je zavedeny
+-- postup: explicitne se uvede slovnik, cimz se chovani ustali.
+CREATE OR REPLACE FUNCTION bez_diakritiky(text) RETURNS text
+    LANGUAGE sql IMMUTABLE STRICT PARALLEL SAFE AS
+$$ SELECT public.unaccent('public.unaccent', $1) $$;
 
 
 -- ===========================================================================
@@ -100,10 +145,26 @@ CREATE TABLE leciva_search (
     -- ---- TEXTY ----
     kontext_text     TEXT,      -- identita leku; NULL u sekce='atributy'
     obsah_text       TEXT NOT NULL,
+    -- KLIC PRO HLEDANI: 1-4 slova v 1. pade, nazev stavu.
+    -- Uzivateli se dal zobrazuje obsah_text - klic je rejstrikove heslo,
+    -- ne nahrada obsahu, takze dohledatelnost do SPC zustava.
+    --
+    -- Proc: dlouha veta redi vyznam. HIDRASEC PRO DETI ma indikaci na
+    -- 27 slov a na dotaz "průjem" ma 0,515; klic "akutní průjem" 0,781.
+    -- Ve fulltextu to platilo jeste vic - v TSV bylo 'prujmu' (2. pad),
+    -- takze dotaz "průjem" vracel NULU. To uz resi hunspell vyse, klic
+    -- je proti tomu nezavisly: dava tvar 1. padu i tam, kde by slovnik
+    -- lematizaci netrefil.
+    klic             TEXT,
     -- zobrazovany_text tu ZAMERNE NENI - sklada se az pri vypisu
 
     -- ---- HLEDACI SLOUPCE ----
-    embedding        vector(1024),  -- bge-m3; do vektoru jde POUZE obsah_text
+    embedding        vector(1024),  -- bge-m3 nad obsah_text
+    -- Druhy vektor nad klicem. Pri hledani se bere LEPSI z obou, takze
+    -- klic muze jen pomoci - u dotazu na detail z dlouhe vety vyhraje
+    -- obsah_text, u kratkeho dotazu klic. Zmereno: +0,125 prumerne,
+    -- zadna polozka se nezhorsila.
+    embedding_klic   vector(1024),
     -- POZOR: kontext_text (identita leku) tu ZAMERNE NENI.
     -- Do 24.8.2026 tu byl ve vaze A a rozbijelo to razeni: identita se
     -- opakuje na KAZDEM radku leciva, takze dotaz 'paracetamol' trefil
@@ -112,8 +173,28 @@ CREATE TABLE leciva_search (
     -- Po vyhozeni: 'paracetamol' trefi 2 radky, oba 'atributy'.
     -- Priznakove dotazy ('bolest hlavy') se nezmenily vubec.
     -- Identitu prirazuje FILTR, fulltext ji jen potvrzuje.
+    -- KLIC TEXT DOPLNUJE, NENAHRAZUJE HO. Do 4.9.2026 tu byl
+    -- COALESCE(klic, obsah_text), takze kde byl klic, puvodni text
+    -- z indexu ZMIZEL - a s nim legitimni DRUHOTNE pojmy:
+    --   AFRIN  text: '...u ucpaneho nosu pri senne RYME, nachlazeni'
+    --          klic: 'ucpany nos'
+    --          TSV : 'nos' 'ucpany'        <- slovo 'ryma' pryc
+    -- AERIUS klic nedostal (je kratky), nechal si cely text a byl tak
+    -- jediny se slovem 'ryma' v indexu - proto na dotaz 'mam rymu'
+    -- vyhral nad AFRINEM. Parafraze 10/10 -> 9/10.
+    -- Klic prida tvar 1. padu, text si nechá slovni zasobu; oboji
+    -- dohromady vratilo parafraze na 10/10.
+    -- Text se indexuje V OBOU PODOBACH - s diakritikou i bez ni.
+    -- Duvod: hunspell umi stemovat jen slovo s diakritikou ('žáhy' ->
+    -- 'žáha'), kdezto uzivatele bezne pisou bez ni. Tim, ze se do
+    -- tsvectoru dostane obojí, se trefi dotaz tak i tak:
+    --   index 'pálení žáhy' -> 'pálení' 'žáha' 'paleni' 'zahy'
+    --   dotaz 'žáha' i 'pálí mě žáha' i 'prujem' -> shoda
     search_fts       tsvector GENERATED ALWAYS AS (
-                         setweight(to_tsvector('czech_unaccent', coalesce(obsah_text,'')), 'A')
+                         setweight(to_tsvector('czech_unaccent',
+                             coalesce(klic,'') || ' ' || coalesce(obsah_text,'') || ' ' ||
+                             bez_diakritiky(coalesce(klic,'') || ' ' || coalesce(obsah_text,''))
+                         ), 'A')
                      ) STORED,
 
     -- ---- PROVENIENCE ----

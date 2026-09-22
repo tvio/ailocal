@@ -10,3 +10,6 @@ logs/
 daliborTech.old
 dalibor.py
 zadaniVitek.old
+
+# generovany vystup auditu (3,4 MB), skript si ho vyrobi znovu
+audit_hledani.json
