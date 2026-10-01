@@ -9,6 +9,43 @@ Pridat debug log do GUI pro hledani
 
 ---
 
+# TOP – OD 2. 10. 2026: PIPELINE, ÚKLID, KONTEJNER, SERVER
+
+Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
+
+### 1. Pipeline pro opakované spouštění
+- [ ] Jeden příkaz přes celý řetěz (konverze → sekce → extrakce cloud →
+      DB → věk → embeddingy → rejstřík → evaluate), JEDEN seznam kroků
+- [ ] `naplni_db.py`: přírůstek po SPC místo TRUNCATE, zaniklá SPC označit
+- [ ] Změněná SPC poznat (identita + otisk PDF) → jen ta do extrakce
+- [ ] Konfigurace z prostředí: Ollama, Docling Serve, Postgres, OpenAI, rozpočet
+- [ ] Zámek, log běhu, souhrn JSON, návratový kód pro cron
+
+### 2. Úklid projektu
+- [ ] Benchmarky z kořene do `benchmarky/<téma>/`
+- [ ] `.gitignore`: neignorovat celé `benchmarky/`, jen výstupy (skripty dnes nejsou v gitu)
+- [ ] `data/leciva/` (32 léčiv) a kód, který ho čte → korpus, nebo legacy
+- [ ] `pipeline.py` KROKY + `skripty.md` A→Z podle skutečnosti
+- [ ] Zastaralé dokumenty projít (`agents.md`, `codex_pripominky.md`, `aktualnistav.md`)
+
+### 3. Kontejner
+- [ ] Změřit velikost `data/spc`, `data/detaily_leciv`, DB
+- [ ] Dockerfile aplikace + docker-compose (Postgres image už je)
+- [ ] `data/` jako volume, přenos tar/rsync (ne git)
+- [ ] DB přenášet `pg_dump`/`pg_restore` (embeddingy ~2 h znovu nepočítat)
+- [ ] Tajnosti mimo image (env/secret), Ollama + Docling Serve z konfigurace
+
+### 4. Nasazení na server
+- [ ] Přenést image + data + dump, konfigurace, spuštění
+- [ ] Smoke test: `hledej.py`, `evaluate.py --korpus`, GUI
+- [ ] Měsíční cron + upozornění (viz CÍLOVÝ STAV níže)
+
+### 5. Když zbude čas
+- [ ] Slovník dotazů: editace v GUI + doplnit podle korpusu (bod 5 níže)
+- [ ] Evaluace: věk, ATC seznamy, test 0 pro korpus (bod 4b níže)
+
+---
+
 # TOP – ÚTERÝ 29. 9. 2026: EXTRAKCE DO JSON MODELEM (další etapa pipeline)
 
 Konverze i rozparsování sekcí celého korpusu jsou hotové (viz
