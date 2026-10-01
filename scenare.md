@@ -1,309 +1,186 @@
-# Scénáře pro předvádění
+# Scénáře pro předvádění – celý trh
 
-Co korpus umí, co v něm chybí a **co konkrétně zadávat**, aby se nemuselo
-pořád ukazovat jen „bolest" a „reflux".
+Korpus **5 880 SPC obchodovaných léčiv** (8 778 kódů SÚKL), stav 1. 10. 2026.
+Starší verze pro 32 léčiv je v gitu (commit `1aae11f` a starší).
 
-Všechny dotazy níž jsou **odzkoušené** — čísla v závorce je podobnost
-(cosine) nejlepšího výsledku. U slabých míst je to napsané.
+**Všechny dotazy jsou odzkoušené** stejnou cestou jako GUI (router →
+filtry → hledání, práh 0,60). V tabulkách jsou skutečné první výsledky.
+Router je nedeterministický, pořadí se může mírně lišit – když se dotaz
+„pokazí", stačí ho zopakovat.
 
-Předvádí se v GUI (`uv run uvicorn api:app --port 8000`, pak
-http://localhost:8000/) — popis obrazovky je v `gui.md`.
-
----
-
-## 1. Co korpus pokrývá
-
-**32 léčiv** (22 + 4 doplněná 24.8. + 6 na průjem 25.8.). Rozdělení podle terapeutické oblasti (ATC):
-
-| ATC | oblast | léčiva | typické indikace v datech |
-|---|---|---|---|
-| A02 | žaludeční kyselost, reflux | CONTROLOC, MAALOX, OMEPRAZOL, GASTROFAIT | pálení žáhy, reflux, vředy žaludku a dvanáctníku, říhání |
-| **A07** | **průjem** | IMODIUM, ENDITRIL, HIDRASEC, HIDRASEC PRO DĚTI, ERCEFURYL, CEDEPOS | akutní průjem, infekční průjem, *C. difficile* |
-| A03 | křeče trávicího ústrojí | ALGIFEN NEO | žlučníkové a ledvinové koliky, bolestivá menstruace, bolest zubů |
-| A06 | zácpa | BISACODYL KRKA | zácpa, příprava na vyšetření střeva |
-| A10 | cukrovka / obezita | ABLYMICO | hubnutí u dospělých a dětí |
-| A11 | vitaminy | ACIDUM ASCORBICUM | nedostatek vitaminu C |
-| C07 | tlak, srdce | ACECOR | vysoký tlak, poruchy rytmu, stav po infarktu |
-| C10 | cholesterol | AMEDO | zvýšený cholesterol, prevence příhod |
-| D07 | kortikoidy na kůži | ADVANTAN | ekzémy (7 druhů) |
-| H03 | štítná žláza | ALTHYXIN | zvětšení štítné žlázy, nedostatek hormonů |
-| J01 | antibiotika | ABAKTAL, AMOKSIKLAV | zánět dutin, ucha, průdušek, zápal plic, močové cesty |
-| M02 | lokální na svaly | ALGESAL | modřiny, revmatické bolesti |
-| N02 | bolest a horečka | ACIFEIN, ACYLCOFFIN, PARALEN | bolest hlavy, zubů, zad, nervů, horečka |
-| R01 | ucpaný nos | AFRIN, OLYNTH | ucpaný nos, senná rýma, záněty dutin |
-| R05 | kašel, hleny | ACC | zánět průdušek, astma, mukoviscidóza |
-| R06 | alergie | AERIUS, DITHIADEN | alergická rýma, kopřivka, otok, ekzém |
+★ = doporučeno do prezentace.
 
 ---
 
-## 2. Matice filtrů — kde jsou díry
+## 0. Před ukázkou
 
-Aby šlo předvádět filtrování a nevracel se jeden nebo žádný výsledek,
-je potřeba mít v každé oblasti víc kombinací **výdej × hrazení**.
+```
+docker compose up -d
+uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
+```
 
-Legenda: ✔ máme · ➕ doplňuje se · ✗ chybí · — v realitě neexistuje
+- **Po změně kódu vždy restart API** a v prohlížeči **Ctrl+F5**.
+- **První dotaz trvá ~12 s** (načítá se model routeru), další 2–3 s.
+  Před publikem jeden dotaz „na zahřátí" předem.
+- Ollama a Docling běží na DGX – musí být dostupné.
 
-| ATC | OTC nehrazený | Rx hrazený | Rx nehrazený |
+---
+
+## 1. Co je v datech (na otázky publika)
+
+| | |
+|---|---|
+| léčiva | **5 880 SPC** = všechna obchodovaná léčiva ČR (zářijové vydání SÚKL) |
+| hledatelných položek | **451 186** (indikace, kontraindikace, dávkování, nežádoucí účinky) |
+| zdroj | oficiální SPC ze SÚKL a EMA, odkaz do PDF na konkrétní stranu |
+| extrakce | cloudový model (gpt-6-luna, Batch API), **~8 $ za celý trh** |
+| hledání | lokálně: router gemma4:26b + embedding bge-m3 + český fulltext |
+| věk použití | odvozen z SPC bez modelu u **87 % léčiv** |
+
+---
+
+## 2. Tahák – všechny hledací vzory
+
+| vzor | jak napsat | příklad | co se stane |
 |---|---|---|---|
-| **A02** kyselost | ✔ MAALOX, OMEPRAZOL | ✔ CONTROLOC | ✔ **GASTROFAIT** |
-| **N02** bolest | ✔ PARALEN, ACIFEIN, ACYLCOFFIN | ✔ **ULTRACOD** | ✔ **TALVOSILEN FORTE** |
-| **R06** alergie | ✔ **ZYRTEC** | ✔ AERIUS, DITHIADEN | ✗ |
-| **A07** průjem | ✔ IMODIUM, ENDITRIL, HIDRASEC | ✔ **CEDEPOS** | ✔ HIDRASEC PRO DĚTI, ERCEFURYL |
-| J01 antibiotika | — (prakticky neexistuje) | ✔ ABAKTAL | ✔ AMOKSIKLAV |
-| A06 zácpa | ✔ BISACODYL | ✗ | ✗ |
-| R01 nos | ✔ AFRIN, OLYNTH | ✗ | ✗ |
-| R05 kašel | ✔ ACC | ✗ | ✗ |
-| M02 lokální | ✔ ALGESAL | ✗ | ✗ |
-| C07 tlak | — | ✔ ACECOR | ✗ |
-| H03 štítná | — | ✔ ALTHYXIN | ✗ |
-| C10 cholesterol | — | ✗ | ✔ AMEDO |
-| D07 kortikoidy | — | ✗ | ✔ ADVANTAN |
-| A10 cukrovka | — | ✗ | ✔ ABLYMICO |
-| A11 vitaminy | ✗ | ✗ | ✔ ACIDUM ASC. |
-
-**Doplněna 4 léčiva** (hotovo 24.8.), vybraná tak, aby zkompletovala tři
-nejvíc předváděné oblasti:
-
-| kód | léčivo | proč právě tohle |
-|---|---|---|
-| 0109797 | **ULTRACOD** 500MG/30MG | N02 Rx **hrazený** a obsahuje **paracetamol** |
-| 0086023 | **TALVOSILEN FORTE** 500MG/30MG | N02 Rx **nehrazený**, taky paracetamol |
-| 0232640 | **GASTROFAIT** 1G | jediný A02 Rx nehrazený v celém registru |
-| 0155683 | **ZYRTEC** 10MG | R06 volně prodejný, cetirizin — laik ho zná |
-
-**Nejsilnější ukázka filtrování** tím vznikne na paracetamolu — tatáž
-účinná látka ve všech třech kombinacích:
-
-| léčivo | výdej | hrazení |
-|---|---|---|
-| PARALEN | volně prodejný | nehrazený |
-| ULTRACOD | na předpis | **hrazený** |
-| TALVOSILEN FORTE | na předpis | nehrazený |
-
-U C07, H03, C10, D07 a A10 chybějící kombinace **nemá smysl doplňovat** —
-volně prodejné léky na tlak, štítnou žlázu nebo cukrovku neexistují.
+| **příznak laicky** | běžnou češtinou | `pálí mě žáha` | sémantika v indikacích |
+| **výdej** | volně prodejný / na předpis | `volně prodejný lék na bolest hlavy` | filtr OTC / Rx |
+| **hrazení** | hrazený / nehrazený | `hrazený lék na reflux` | filtr hrazení pojišťovnou |
+| **účinná látka** | lék s X | `volně prodejný lék s paracetamolem` | filtr látky |
+| **síla** | název + síla | `paralen 500mg` | přesná síla |
+| **kód SÚKL** | 7 číslic | `0218102` | přesný lék |
+| **sekce léku** | dávkování / nežádoucí účinky / kontraindikace / na co je + název | `dávkování vibrocil` | **celá sekce** v pořadí dokumentu |
+| **frekvence NÚ** | velmi časté / časté / vzácné… nežádoucí účinky + název | `vzácné nežádoucí účinky paralen` | jen daná frekvence |
+| **lék + příznak** | název + příznak | `paralen bolest hlavy` | indikace I nežádoucí účinky |
+| **NÚ napříč léky** | po kterém léku… | `po kterém léku můžou vypadávat vlasy` | hledá v nežádoucích účincích |
+| **věk – děti** | pro děti / dětský | `lék na kašel pro děti` | jen léky s dávkováním pro děti |
+| **věk – konkrétní** | dítě X let / X-letý / X měsíců | `horečka dítě šest let` | jen léky od ≤ X let |
+| **název začíná** | `lék začíná [na] XXX` (≥ 3 znaky) | `lék začíná oxy` | název začíná; řazeno abecedně |
+| **název obsahuje** | `lék obsahuje XXX` | `lék obsahuje pox` | část názvu |
+| **název končí** | `lék končí [na] XXX` | `lék končí na prazol` | konec slova v názvu |
+| **název přibližně** | `lék přibližně XXX` | `lék přibližně zirtek` | překlepy a fonetika; řazeno podle podobnosti |
+| **kombinace** | cokoli z výše + příznak | `lék začíná nuro na horečku` | vzory se sčítají |
 
 ---
 
 ## 3. Scénáře
 
-**Trojice na paracetamolu** je nejsilnější ukázka filtrování — na dotaz
-`lék s paracetamolem` se vrátí všechny čtyři a liší se jen výdejem
-a hrazením:
-
-| léčivo | výdej | hrazení |
-|---|---|---|
-| PARALEN, ACIFEIN | volně prodejný | nehrazený |
-| **ULTRACOD** | na předpis | **hrazený** |
-| **TALVOSILEN FORTE** | na předpis | nehrazený |
-
 ### A. Laik píše po svém (jádro ukázky)
 
-Ukazuje, že se hledá **význam, ne slova**.
-
-| dotaz | co vrátí | proč to je zajímavé |
+| dotaz | první výsledky | co ukazuje |
 |---|---|---|
-| `pálí mě žáha` | MAALOX (0,86) | v textu je „pyróza" |
-| `mám reflux` | MAALOX (0,86), OMEPRAZOL, CONTROLOC | slovo „reflux" v MAALOXu **není vůbec** |
-| `porad kaslu` | ACC (0,75) | bez diakritiky a v jiném pádě |
-| `mam ucpany nos` | AFRIN (0,68), OLYNTH (0,67) | bez diakritiky |
-| `mam zacpu` | BISACODYL (0,66) | |
-| `mam alergii` | DITHIADEN (0,70), AERIUS | |
-| `mám horečku` | PARALEN (0,84) | v textu „zvýšená tělesná teplota" |
-| `bolí mě v krku` | ACIFEIN (0,74) | |
-| `bolí mě zuby` | ACIFEIN (0,85) | |
+| ★ `pálí mě žáha` | ČAJ ZE ŠALVĚJE, OMEPRAZOLE OLIKLA, MAALOX („pálení žáhy (pyróza)") | laické slovo najde odborné „pyróza" |
+| ★ `mám reflux` | RENNIE, GAPULSID | slovo „reflux" v textu RENNIE není – „návrat žaludečního obsahu do úst" |
+| ★ `bolí mě v krku` | PARAPYREX COMBI, PARACETAMOL DR. MAX, TRACHISAN | jiné druhy léků na tentýž příznak |
+| `nemůžu dýchat nosem` | OLYNTH PLUS, SEPTANAZAL | zápor zůstává součástí příznaku |
+| `nemůžu spát` | čajová směs, SÉDATIF PC, ADORMA | mezi výsledky i homeopatikum (otevřené rozhodnutí) |
+| `pálí mě při močení` | UROLOGICKÁ ČAJOVÁ SMĚS, URCYSTON PLANTA | trefa, ale jen bylinné přípravky |
 
-### B. Filtry — tady se hodí matice výš
+### B. Filtry výdeje a hrazení
 
-| dotaz | co se předvádí |
-|---|---|
-| `volně prodejný lék na bolest hlavy` | filtr výdeje (ACIFEIN 1,00, PARALEN 0,78) |
-| `hrazený lék na bolest` | **ULTRACOD (0,80)** — Rx a hrazený |
-| `nehrazený lék na předpis proti bolesti` | **TALVOSILEN FORTE (0,74)** |
-| `volně prodejný lék na alergii` | **ZYRTEC (0,70)** |
-| `lék s paracetamolem` | PARALEN, ACIFEIN, **ULTRACOD**, **TALVOSILEN** — tatáž látka, tři kombinace filtrů |
-| `hrazené antibiotikum` | hrazení ≠ výdej — ABAKTAL ano, AMOKSIKLAV ne |
-| `hrazený lék na štítnou žlázu` | ALTHYXIN (0,60) |
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `hrazený lék na reflux` | GAPULSID, HELICID, OMEPRAZOLE OLIKLA | filtr z registru SÚKL, ne ze SPC |
+| ★ `volně prodejný lék na bolest hlavy` | ACYLPYRIN, VALETOL | OTC |
+| `lék na alergii hrazený pojišťovnou` | TAMALIS, FLUTIKASON TEVA (na 1. místě ale MUTAFLOR) | viz slabá místa |
 
-**Pointa k vypíchnutí:** hrazení a výdej jsou dvě nezávislé věci.
-V korpusu je 5 léčiv na předpis, která hrazená nejsou.
+### C. Látka, síla, kód
 
-### C. Čtení celé sekce (nové 24.8.)
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `volně prodejný lék s paracetamolem` | PARALEN (čípky, tablety) | látka + výdej |
+| `lék s ibuprofenem` | IBUPROFEN DR. MAX gel, BRUFEN, IBOVAL | různé formy jedné látky |
+| `paralen 500mg` | PARALEN 500 MG čípky, tablety, horký nápoj | přesná síla |
+| `0218102` | VIBROCIL kapky | kód SÚKL |
 
-Když dotaz jmenuje **konkrétní lék a konkrétní sekci**, systém pozná, že
-si ji chce člověk **přečíst**, ne v ní hledat. Vrátí ji **celou v pořadí
-dokumentu** — ne jednu „nejpodobnější" pasáž.
+### D. Čtení celé sekce konkrétního léku
 
-| dotaz | co vrátí |
-|---|---|
-| `dávkování zyrtec` | ZYRTEC, **6 položek**, obecné dávkování první |
-| `nežádoucí účinky amoksiklav` | AMOKSIKLAV, **44 položek** |
-| `kdy se nesmí brát paralen` | PARALEN, kontraindikace celé |
-| `kolik paralenu můžu dát dítěti` | PARALEN, dávkování celé |
+| dotaz | co se ukáže | co ukazuje |
+|---|---|---|
+| ★ `dávkování vibrocil` | **tabulka** dávkování kapek i spreje pro všechny věky, rozbaleno samo | čtení sekce, pořadí dokumentu |
+| ★ `nežádoucí účinky paralen` | souhrn po frekvencích, rozbalení **seskupené podle četnosti** | tlačítka „zúžit podle četnosti" |
+| `kontraindikace aspirin` | všechny kontraindikace ASPIRINU | |
+| `na co je zyrtec` | alergická rýma, kopřivka… | indikace jako celek |
 
-**Proč to tak je** — dobrá věta do prezentace: do vektoru jde jen název
-léku, který v textu sekce vůbec není. Podobnosti vyjdou 0,320 / 0,307 /
-0,303, což je šum. Řadit podle toho by znamenalo ukázat náhodnou pasáž.
-Výběr už udělal filtr, takže se vrací pořadí z dokumentu.
+### E. Frekvence nežádoucích účinků
 
-V GUI je u řádku *„celá sekce, 44 položek — rozbalte ▼"*.
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `velmi časté nežádoucí účinky ibalgin` | nevolnost (nauzea) | přesná frekvence z číselníku |
+| `vzácné nežádoucí účinky paralen` | vyrážka, alergický zánět kůže, neklid | „vzácné" = jen vzácné, ne „aspoň vzácné" |
+| `co dělá ibalgin se žaludkem` | zánět žaludku (gastritida) | lék + orgán, oba směry |
 
-### D. Frekvence nežádoucích účinků (nové 24.8.)
+### F. Lék + příznak a nežádoucí účinky napříč léky
 
-Frekvence je řízená hodnota ze šesti stupňů (velmi časté … není známo),
-takže se dá filtrovat.
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `paralen bolest hlavy` | PARALEN – bolest hlavy (indikace) | router hledá v indikacích i NÚ, rozhodnou data |
+| `po kterém léku můžou vypadávat vlasy` | METOJECT, AMARHYTON – vypadávání vlasů | NÚ napříč trhem (~10 s) |
 
-| dotaz | co vrátí |
-|---|---|
-| `velmi časté nežádoucí účinky` | 3 léčiva, samé velmi časté |
-| `vzácné nežádoucí účinky ablymico` | **jen vzácné** (1 položka) |
-| `časté a častější účinky ablymico` | 24 položek — časté **i** velmi časté |
-| `velmi časté nežádoucí účinky paralen` | **nic — a je to správně** |
+### G. Věk pacienta ★ (nové)
 
-**Dvě pointy k vypíchnutí:**
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `horečka dítě šest let` | PARACETAMOL DR. MAX, PANADOL NOVUM (od 6 let) | **BRUFEN od 12 let se neukáže** |
+| ★ `suchý kašel dítě pět let` | DITUZDIN, ROBITUSSIN JUNIOR, BRONCHOSTOP | věk slovem i číslem |
+| ★ `volně prodejný lék na horečku pro dítě 5 let` | IBUPROFEN DR. MAX sirup, NUROFEN PRO DĚTI | věk + OTC dohromady |
+| `kašel u tříletého dítěte` | ROBITUSSIN, ROBITUSSIN JUNIOR | „tříletého" → 3 roky |
+| `hrazený lék na reflux pro děti` | HELICID, OMEPRAZOLE OLIKLA | hrazení + děti |
 
-1. **„Vzácné" znamená vzácné.** Kdyby filtr fungoval jako „stupeň 4
-   a níž", vrátil by u ABLYMICA i 19 častých a 5 velmi častých — přesný
-   opak toho, co člověk chtěl. Rozšíření na častější se dělá jen
-   výslovným „a častější".
-2. **Nula u PARALENU je odpověď, ne selhání.** PARALEN velmi časté
-   účinky nemá (má jen vzácné, velmi vzácné a není známo). Aplikace to
-   napíše natvrdo: *„Filtr nepustil dál ani jeden záznam (… frekvence:
-   velmi časté; název obsahuje „Paralen") — taková kombinace v datech
-   není."* Když se sekce zúží filtrem, popisek se změní z „celá sekce"
-   na **„odpovídá filtru"**, aby netvrdil nepravdu.
+U výsledku je štítek **„věk: od X let"** – vidět, proč lék prošel. Věk se
+z SPC odvozuje bez modelu (`vek_pacienta.md`). Kontrolní příklad:
+VIBROCIL kapky od 1 roku, sprej od 6 let – rozdíl je v SPC.
 
-### E. Orgánový systém
+### H. Hledání podle názvu ★ (nové)
 
-Nežádoucí účinky mají přiřazenou třídu MedDRA, takže jde filtrovat i podle
-postiženého orgánu.
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `lék přibližně zirtek` | ZYRTEC | fonetika: i/y, k/c |
+| ★ `lék přibližně oftalmoframikoin` | OPHTHALMO-FRAMYKOIN | ph/th, y, spojovník |
+| `lék přibližně kalideko` | KALYDECO | |
+| `lék přibližně nurophen pro děti` | NUROFEN PRO DĚTI | přibližně + věk |
+| ★ `lék začíná oxy` | OXYBUPROCAINE, OXYCODON… abecedně | |
+| `lék končí na prazol` | ARIPIPRAZOL, OMEPRAZOL… abecedně | pozor: koncovka chytí i antipsychotika |
+| `lék obsahuje pox` | RAPOXOL | |
+| ★ `lék začíná nuro na horečku` | NUROFEN PRO DĚTI, NUROFEN 200 | vzor názvu + sémantika |
+| ★ `lék začíná ibal na bolest zubů` | IBALGIN 400 – bolest zubů | |
 
-| dotaz | co vrátí |
-|---|---|
-| `nežádoucí účinky na srdce` | „bušení srdce (palpitace)" a další ze třídy *Srdeční poruchy* |
+Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLIN),
+`chloramfenikol` (CHLORAMPHENICOL), `koldreks` (COLDREX), `klostilbegit`
+(CLOSTILBEGYT), `sugamadex` (SUGAMMADEX), `likvifilm` (EFFLUMIDEX LIQUIFILM).
 
-### F. Vynucení sekce v GUI
+### I. Když to nic nenajde (taky ukázka)
 
-Rozbalovátko **Omezit na sekci** přebije router. Omezení platí **jen na
-sekční výsledky** — filtry z dotazu (Rx/OTC, hrazení, účinná látka) i
-základní údaje o léčivu platí dál.
-
-Ověřeno: `paralen` + vynucená sekce *nežádoucí účinky* dá
-`filtr = sekce: nezadouci_ucinky; název obsahuje „Paralen"`.
-
-Hodí se, když router sekci uhodne jinak, než člověk chtěl.
-
-### F2. Práh podobnosti posuvníkem
-
-Dobře se na tom ukazuje, **proč práh vůbec je** a že je naměřený, ne
-odhadnutý. Dotaz `mám reflux`:
-
-| práh | vrátí |
-|---|---|
-| 0,30 | 10 léčiv — mezi nimi BISACODYL (zácpa) a ACIFEIN (bolest) |
-| **0,55** | **4 léčiva** — MAALOX, OMEPRAZOL, CONTROLOC + 1 |
-| 0,75 | 1 léčivo — jen MAALOX (0,86) |
-
-**Pointa:** systém raději neodpoví, než aby si vymyslel — a kde je ta
-hranice, je vidět na živo.
-
-Druhá pointa: u dotazu s přesným filtrem (`dávkování zyrtec`) se práh
-**neuplatní ani při 0,9** a aplikace to napíše — výběr už udělal filtr,
-podobnost tam nemá co měřit.
-
-### F3. Průjem — celá matice v jedné skupině (nové 25.8.)
-
-Skupina A07 je jediná, kde jsou všechny tři kombinace **a k tomu táž
-látka ve dvou výdejových režimech**.
-
-| dotaz | co vrátí |
-|---|---|
-| `něco na průjem` | ERCEFURYL 0,62, HIDRASEC 0,60, ENDITRIL 0,59, IMODIUM 0,59 |
-| `volně prodejný lék na průjem` | ENDITRIL, IMODIUM, HIDRASEC — samé OTC |
-| `lék na průjem pro děti` | včetně **HIDRASEC PRO DĚTI** |
-| `co může způsobit průjem` | 4 léky se shodou **1,00** — průjem jako nežádoucí účinek |
-| `hrazený lék na průjem` | **nic — a je to správně** |
-
-**Tři pointy:**
-
-1. **HIDRASEC:** tatáž látka (racekadotril) je ve 100 mg **volně
-   prodejná** a ve 30 mg pro děti **na předpis**. Výdej není vlastnost
-   látky, ale konkrétního přípravku — a filtr to rozliší, i když je
-   název skoro stejný.
-2. **`co může způsobit průjem` vs. `něco na průjem`** — táž věc jednou
-   jako nežádoucí účinek, podruhé jako indikace. Router to rozliší
-   z formulace.
-3. **Hrazený lék na průjem neexistuje.** Běžná antidiarrhoika jsou
-   samoléčba, takže je pojišťovna neplatí. Jediný hrazený v A07 je
-   CEDEPOS (vankomycin), ale ten má indikaci *„infekce Clostridioides
-   difficile"* — nemocniční infekci, ne běžný průjem. Systém ho proto
-   nevrátí a **je to správně**: laik hledající lék na průjem nemá
-   dostat vankomycin.
-
-### G. Skupiny pacientů
-
-ACC má každou indikaci zvlášť pro **dospělé, dospívající a děti od 2 let**.
-
-| dotaz | co se předvádí |
-|---|---|
-| `lék pro děti na kašel` | ACC (0,75) + skupina pacientů |
-
-### H. Router sám pozná, na kterou sekci se ptáte
-
-Bez jakéhokoli nastavování — sekci určí z formulace.
-
-| dotaz | sekce, kterou router zvolí |
-|---|---|
-| `co může způsobit paralen` | nežádoucí účinky |
-| `kdy se nesmí brát paralen` | kontraindikace |
-| `kolik paralenu můžu dát dítěti` | dávkování |
-| `co je paralen` | identita z API SÚKL |
-
-Poslední tři vracejí rovnou **celou sekci** (viz C).
-
-### I. Když se nenajde nic (taky ukázka)
-
-| dotaz | co se stane |
-|---|---|
-| `lék na schizofrenii` | nevrátí nic — v korpusu není |
-| `něco na reflux se silou 999mg` | nic + nabídka podle **ATC skupiny** |
-
-**Pointa:** systém raději neodpoví, než aby si vymyslel. Práh 0,55 je
-naměřený, ne odhadnutý.
+| dotaz | výsledek | co ukazuje |
+|---|---|---|
+| ★ `recept na svíčkovou` | nic | systém si nevymýšlí |
+| `kurz eura dnes` | nic | |
+| `lék začíná ox` | vzor nepoužit – „potřeba aspoň 3 písmena" | popis filtru řekne proč |
 
 ---
 
-## 4. Slabá místa — na tohle se raději neptat
+## 4. Slabá místa – na tohle se při prezentaci NEPTAT
 
-Zjištěno měřením, neskrývá se to:
+| dotaz | co se stane | proč |
+|---|---|---|
+| `něco na kocovinu` | léky na **covid** | práh 0,60 je z 32 léků, na trhu pouští falešné shody (todo: přeměřit) |
+| `lék na plešatost` | čaje na **plynatost** | dtto |
+| `rýma miminko`, `ucpaný nos miminko`, `nosní kapky pro kojence` | nemocniční antibiotika v injekcích | léky „od narození" jsou hlavně nemocniční; chybí upřednostnění OTC a formy podání |
+| `lék na kašel pro děti` | na 1. místě DALACIN (antibiotikum na bronchitidu) | lepší `suchý kašel dítě pět let` |
+| `mám zácpu`, `lék na alergii…` | na 1. místě MUTAFLOR | probiotikum s mnoha indikacemi |
+| `nežádoucí účinky paralenu na kůži` | celá sekce, orgán se neuplatní | router orgánový systém nepozná vždy |
+| `velmi časté nežádoucí účinky xarelto` | nic | XARELTO velmi časté NÚ nemá (správně, ale vypadá to jako chyba) |
+| `lék končí na prazol` bez vysvětlení | i antipsychotika | koncovka ≠ skupina léků |
+| hledání podle věku u neobvyklé formulace | věk se nepozná | parser zná dítě X let, X-letý, X měsíců, kojenec, batole, miminko |
+| neobchodovaný lék (např. ALLERGODIL FORTE) | nic | v korpusu jen obchodovaná léčiva |
 
-| dotaz | co je špatně |
-|---|---|
-| `mám vysoký tlak` | PARALEN skončí stejně vysoko jako ACECOR (0,59 vs 0,59) |
-| `lék na cukrovku` | nevrátí nic — ABLYMICO má v indikaci **hubnutí**, ne cukrovku |
-| `mám ekzém` | ADVANTAN jen 0,59, těsně nad prahem |
+---
 
-| `co dělá amoksiklav s kůží` | router třídu MedDRA vytáhne správně, ale výsledek propadne prahem |
-| `kašel` | druhý výsledek je ACIFEIN „bolest hlavy" (0,57) — viz níž |
+## 5. Kdyby se to pokazilo během ukázky
 
-První dva jsou vlastnost dat, ne chyba hledání: ABLYMICO opravdu má
-v SPC indikaci na obezitu.
-
-**Proč u `kašel` vyleze ACIFEIN:** krátké názvy příznaků si jsou
-navzájem podobné, protože pro model jsou to všechno „potíže, se kterými
-jde laik do lékárny". Změřeno mezi **nesouvisejícími** příznaky: průměr
-0,485 a 4 z 28 dvojic jsou nad prahem. „Bolest hlavy" je z nich
-nejcentrálnější (0,567 s kašlem, 0,565 s horečkou, 0,552 s ucpaným
-nosem). **Není to chyba dat ani routeru, je to vlastnost embedovacího
-modelu.** V ukázce je to obhajitelné — první výsledek je správný
-a s velkým náskokem (ACC 0,75 proti 0,57).
-
-Odříznout to relativním odstupem nejde, změřeno: `mám horečku` má
-odstup 0,230 a druhý výsledek je přitom **správný**, kdežto `kašel` má
-odstup 0,185 a druhý je šum.
-
-**A jedna nestabilita, o které je dobré vědět:** router občas ztratí
-název léčiva. `časté nežádoucí účinky amoksiklav` vytáhne jednou
-`nazev='Amoksiklav'`, podruhé `nazev=None` — a bez názvu se nespustí
-čtení sekce, takže místo 6 položek přijdou 2. Když se to při ukázce
-stane, stačí dotaz zopakovat. Je to rozepsané v `todo.md`.
+- **Divný výsledek** → zopakovat dotaz (router je nedeterministický).
+- **Špatná sekce** → v GUI vynutit sekci (rozbalovací seznam „sekce").
+- **Nic nenalezeno, ale mělo** → posuvník prahu dolů (dnes má smysl jen
+  u sémantického hledání; u filtrů a vzorů se neuplatní).
+- **GUI se chová postaru** → restart API + Ctrl+F5.
+- **Dlouho nic** → model se načítá (stavová hláška v GUI), počkat.

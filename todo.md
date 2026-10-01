@@ -41,7 +41,7 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
 - [ ] Měsíční cron + upozornění (viz CÍLOVÝ STAV níže)
 
 ### 4b. Před prezentací
-- [ ] **Výpis VŠECH hledacích vzorů s odzkoušenými příklady** – aby se
+- [x] (1. 10.) **Výpis VŠECH hledacích vzorů s odzkoušenými příklady** → `scenare.md` přepsán pro korpus – aby se
       při prezentaci nic nevymýšlelo na koleni. Staré (hrazený lék na
       reflux, volně prodejný lék s paracetamolem, nežádoucí účinky X,
       dávkování X, čtení sekce, frekvence NÚ, ATC záchranná síť…) i nové:
