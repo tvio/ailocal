@@ -54,6 +54,27 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       (věk, vzor názvu, čtení sekce) se neuplatňuje. Rozhodnout: skrýt
       do „pro pokročilé", přeměřit, nebo odstranit.
 
+### 4c. ROZEBRAT ZÍTRA (2. 10.) – slabá místa z `scenare.md`
+- [ ] **Práh podobnosti 0,60 přeměřit na celém trhu.** Je naměřený na 32
+      lécích; na 5 880 SPC pouští falešné shody: „něco na kocovinu" →
+      léky na covid, „lék na plešatost" → čaje na plynatost. Souvisí
+      s úkolem na posuvník prahu v GUI (bod 4b).
+- [ ] **Upřednostnit pro laika volně prodejné léky a vhodnou formu podání.**
+      Dotazy na kojence/miminka vracejí nemocniční antibiotika v injekcích
+      (MEDOCLAV, TAXIMED), „lék na kašel pro děti" má nahoře antibiotikum
+      DALACIN. Možnosti: OTC dopředu, injekce/infuze dozadu nebo skrýt,
+      pokud dotaz výslovně nechce nemocniční léčbu.
+
+### 4d. Víc uživatelů najednou
+- [ ] **Paralelismus na Ollamě pro víc uživatelů.** Router (gemma4:26b)
+      je 92 % času dotazu a Ollama dnes zpracuje dotazy postupně – druhý
+      uživatel čeká na prvního. `OLLAMA_NUM_PARALLEL` je ale GLOBÁLNÍ pro
+      celý server (násobí paměť na kontext i u qwen3.5:122b) – změřit
+      dopad, případně router na samostatné instanci. Viz bod o embeddinzích.
+- [ ] **Počítadlo v GUI:** kolik lidí má aplikaci otevřenou v prohlížeči
+      a kolik hledání právě běží (API: počet aktivních požadavků +
+      „živé" spojení / heartbeat z GUI).
+
 ### 5. Když zbude čas
 - [ ] Slovník dotazů: editace v GUI + doplnit podle korpusu (bod 5 níže)
 - [ ] Evaluace: věk, ATC seznamy, test 0 pro korpus (bod 4b níže)
