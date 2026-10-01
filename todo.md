@@ -40,6 +40,20 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
 - [ ] Smoke test: `hledej.py`, `evaluate.py --korpus`, GUI
 - [ ] Měsíční cron + upozornění (viz CÍLOVÝ STAV níže)
 
+### 4b. Před prezentací
+- [ ] **Výpis VŠECH hledacích vzorů s odzkoušenými příklady** – aby se
+      při prezentaci nic nevymýšlelo na koleni. Staré (hrazený lék na
+      reflux, volně prodejný lék s paracetamolem, nežádoucí účinky X,
+      dávkování X, čtení sekce, frekvence NÚ, ATC záchranná síť…) i nové:
+      věk („horečka dítě šest let", „rýma miminko"), „lék začíná / obsahuje /
+      končí / přibližně" (zirtek, oftalmoframikoin, kalideko), kombinace
+      vzor + sémantika („lék začíná na oxy na rýmu"). Každý příklad
+      OVĚŘIT na korpusu (pravidlo CLAUDE.md) a zapsat do `scenare.md`.
+- [ ] **Posuvníky „práh" a „barva" v GUI – zamyslet se, jestli dávají smysl.**
+      Práh 0,60 je naměřený na 32 lécích; na korpusu a u přesných filtrů
+      (věk, vzor názvu, čtení sekce) se neuplatňuje. Rozhodnout: skrýt
+      do „pro pokročilé", přeměřit, nebo odstranit.
+
 ### 5. Když zbude čas
 - [ ] Slovník dotazů: editace v GUI + doplnit podle korpusu (bod 5 níže)
 - [ ] Evaluace: věk, ATC seznamy, test 0 pro korpus (bod 4b níže)

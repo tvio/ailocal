@@ -59,6 +59,18 @@ Co chybí:
 - Smoke test: `hledej.py "mám reflux"`, `evaluate.py --korpus`, GUI.
 - Měsíční běh: cron + zámek + upozornění (viz `todo.md` CÍLOVÝ STAV).
 
+## 4b. Před prezentací
+
+- **Výpis všech hledacích vzorů s odzkoušenými příklady** do `scenare.md`,
+  ať se při prezentaci nic nevymýšlí na koleni. Staré (hrazený lék na
+  reflux, volně prodejný lék s paracetamolem, NÚ / dávkování konkrétního
+  léku, frekvence NÚ, ATC záchranná síť) i nové (věk, lék začíná /
+  obsahuje / končí / přibližně, kombinace vzoru se sémantikou). Každý
+  příklad ověřit na korpusu.
+- **Posuvníky práh a barva v GUI** – zamyslet se, jestli mají smysl.
+  Práh 0,60 je z 32 léků; u přesných filtrů (věk, vzor názvu, čtení
+  sekce) se neuplatňuje. Skrýt / přeměřit / odstranit.
+
 ## 5. Když zbude čas
 
 - **Slovník dotazů v GUI** (editace hesel) + doplnit podle korpusu.
