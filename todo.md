@@ -29,7 +29,7 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
 - [ ] Zastaralé dokumenty projít (`agents.md`, `codex_pripominky.md`, `aktualnistav.md`)
 
 ### 3. Kontejner
-- [ ] Změřit velikost `data/spc`, `data/detaily_leciv`, DB
+- [x] Velikost (1. 10.): `data/spc` 4,5 GB, `data/detaily_leciv` 41 MB, DB 5,7 GB → přenos ~10 GB
 - [ ] Dockerfile aplikace + docker-compose (Postgres image už je)
 - [ ] `data/` jako volume, přenos tar/rsync (ne git)
 - [ ] DB přenášet `pg_dump`/`pg_restore` (embeddingy ~2 h znovu nepočítat)

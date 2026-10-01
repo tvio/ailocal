@@ -1,4 +1,18 @@
+
+
 # Plán od 2. 10. 2026
+
+# 0. Posledni komunikace
+K té poslední větě, srozumitelněji: dvě věci z „Slabých míst" jsou zároveň úkoly na zítřek, nově v bodu 4c. Rozebrat zítra:
+
+Práh podobnosti 0,60 je změřený na 32 lécích. Na celém trhu pouští nesmysly: „něco na kocovinu" vrátí léky na covid. Je potřeba ho přeměřit.
+Pro laika upřednostnit volně prodejné léky a vhodnou formu podání. Na dotazy o miminkách teď vycházejí nemocniční antibiotika v injekcích, která si laik nekoupí.
+
+Nový bod 4d. Víc uživatelů najednou:
+
+Paralelismus na Ollamě. Dotazy teď jdou přes router jeden po druhém, takže druhý uživatel čeká na prvního. Pozor: nastavení paralelismu platí pro celou Ollamu a zabírá paměť i velkým modelům. Napřed změřit.
+Počítadlo v GUI: kolik lidí má aplikaci otevřenou a kolik hledání právě běží.
+Velikost dat (změřeno 1. 10.): `data/spc` **4,5 GB**, `data/detaily_leciv` 41 MB, `data/leciva` 16 MB; **databáze 5,7 GB** (vektory 451 tis. řádků). Pro přenos na server počítat ~10 GB.
 
 Stav: korpus 5 880 SPC je v DB (451 186 řádků s vektory), hledání funguje
 včetně věku a hledání podle názvu. Commit `688389b` (větev v1.5).
@@ -42,7 +56,7 @@ Co chybí:
 
 ## 3. Kontejner
 
-- **Nejdřív změřit velikost** `data/spc`, `data/detaily_leciv` a DB.
+- Velikost: `data/spc` 4,5 GB, DB 5,7 GB (změřeno 1. 10.) → přenos ~10 GB.
 - Dockerfile aplikace (API + skripty pipeline), `docker-compose` s
   Postgresem (vlastní image s hunspell-cs už existuje).
 - **Data mimo git:** `data/` jako volume / bind mount, přenos na server
