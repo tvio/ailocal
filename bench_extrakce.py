@@ -25,7 +25,7 @@ import time
 from dataclasses import dataclass, asdict
 from pathlib import Path
 
-from common.config import adresar_leciva, OPENAI_MODEL
+from common.config import adresar_leciva, OPENAI_MODEL, OPENAI_REASONING_EFFORT
 from common.ollama_client import chat_detail, get_ollama_url
 from common.extrakce import SYSTEM_PROMPT, PROMPTY
 
@@ -135,6 +135,7 @@ def zmer_openai(varianta: str, text: str, sekce: str) -> Vysledek:
             messages=[{"role": "system", "content": SYSTEM_PROMPT},
                       {"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
+            reasoning_effort=OPENAI_REASONING_EFFORT,
         )
     except Exception as e:
         return Vysledek(f"openai/{OPENAI_MODEL}", varianta, None, False,

@@ -28,7 +28,7 @@ Pouziti:
   uv run python pipeline.py --vse              # cely bezh, uz stazena data
   uv run python pipeline.py --vse --znovu      # i preextrahovani hotoveho
   uv run python pipeline.py --od extrakce      # jen od urciteho kroku dal
-  uv run python pipeline.py --vse --bez-kontroly
+  uv run python pipeline.py --vse --s-kontrolami   # kontroly jsou jinak VYPNUTE
   uv run python pipeline.py --stav             # jen ukazat, jak na tom jsme
 """
 
@@ -41,7 +41,7 @@ import subprocess
 from pathlib import Path
 from collections import Counter
 
-from common.config import LECIVA_DIR
+from common.config import LECIVA_DIR, KONTROLY_ZAPNUTE
 
 # Poradi je zavazne - kazdy krok cte to, co vyrobil predchozi.
 KROKY = [
@@ -53,6 +53,12 @@ KROKY = [
     ("kontrola2", "Krok 4b – kontrola JINYM modelem",           "zkontroluj_modelem.py"),
     ("slovnik",   "Krok 5 – ciselnik pojmu + kontrola prekladu", "postav_slovnik.py"),
 ]
+
+# Kroky, ktere jsou KONTROLY. Od 29.9.2026 docasne vypnute
+# (config.KONTROLY_ZAPNUTE = False, popis v extrakce_kontroly.md) -
+# korpus jde nejdriv pres cloud bez kontrol, kontroly se zapracuji potom.
+# Zapnout jednorazove: --s-kontrolami.
+KONTROLNI_KROKY = {"kontrola1", "kontrola2"}
 
 # Argumenty, ktere se jednotlivym skriptum predavaji.
 ARGY = {
@@ -122,8 +128,9 @@ def main() -> int:
                    help="spustit jen tyhle kroky")
     p.add_argument("--znovu", action="store_true",
                    help="prepsat i to, co uz je hotove")
-    p.add_argument("--bez-kontroly", action="store_true",
-                   help="vynechat kroky 4a/4b (jen kdyz vim proc)")
+    p.add_argument("--s-kontrolami", action="store_true",
+                   help="pustit i kontroly 4a/4b a kontrolu slovniku, "
+                        "prestoze jsou v configu vypnute")
     p.add_argument("--stav", action="store_true", help="jen ukazat stav a skoncit")
     a = p.parse_args()
 
@@ -140,8 +147,11 @@ def main() -> int:
         kroky = kroky[zac:]
     if a.jen:
         kroky = [k for k in kroky if k[0] in a.jen]
-    if a.bez_kontroly:
-        kroky = [k for k in kroky if not k[0].startswith("kontrola")]
+    kontroly = KONTROLY_ZAPNUTE or a.s_kontrolami
+    if not kontroly:
+        kroky = [k for k in kroky if k[0] not in KONTROLNI_KROKY]
+        print("KONTROLY VYPNUTE (config.KONTROLY_ZAPNUTE) - sekce zustanou "
+              "'neovereno', viz extrakce_kontroly.md")
 
     print("=" * 78)
     print("PIPELINE – " + " -> ".join(k for k, _, _ in kroky))
@@ -150,6 +160,8 @@ def main() -> int:
     celkem_cas = 0.0
     for klic, popis, skript in kroky:
         argy = list(ARGY[klic])
+        if klic == "slovnik" and not kontroly:
+            argy = [x for x in argy if x != "--zkontroluj"]
         if a.znovu and klic in UMI_ZNOVU:
             argy.append("--znovu")
 

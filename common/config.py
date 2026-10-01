@@ -52,7 +52,7 @@ OLLAMA_TIMEOUT = 2400
 # NEJLEPŠÍ i NEJRYCHLEJŠÍ z lokálních modelů (~29 tok/s proti 10,5 u 32B
 # a 4,5 u 72B). Měření a srovnání kvality viz poznatky.md 18.8.2026.
 # Počet parametrů tu neříká nic o rychlosti – u MoE se nesmí odhadovat.
-MODEL_HLAVNI = "qwen3.5:122b"        # extrakce, slovník, router, kontrola
+MODEL_HLAVNI = "qwen3.5:122b"        # extrakce a zjednodušení (lokálně)
 MODEL_EMBED = "bge-m3"               # embedding NEDĚLÁ generativní model!
                                      # /api/embed vyžaduje capability 'embedding'
                                      # (pooling_type v manifestu), jinak vrátí 501.
@@ -61,15 +61,21 @@ MODEL_EMBED = "bge-m3"               # embedding NEDĚLÁ generativní model!
 # Menší modely zůstávají pro srovnání v benchmarku, v pipeline se nepoužívají.
 MODEL_EXTRAKCE = MODEL_HLAVNI
 MODEL_LAIK = MODEL_HLAVNI
-MODEL_ROUTER = MODEL_HLAVNI
+# gemma4:26b je MoE (128 expertu, aktivnich 8). Jako router zmereno
+# 24.9.2026 (bench_router.py, poznatky.md): median 1,51 s proti 4,56 s
+# u qwen3.5:122b, 103 tok/s proti 30, spravne 24/26 proti 21/26,
+# evaluate.py shodne. Router je 92 % casu dotazu, takze tohle je primo
+# to, co uzivatel ceka.
+MODEL_ROUTER = "gemma4:26b"
 # Kontrola MUSI byt JINY model nez ten, ktery extrahoval - model si
-# neodsouhlasi vlastni chybu. Vetsi uz neni kam jit (122b je nejlepsi),
-# takze se voli jiny, ne vetsi. Overeno na vzorku: gemma4:31b je rychla
-# (9,7 s/sekci), vraci validni JSON a nasla skutecnou chybu, kterou
-# deterministicka kontrola najit nemuze ("akutni alergicke stavy" ve zdroji
-# proti "tezke alergicke reakce" v extrakci). Pritom neoznackuje vsechno -
+# neodsouhlasi vlastni chybu. gemma4:26b je jina rodina nez qwen i nez
+# cloudova luna, takze pravidlo plati dal. Nahradila gemma4:31b (dense),
+# ktera byla v kazde uloze 2,6-3x pomalejsi nez qwen (10 tok/s).
+# Samotna kontrola se na 26b NEMERILA - rozhodnuto 24.9.2026 podle
+# routeru a zjednoduseni. Puvodni overeni na 31b: nasla skutecnou chybu
+# ("akutni alergicke stavy" ve zdroji proti "tezke alergicke reakce"),
 # 1 nalez z 65 polozek.
-MODEL_KONTROLY = "gemma4:31b"
+MODEL_KONTROLY = "gemma4:26b"
 
 # Který model dělá kterou sekci. Dělit úlohy mezi modely se ukázalo jako
 # zbytečné – 122b vyhrává na struktuře i na češtině. Mechanismus tu zůstává,
@@ -81,13 +87,56 @@ MODEL_SEKCE = {
     "nezadouci_ucinky": MODEL_HLAVNI,
 }
 
-# --- OpenAI (jen na srovnání, ne v pipeline) ---
-# POZOR NA PENÍZE: na účtu je jen pár dolarů. Používat VÝHRADNĚ gpt-5-nano,
-# ten je pro tuhle úlohu ověřeně dost dobrý a stojí nejmíň. gpt-4o ani
-# gpt-4o-mini nepouštět – gpt-4o stojí násobně víc a účet by to vyčerpalo.
-OPENAI_MODEL = "gpt-5-nano"
+# --- OpenAI: JEDINÁ cloudová volba pro extrakci ---
+# POZOR NA PENÍZE: na účtu je jen pár dolarů. gpt-6-luna jako jediná ze
+# tří změřených skutečně překládá latinu do laické češtiny (qwen
+# i gpt-5-nano ji opisují), a přitom je levná: 0,10 / 0,50 $ za 1M.
+# Celý korpus 6 618 SPC (zjednodušení + klíče) přes Batch API ~2,7 $.
+# Viz poznatky.md 23.9.2026. gpt-4o, gpt-4o-mini ani řadu sol nepouštět.
+OPENAI_MODEL = "gpt-6-luna"
+# Reasoning se účtuje jako výstup a rozhoduje o ceně víc než volba modelu:
+# luna s výchozím reasoningem 0,0113 $, s "none" 0,0030 $ na týž vzorek,
+# kvalita skoro stejná. POVINNĚ "none" - luna na "minimal" vrací 400
+# (u gpt-5-nano je to naopak, tam je vypínač "minimal").
+OPENAI_REASONING_EFFORT = "none"
+
+# Cena gpt-6-luna v $ za 1M tokenu (overeno 23.9.2026) a sleva Batch API.
+OPENAI_CENA_VSTUP = 0.10
+OPENAI_CENA_VYSTUP = 0.50
+OPENAI_BATCH_SLEVA = 0.5
+# ROZPOCTOVA POJISTKA pro extrahuj_json_cloud.py: skutecna utrata (z usage)
+# + odhad rozjetych davek + odhad nove davky nesmi strop prekrocit - jinak
+# se dalsi davka NEODESLE. Na uctu 10 $ (29.9.2026, platform.openai.com),
+# odhad celeho korpusu 5,5 $, pesimisticky 6,4 $ (poznatky 29.9.). Strop
+# nechava rezervu na opakovani a nepresnost odhadu vystupu.
+CLOUD_STROP_USD = 10.5  # 30.9.: +preextrahovani davkovani bez orezu (~1,4 $), ucet dobit
+# LIMIT FRONTY Batch API: pro gpt-6-luna smi byt v rozjetych davkach
+# organizace nejvys 2 000 000 vstupnich tokenu (zmereno 29.9.2026 na ostrem
+# behu: "Enqueued token limit reached ... Limit: 2,000,000"). Nad limitem
+# davka selze pri validaci. Nechava se rezerva na nepresnost tiktokenu.
+OPENAI_BATCH_LIMIT_FRONTY = 1_800_000
+# Max. vstupnich tokenu v jedne davce - dve davky se vejdou do fronty
+# soucasne, takze zatimco jedna konci, druha uz bezi.
+OPENAI_BATCH_TOKENU_DAVKA = 850_000
+# Odhad pomeru vystup/vstup pro pojistku (namereno 29.9. na 3 SPC, luna).
+POMER_VYSTUP_VSTUP = {"indikace": 0.31, "davkovani": 0.39,
+                      "kontraindikace": 0.25, "nezadouci_ucinky": 0.96}
 
 EMBED_DIMENSION = 1024
+
+# --- Kontroly extrakce: DOČASNĚ VYPNUTÉ (29.9.2026) ---
+# Rozhodnuto kvůli času: nový korpus jde nejdřív přes cloud (luna, Batch
+# API) BEZ kontrol. Kontroly se zapracují až nad novým korpusem – popis
+# všech kontrol a proč jsou vypnuté: extrakce_kontroly.md.
+# Vypíná: klic_ma_oporu() v extrakci, kroky 4a/4b v pipeline.py
+# a kontrolu slovníku modelem (postav_slovnik.py --zkontroluj).
+# Data pak mají stav 'neovereno' – to je PRAVDA, ne chyba.
+KONTROLY_ZAPNUTE = False
+
+# --- Docling Serve na DGX Spark (CUDA) ---
+# Přes SSH tunel na localhost. 13× rychlejší než lokální Docling, výstup
+# totožný (poznatky.md 24.9.2026). Používá konvertuj_serve.py.
+DOCLING_SERVE_URL = "http://localhost:5001"
 
 # --- PostgreSQL ---
 PG_HOST = "localhost"

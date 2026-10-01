@@ -1,0 +1,4259 @@
+[
+ {
+  "model": "qwen3.5:122b",
+  "nacteni_s": 13.3,
+  "pamet_gb": 86.2,
+  "cas_median_s": 4.56,
+  "cas_p90_s": 5.64,
+  "tok_s": 30.1,
+  "vystup_median": 130,
+  "pripadu_ok": 21,
+  "pripadu": 26,
+  "kontrol_ok": 266,
+  "kontrol": 273,
+  "stabilnich": 17,
+  "chyby_json": 0,
+  "e2e_ok": 30,
+  "e2e": 30,
+  "e2e_selhani": [],
+  "pripady": [
+   {
+    "dotaz": "bolí mě hlava",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 4.48
+     },
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 4.46
+     },
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 3.02
+     }
+    ]
+   },
+   {
+    "dotaz": "po vepřovém mě bolí břicho",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 6.95
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 2.97
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 4.63
+     }
+    ]
+   },
+   {
+    "dotaz": "pálí mě žáha",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "pálí mě žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálí mě žáha\", \"ucinna_latka\": null}",
+      "cas": 5.61
+     },
+     {
+      "text": "žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"žáha\", \"ucinna_latka\": null}",
+      "cas": 4.39
+     },
+     {
+      "text": "pálí mě žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálí mě žáha\", \"ucinna_latka\": null}",
+      "cas": 4.51
+     }
+    ]
+   },
+   {
+    "dotaz": "mám ucpaný nos",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 5.54
+     },
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 4.44
+     },
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 4.61
+     }
+    ]
+   },
+   {
+    "dotaz": "můj syn má horečku, co mu můžu dát",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 5.53
+     },
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 4.39
+     },
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 2.95
+     }
+    ]
+   },
+   {
+    "dotaz": "po tom léku mě bolí břicho",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 4.18
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 3.03
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 3.06
+     }
+    ]
+   },
+   {
+    "dotaz": "Bolest zad nežádoucí účinek",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 5.58
+     },
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 4.48
+     },
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 4.69
+     }
+    ]
+   },
+   {
+    "dotaz": "paralen bolest břicha",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 6.11
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 3.74
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 3.18
+     }
+    ]
+   },
+   {
+    "dotaz": "nemůžu po prášcích spát",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 5.58
+     },
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 4.77
+     },
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 4.65
+     }
+    ]
+   },
+   {
+    "dotaz": "nechce se mi jíst",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 5.72
+     },
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 4.81
+     },
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 4.8
+     }
+    ]
+   },
+   {
+    "dotaz": "volně prodejný lék na rýmu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 5.59
+     },
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 4.45
+     },
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 4.48
+     }
+    ]
+   },
+   {
+    "dotaz": "hrazené antibiotikum",
+    "ok_behu": 2,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 4.13
+     },
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 4.52
+     },
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [
+       "atc_prefix='J'"
+      ],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": false
+      },
+      "otisk": "{\"atc_prefix\": \"J\", \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 4.54
+     }
+    ]
+   },
+   {
+    "dotaz": "nehrazený lék na průjem",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 5.8
+     },
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 4.46
+     },
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 2.97
+     }
+    ]
+   },
+   {
+    "dotaz": "hrazený lék na předpis na alergii",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 5.5
+     },
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 4.57
+     },
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 4.36
+     }
+    ]
+   },
+   {
+    "dotaz": "mám alergii na pyl, co si můžu koupit bez receptu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 5.6
+     },
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 4.43
+     },
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 4.44
+     }
+    ]
+   },
+   {
+    "dotaz": "lek na zacpu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 5.52
+     },
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 2.97
+     },
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 2.94
+     }
+    ]
+   },
+   {
+    "dotaz": "neco na kasel",
+    "ok_behu": 0,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 5.47
+     },
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 4.37
+     },
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 4.37
+     }
+    ]
+   },
+   {
+    "dotaz": "léčba roztroušené sklerózy",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 5.73
+     },
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 4.8
+     },
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 4.78
+     }
+    ]
+   },
+   {
+    "dotaz": "vzácné vedlejší účinky paralenu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "paralen",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"paralen\", \"ucinna_latka\": null}",
+      "cas": 4.81
+     },
+     {
+      "text": "paralen",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"paralen\", \"ucinna_latka\": null}",
+      "cas": 4.67
+     },
+     {
+      "text": "paralen",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"paralen\", \"ucinna_latka\": null}",
+      "cas": 3.14
+     }
+    ]
+   },
+   {
+    "dotaz": "velmi časté nežádoucí účinky ACC",
+    "ok_behu": 2,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"ACC\", \"ucinna_latka\": null}",
+      "cas": 5.76
+     },
+     {
+      "text": "ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"ACC\", \"ucinna_latka\": null}",
+      "cas": 3.11
+     },
+     {
+      "text": "ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"ACC\", \"ucinna_latka\": null}",
+      "cas": 4.61
+     }
+    ]
+   },
+   {
+    "dotaz": "časté a častější nežádoucí účinky",
+    "ok_behu": 2,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 5.56
+     },
+     {
+      "text": "nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 3.18
+     },
+     {
+      "text": "nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [
+       "frekvence='časté'"
+      ],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": false
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"časté\", \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 4.78
+     }
+    ]
+   },
+   {
+    "dotaz": "Paralen 500 mg",
+    "ok_behu": 2,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "Paralen 500 mg",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen 500 mg\", \"ucinna_latka\": null}",
+      "cas": 5.84
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": false,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 4.5
+     },
+     {
+      "text": "Paralen 500 mg",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen 500 mg\", \"ucinna_latka\": null}",
+      "cas": 2.99
+     }
+    ]
+   },
+   {
+    "dotaz": "co dělá Paralen se srdcem",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "srdce",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": true,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": \"Srdeční poruchy\", \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 4.34
+     },
+     {
+      "text": "srdce",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": true,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": \"Srdeční poruchy\", \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 4.74
+     },
+     {
+      "text": "srdce",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": true,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": \"Srdeční poruchy\", \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 4.72
+     }
+    ]
+   },
+   {
+    "dotaz": "kdy nesmím užívat Aerius",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"Aerius\", \"ucinna_latka\": null}",
+      "cas": 4.21
+     },
+     {
+      "text": "kdy nesmím užívat Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"kdy nesmím užívat Aerius\", \"ucinna_latka\": null}",
+      "cas": 4.81
+     },
+     {
+      "text": "Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"Aerius\", \"ucinna_latka\": null}",
+      "cas": 4.56
+     }
+    ]
+   },
+   {
+    "dotaz": "kolik tablet Paralenu můžu denně",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "Paralen",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 4.62
+     },
+     {
+      "text": "kolik tablet",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"kolik tablet\", \"ucinna_latka\": null}",
+      "cas": 3.02
+     },
+     {
+      "text": "den",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"den\", \"ucinna_latka\": null}",
+      "cas": 2.95
+     }
+    ]
+   },
+   {
+    "dotaz": "lék s paracetamolem bez receptu",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "lék",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"lék\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 5.59
+     },
+     {
+      "text": "lék s paracetamolem bez receptu",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"lék s paracetamolem bez receptu\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 4.49
+     },
+     {
+      "text": "lék s paracetamolem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"lék s paracetamolem\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 4.73
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "model": "gemma4:31b",
+  "nacteni_s": 16.9,
+  "pamet_gb": 23.2,
+  "cas_median_s": 11.79,
+  "cas_p90_s": 14.6,
+  "tok_s": 10.0,
+  "vystup_median": 113,
+  "pripadu_ok": 23,
+  "pripadu": 26,
+  "kontrol_ok": 261,
+  "kontrol": 273,
+  "stabilnich": 24,
+  "chyby_json": 0,
+  "e2e_ok": 30,
+  "e2e": 30,
+  "e2e_selhani": [],
+  "pripady": [
+   {
+    "dotaz": "bolí mě hlava",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 14.16
+     },
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 14.2
+     },
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 14.36
+     }
+    ]
+   },
+   {
+    "dotaz": "po vepřovém mě bolí břicho",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 11.75
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 14.55
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 14.15
+     }
+    ]
+   },
+   {
+    "dotaz": "pálí mě žáha",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "pálí mě žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálí mě žáha\", \"ucinna_latka\": null}",
+      "cas": 11.82
+     },
+     {
+      "text": "pálí mě žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálí mě žáha\", \"ucinna_latka\": null}",
+      "cas": 14.4
+     },
+     {
+      "text": "pálí mě žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálí mě žáha\", \"ucinna_latka\": null}",
+      "cas": 11.47
+     }
+    ]
+   },
+   {
+    "dotaz": "mám ucpaný nos",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 14.52
+     },
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 11.16
+     },
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 11.18
+     }
+    ]
+   },
+   {
+    "dotaz": "můj syn má horečku, co mu můžu dát",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 11.28
+     },
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 10.96
+     },
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 10.98
+     }
+    ]
+   },
+   {
+    "dotaz": "po tom léku mě bolí břicho",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 14.96
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 14.59
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 14.64
+     }
+    ]
+   },
+   {
+    "dotaz": "Bolest zad nežádoucí účinek",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 11.82
+     },
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 14.38
+     },
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 11.46
+     }
+    ]
+   },
+   {
+    "dotaz": "paralen bolest břicha",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 16.35
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 16.0
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 16.04
+     }
+    ]
+   },
+   {
+    "dotaz": "nemůžu po prášcích spát",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 12.01
+     },
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 14.6
+     },
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 11.71
+     }
+    ]
+   },
+   {
+    "dotaz": "nechce se mi jíst",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 11.83
+     },
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 11.45
+     },
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 11.49
+     }
+    ]
+   },
+   {
+    "dotaz": "volně prodejný lék na rýmu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 14.33
+     },
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 11.02
+     },
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 14.0
+     }
+    ]
+   },
+   {
+    "dotaz": "hrazené antibiotikum",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 11.36
+     },
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 13.94
+     },
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 13.9
+     }
+    ]
+   },
+   {
+    "dotaz": "nehrazený lék na průjem",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 11.32
+     },
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 10.96
+     },
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 11.02
+     }
+    ]
+   },
+   {
+    "dotaz": "hrazený lék na předpis na alergii",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 11.31
+     },
+     {
+      "text": "alergii",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergii\", \"ucinna_latka\": null}",
+      "cas": 10.96
+     },
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 10.97
+     }
+    ]
+   },
+   {
+    "dotaz": "mám alergii na pyl, co si můžu koupit bez receptu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 11.51
+     },
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 11.2
+     },
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 11.27
+     }
+    ]
+   },
+   {
+    "dotaz": "lek na zacpu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 11.38
+     },
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 11.04
+     },
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 11.06
+     }
+    ]
+   },
+   {
+    "dotaz": "neco na kasel",
+    "ok_behu": 0,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 11.29
+     },
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 10.92
+     },
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 10.95
+     }
+    ]
+   },
+   {
+    "dotaz": "léčba roztroušené sklerózy",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 14.91
+     },
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 11.64
+     },
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 11.67
+     }
+    ]
+   },
+   {
+    "dotaz": "vzácné vedlejší účinky paralenu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "vzácné vedlejší účinky paralenu",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"vzácné vedlejší účinky paralenu\", \"ucinna_latka\": null}",
+      "cas": 14.91
+     },
+     {
+      "text": "vzácné vedlejší účinky paralenu",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"vzácné vedlejší účinky paralenu\", \"ucinna_latka\": null}",
+      "cas": 11.65
+     },
+     {
+      "text": "vzácné vedlejší účinky paralenu",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"vzácné vedlejší účinky paralenu\", \"ucinna_latka\": null}",
+      "cas": 14.59
+     }
+    ]
+   },
+   {
+    "dotaz": "velmi časté nežádoucí účinky ACC",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "velmi časté nežádoucí účinky ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"velmi časté nežádoucí účinky ACC\", \"ucinna_latka\": null}",
+      "cas": 11.98
+     },
+     {
+      "text": "velmi časté nežádoucí účinky ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"velmi časté nežádoucí účinky ACC\", \"ucinna_latka\": null}",
+      "cas": 14.57
+     },
+     {
+      "text": "velmi časté nežádoucí účinky ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"velmi časté nežádoucí účinky ACC\", \"ucinna_latka\": null}",
+      "cas": 14.6
+     }
+    ]
+   },
+   {
+    "dotaz": "časté a častější nežádoucí účinky",
+    "ok_behu": 0,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [
+       "frekvence='časté'"
+      ],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": false
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"časté\", \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 14.78
+     },
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [
+       "frekvence='časté'"
+      ],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": false
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"časté\", \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 14.45
+     },
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [
+       "frekvence='časté'"
+      ],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": false
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"časté\", \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 14.49
+     }
+    ]
+   },
+   {
+    "dotaz": "Paralen 500 mg",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 14.81
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 11.51
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 11.56
+     }
+    ]
+   },
+   {
+    "dotaz": "co dělá Paralen se srdcem",
+    "ok_behu": 0,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "srdce",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": false,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": false,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 15.33
+     },
+     {
+      "text": "srdce",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": false,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": false,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 12.01
+     },
+     {
+      "text": "srdce",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": false,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": false,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 12.06
+     }
+    ]
+   },
+   {
+    "dotaz": "kdy nesmím užívat Aerius",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "kdy nesmím užívat Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"kdy nesmím užívat Aerius\", \"ucinna_latka\": null}",
+      "cas": 14.4
+     },
+     {
+      "text": "kdy nesmím užívat Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"kdy nesmím užívat Aerius\", \"ucinna_latka\": null}",
+      "cas": 14.05
+     },
+     {
+      "text": "kdy nesmím užívat Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"kdy nesmím užívat Aerius\", \"ucinna_latka\": null}",
+      "cas": 11.14
+     }
+    ]
+   },
+   {
+    "dotaz": "kolik tablet Paralenu můžu denně",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "kolik tablet denně",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"kolik tablet denně\", \"ucinna_latka\": null}",
+      "cas": 14.81
+     },
+     {
+      "text": "kolik tablet Paralenu můžu denně",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"kolik tablet Paralenu můžu denně\", \"ucinna_latka\": null}",
+      "cas": 11.91
+     },
+     {
+      "text": "kolik tablet denně",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"kolik tablet denně\", \"ucinna_latka\": null}",
+      "cas": 14.48
+     }
+    ]
+   },
+   {
+    "dotaz": "lék s paracetamolem bez receptu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "lék s paracetamolem bez receptu",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": null, \"text\": \"lék s paracetamolem bez receptu\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 11.26
+     },
+     {
+      "text": "lék s paracetamolem bez receptu",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": null, \"text\": \"lék s paracetamolem bez receptu\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 13.85
+     },
+     {
+      "text": "lék s paracetamolem bez receptu",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": null, \"text\": \"lék s paracetamolem bez receptu\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 10.94
+     }
+    ]
+   }
+  ]
+ },
+ {
+  "model": "gemma4:26b",
+  "nacteni_s": 6.3,
+  "pamet_gb": 2.6,
+  "cas_median_s": 1.51,
+  "cas_p90_s": 1.65,
+  "tok_s": 103.0,
+  "vystup_median": 142,
+  "pripadu_ok": 24,
+  "pripadu": 26,
+  "kontrol_ok": 266,
+  "kontrol": 273,
+  "stabilnich": 23,
+  "chyby_json": 0,
+  "e2e_ok": 30,
+  "e2e": 30,
+  "e2e_selhani": [],
+  "pripady": [
+   {
+    "dotaz": "bolí mě hlava",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 1.46
+     },
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 1.44
+     },
+     {
+      "text": "bolí mě hlava",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'hlav'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolí mě hlava\", \"ucinna_latka\": null}",
+      "cas": 1.47
+     }
+    ]
+   },
+   {
+    "dotaz": "po vepřovém mě bolí břicho",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 1.52
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 1.4
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 1.39
+     }
+    ]
+   },
+   {
+    "dotaz": "pálí mě žáha",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "pálení žáhy",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálení žáhy\", \"ucinna_latka\": null}",
+      "cas": 1.6
+     },
+     {
+      "text": "pálení žáhy",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálení žáhy\", \"ucinna_latka\": null}",
+      "cas": 1.52
+     },
+     {
+      "text": "pálí mě žáha",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'žáh'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"pálí mě žáha\", \"ucinna_latka\": null}",
+      "cas": 1.13
+     }
+    ]
+   },
+   {
+    "dotaz": "mám ucpaný nos",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 3.58
+     },
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 1.49
+     },
+     {
+      "text": "ucpaný nos",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nos'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"ucpaný nos\", \"ucinna_latka\": null}",
+      "cas": 1.51
+     }
+    ]
+   },
+   {
+    "dotaz": "můj syn má horečku, co mu můžu dát",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 1.25
+     },
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 1.12
+     },
+     {
+      "text": "horečka",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'horeč'": true,
+       "text<=3 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"horečka\", \"ucinna_latka\": null}",
+      "cas": 1.49
+     }
+    ]
+   },
+   {
+    "dotaz": "po tom léku mě bolí břicho",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 1.64
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 1.54
+     },
+     {
+      "text": "bolí břicho",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolí břicho\", \"ucinna_latka\": null}",
+      "cas": 1.52
+     }
+    ]
+   },
+   {
+    "dotaz": "Bolest zad nežádoucí účinek",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 1.64
+     },
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 1.55
+     },
+     {
+      "text": "Bolest zad",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "text~'bolest'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Bolest zad\", \"ucinna_latka\": null}",
+      "cas": 1.55
+     }
+    ]
+   },
+   {
+    "dotaz": "paralen bolest břicha",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 1.68
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 1.56
+     },
+     {
+      "text": "bolest břicha",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace+nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "text~'břich'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"bolest břicha\", \"ucinna_latka\": null}",
+      "cas": 1.6
+     }
+    ]
+   },
+   {
+    "dotaz": "nemůžu po prášcích spát",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 1.65
+     },
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 1.23
+     },
+     {
+      "text": "nemůžu spát",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "text~'nemůž'": true,
+       "text~'spát'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"nemůžu spát\", \"ucinna_latka\": null}",
+      "cas": 1.48
+     }
+    ]
+   },
+   {
+    "dotaz": "nechce se mi jíst",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 1.61
+     },
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 1.5
+     },
+     {
+      "text": "nechce se mi jíst",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'nechce'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"nechce se mi jíst\", \"ucinna_latka\": null}",
+      "cas": 1.5
+     }
+    ]
+   },
+   {
+    "dotaz": "volně prodejný lék na rýmu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 1.62
+     },
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 1.51
+     },
+     {
+      "text": "rýma",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text~'rým'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"rýma\", \"ucinna_latka\": null}",
+      "cas": 1.52
+     }
+    ]
+   },
+   {
+    "dotaz": "hrazené antibiotikum",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 3.56
+     },
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 1.53
+     },
+     {
+      "text": "antibiotikum",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"antibiotikum\", \"ucinna_latka\": null}",
+      "cas": 1.55
+     }
+    ]
+   },
+   {
+    "dotaz": "nehrazený lék na průjem",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 1.63
+     },
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 1.53
+     },
+     {
+      "text": "průjem",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=False": true,
+       "text~'průjem'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": false, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"průjem\", \"ucinna_latka\": null}",
+      "cas": 1.49
+     }
+    ]
+   },
+   {
+    "dotaz": "hrazený lék na předpis na alergii",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 1.54
+     },
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 1.5
+     },
+     {
+      "text": "alergie",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "hrazeno=True": true,
+       "na_predpis=True": true,
+       "text~'alergi'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": true, \"kod_sukl\": null, \"na_predpis\": true, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie\", \"ucinna_latka\": null}",
+      "cas": 1.54
+     }
+    ]
+   },
+   {
+    "dotaz": "mám alergii na pyl, co si můžu koupit bez receptu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 1.58
+     },
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 1.46
+     },
+     {
+      "text": "alergie na pyl",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "na_predpis=False": true,
+       "text<=4 slov": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"alergie na pyl\", \"ucinna_latka\": null}",
+      "cas": 1.47
+     }
+    ]
+   },
+   {
+    "dotaz": "lek na zacpu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 1.57
+     },
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 1.46
+     },
+     {
+      "text": "zácpa",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'zácp'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"zácpa\", \"ucinna_latka\": null}",
+      "cas": 1.43
+     }
+    ]
+   },
+   {
+    "dotaz": "neco na kasel",
+    "ok_behu": 0,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 3.49
+     },
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 1.47
+     },
+     {
+      "text": "kasel",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text~'kašel'": false,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"kasel\", \"ucinna_latka\": null}",
+      "cas": 1.47
+     }
+    ]
+   },
+   {
+    "dotaz": "léčba roztroušené sklerózy",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 1.6
+     },
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 1.5
+     },
+     {
+      "text": "roztroušená skleróza",
+      "sekce": [
+       "indikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=indikace": true,
+       "text!~'léčb'": true,
+       "text~'roztrouš'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"indikace\"], \"sila\": null, \"text\": \"roztroušená skleróza\", \"ucinna_latka\": null}",
+      "cas": 1.49
+     }
+    ]
+   },
+   {
+    "dotaz": "vzácné vedlejší účinky paralenu",
+    "ok_behu": 3,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "vedlejší účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"vedlejší účinky\", \"ucinna_latka\": null}",
+      "cas": 1.71
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.51
+     },
+     {
+      "text": "paralen",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=vzácné": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"vzácné\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"paralen\", \"ucinna_latka\": null}",
+      "cas": 1.54
+     }
+    ]
+   },
+   {
+    "dotaz": "velmi časté nežádoucí účinky ACC",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"ACC\", \"ucinna_latka\": null}",
+      "cas": 1.63
+     },
+     {
+      "text": "ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"ACC\", \"ucinna_latka\": null}",
+      "cas": 1.52
+     },
+     {
+      "text": "ACC",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence=velmi časté": true,
+       "nazev=acc": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": \"velmi časté\", \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"ACC\", \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"ACC\", \"ucinna_latka\": null}",
+      "cas": 1.55
+     }
+    ]
+   },
+   {
+    "dotaz": "časté a častější nežádoucí účinky",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 1.65
+     },
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 1.47
+     },
+     {
+      "text": "časté a častější nežádoucí účinky",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "frekvence_rank_max=2": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": 2, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"časté a častější nežádoucí účinky\", \"ucinna_latka\": null}",
+      "cas": 1.49
+     }
+    ]
+   },
+   {
+    "dotaz": "Paralen 500 mg",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.63
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.46
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=atributy": true,
+       "nazev=paralen": true,
+       "sila=500MG": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": \"500MG\", \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.51
+     }
+    ]
+   },
+   {
+    "dotaz": "co dělá Paralen se srdcem",
+    "ok_behu": 1,
+    "stabilni": false,
+    "behy": [
+     {
+      "text": "srdce",
+      "sekce": [
+       "nezadouci_ucinky"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": true,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": true,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": \"Srdeční poruchy\", \"sekce\": [\"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 1.7
+     },
+     {
+      "text": "srdce",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": false,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": false,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 1.55
+     },
+     {
+      "text": "srdce",
+      "sekce": [
+       "indikace",
+       "nezadouci_ucinky"
+      ],
+      "jistota": "nizka",
+      "navic": [],
+      "kontroly": {
+       "sekce=nezadouci_ucinky": false,
+       "nazev=paralen": true,
+       "organovy_system=Srdeční poruchy": false,
+       "text~'srd'": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"indikace\", \"nezadouci_ucinky\"], \"sila\": null, \"text\": \"srdce\", \"ucinna_latka\": null}",
+      "cas": 1.57
+     }
+    ]
+   },
+   {
+    "dotaz": "kdy nesmím užívat Aerius",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"Aerius\", \"ucinna_latka\": null}",
+      "cas": 1.61
+     },
+     {
+      "text": "Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"Aerius\", \"ucinna_latka\": null}",
+      "cas": 1.48
+     },
+     {
+      "text": "Aerius",
+      "sekce": [
+       "kontraindikace"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=kontraindikace": true,
+       "nazev=aerius": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Aerius\", \"organovy_system\": null, \"sekce\": [\"kontraindikace\"], \"sila\": null, \"text\": \"Aerius\", \"ucinna_latka\": null}",
+      "cas": 1.5
+     }
+    ]
+   },
+   {
+    "dotaz": "kolik tablet Paralenu můžu denně",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "Paralen",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.59
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.5
+     },
+     {
+      "text": "Paralen",
+      "sekce": [
+       "davkovani"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "sekce=davkovani": true,
+       "nazev=paralen": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": null, \"nazev\": \"Paralen\", \"organovy_system\": null, \"sekce\": [\"davkovani\"], \"sila\": null, \"text\": \"Paralen\", \"ucinna_latka\": null}",
+      "cas": 1.49
+     }
+    ]
+   },
+   {
+    "dotaz": "lék s paracetamolem bez receptu",
+    "ok_behu": 3,
+    "stabilni": true,
+    "behy": [
+     {
+      "text": "paracetamol",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": null, \"text\": \"paracetamol\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 1.61
+     },
+     {
+      "text": "paracetamol",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": null, \"text\": \"paracetamol\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 1.45
+     },
+     {
+      "text": "paracetamol",
+      "sekce": [
+       "atributy"
+      ],
+      "jistota": "vysoka",
+      "navic": [],
+      "kontroly": {
+       "ucinna_latka=paracetamol": true,
+       "na_predpis=False": true,
+       "nic navíc": true
+      },
+      "otisk": "{\"atc_prefix\": null, \"frekvence\": null, \"frekvence_rank_max\": null, \"hrazeno\": null, \"kod_sukl\": null, \"na_predpis\": false, \"nazev\": null, \"organovy_system\": null, \"sekce\": [\"atributy\"], \"sila\": null, \"text\": \"paracetamol\", \"ucinna_latka\": \"paracetamol\"}",
+      "cas": 1.44
+     }
+    ]
+   }
+  ]
+ }
+]

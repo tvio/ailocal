@@ -122,6 +122,9 @@ class Lecivo(BaseModel):
     hrazeno: bool | None = None
     ucinne_latky: list[str] = Field(default_factory=list)
     ma_pdf: bool = False
+    vek_od: float | None = Field(None, description="od kolika let lze lék použít "
+                                 "(odvozeno z SPC 4.1–4.3, common/vek.py); null = nejde určit")
+    pro_deti: bool | None = Field(None, description="SPC uvádí dávkování pro děti; null = nevím")
 
 
 class Nalez(BaseModel):
@@ -138,6 +141,9 @@ class Nalez(BaseModel):
     poradi_sem: int | None = None
     poradi_fts: int | None = None
     rrf: float | None = None
+    polozka: dict | None = Field(
+        None, description="strukturovana polozka z extrakce (u davkovani pacient, "
+                          "davka, frekvence, poznamka) - GUI z ni kresli tabulku")
 
 
 class Radek(BaseModel):
@@ -184,7 +190,24 @@ class Odpoved(BaseModel):
 # ---------------------------------------------------------------------------
 # Pomocne
 # ---------------------------------------------------------------------------
+_MAPA_SPC: dict[str, str] | None = None
+
+
 def _pdf(kod: str) -> Path | None:
+    """PDF k libovolnemu kodu. Korpus (data/spc) pres mapu kod -> SPC,
+    puvodnich 32 leciv (data/leciva) jako zaloha."""
+    global _MAPA_SPC
+    if _MAPA_SPC is None:
+        try:
+            from naplni_db import mapa_kod_spc
+            _MAPA_SPC = mapa_kod_spc()
+        except Exception:
+            _MAPA_SPC = {}
+    spc = _MAPA_SPC.get(kod)
+    if spc:
+        p = Path("data/spc") / spc / "spc.pdf"
+        if p.exists():
+            return p
     for p in LECIVA_DIR.glob(f"{kod}_*/spc.pdf"):
         return p
     return None
@@ -196,7 +219,8 @@ def _lecivo_z_radku(r: dict) -> Lecivo:
         lekova_forma=r.get("lekova_forma"), atc=r.get("atc"),
         na_predpis=r.get("na_predpis"), hrazeno=r.get("hrazeno"),
         ucinne_latky=list(r.get("ucinne_latky") or []),
-        ma_pdf=_pdf(r["kod_sukl"]) is not None)
+        ma_pdf=_pdf(r["kod_sukl"]) is not None,
+        vek_od=r.get("vek_od"), pro_deti=r.get("pro_deti"))
 
 
 def _nalez(v) -> Nalez:
@@ -208,7 +232,8 @@ def _nalez(v) -> Nalez:
         strana_pdf=v.strana_pdf if hasattr(v, "strana_pdf") else None,
         cosine=round(v.cosine, 4), fts=round(v.fts, 4),
         poradi_sem=v.poradi_sem, poradi_fts=v.poradi_fts,
-        rrf=round(v.rrf, 6))
+        rrf=round(v.rrf, 6),
+        polozka=atr if v.sekce == "davkovani" and atr else None)
 
 
 # ---------------------------------------------------------------------------
@@ -222,6 +247,8 @@ def leciva(
     smer: str = Query("asc", pattern="^(asc|desc)$"),
     na_predpis: bool | None = Query(None, description="true = Rx, false = OTC"),
     hrazeno: bool | None = None,
+    na_strance: int = Query(NA_STRANCE, ge=5, le=200,
+                            description="kolik léčiv na stránku (GUI: 10/25/50/100)"),
 ) -> Odpoved:
     """Uvodni prehled — bez hledani, takze radky nemaji skore ani poradi.
 
@@ -231,7 +258,9 @@ def leciva(
     if razeni not in RAZENI:
         raise HTTPException(400, f"radit lze jen podle: {', '.join(RAZENI)}")
 
-    kde, par = [], {}
+    # Jen zastupci SPC - ostatni baleni tehoz SPC nemaji vlastni extrakci
+    # (viz leciva.zastupce v init-db.sql). coalesce kvuli DB bez sloupce hodnot.
+    kde, par = ["coalesce(zastupce, true)"], {}
     if na_predpis is not None:
         kde.append("na_predpis = %(np)s")
         par["np"] = na_predpis
@@ -240,14 +269,14 @@ def leciva(
         par["hr"] = hrazeno
     podminka = f"WHERE {' AND '.join(kde)}" if kde else ""
 
-    par["limit"] = NA_STRANCE
-    par["offset"] = (strana - 1) * NA_STRANCE
+    par["limit"] = na_strance
+    par["offset"] = (strana - 1) * na_strance
     with psycopg.connect(PG_DSN) as c, c.cursor() as cur:
         celkem = cur.execute(
             f"SELECT count(*) FROM leciva l {podminka}", par).fetchone()[0]
         cur.execute(f"""
             SELECT l.kod_sukl, l.nazev, l.sila, l.lekova_forma, l.atc,
-                   l.na_predpis, l.hrazeno, l.ucinne_latky
+                   l.na_predpis, l.hrazeno, l.ucinne_latky, l.vek_od, l.pro_deti
             FROM leciva l {podminka}
             ORDER BY {RAZENI[razeni]} {smer.upper()} NULLS LAST, l.nazev
             LIMIT %(limit)s OFFSET %(offset)s
@@ -256,8 +285,8 @@ def leciva(
         radky = [dict(zip(sloupce, r)) for r in cur.fetchall()]
 
     return Odpoved(
-        celkem=celkem, strana=strana, na_strance=NA_STRANCE,
-        stran=max(1, -(-celkem // NA_STRANCE)),
+        celkem=celkem, strana=strana, na_strance=na_strance,
+        stran=max(1, -(-celkem // na_strance)),
         radky=[Radek(lecivo=_lecivo_z_radku(r)) for r in radky])
 
 
@@ -276,6 +305,8 @@ def hledat(
     prah: float = Query(0.60, ge=0.0, le=1.0),
     leciv: int = Query(50, ge=1, le=200, description="kolik léčiv celkem hledat"),
     pasazi: int = Query(3, ge=1, le=10, description="pasáží na léčivo"),
+    na_strance: int = Query(NA_STRANCE, ge=5, le=200,
+                            description="kolik léčiv na stránku (GUI: 10/25/50/100)"),
 ) -> Odpoved:
     """Dotaz projde routerem, ten vytáhne filtry a text pro vektor.
 
@@ -297,7 +328,8 @@ def hledat(
     o = hledej(syrove.get("dotaz_text") or q, filtr=filtr,
                limit=leciv * pasazi + 40, prah=prah, puvodni_dotaz=q)
     # U cteni sekce se pasaze NEOREZAVAJI - cilem je ukazat ji celou.
-    skupiny = seskup(o.vysledky, leciv=leciv,
+    from common.hledani import je_abecedne
+    skupiny = seskup(o.vysledky, leciv=leciv, abecedne=je_abecedne(filtr),
                      pasazi_na_lecivo=200 if o.cely_usek else pasazi)
 
     nejlepsi_skore = skupiny[0].skore if skupiny else 0.0
@@ -310,22 +342,23 @@ def hledat(
                 lekova_forma=v.lekova_forma, atc=v.atc,
                 na_predpis=v.na_predpis, hrazeno=v.hrazeno,
                 ucinne_latky=list(v.ucinne_latky or []),
-                ma_pdf=_pdf(sk.kod_sukl) is not None),
+                ma_pdf=_pdf(sk.kod_sukl) is not None,
+                vek_od=v.vek_od, pro_deti=v.pro_deti),
             skore=round(sk.skore, 6),
             odstup=round(100.0 * sk.skore / nejlepsi_skore, 1) if nejlepsi_skore else None,
             nejlepsi=_nalez(v),
             dalsi=[_nalez(x) for x in sk.dalsi]))
 
     celkem = len(vsechny)
-    od = (strana - 1) * NA_STRANCE
+    od = (strana - 1) * na_strance
     return Odpoved(
         dotaz=q,
         router=Router(sekce=filtr.sekce, dotaz_text=syrove.get("dotaz_text"),
                       jistota=jistota, filtr_popis=filtr.popis() or None,
                       sekce_vynucena=vynuceno),
-        celkem=celkem, strana=strana, na_strance=NA_STRANCE,
-        stran=max(1, -(-celkem // NA_STRANCE)),
-        radky=vsechny[od:od + NA_STRANCE],
+        celkem=celkem, strana=strana, na_strance=na_strance,
+        stran=max(1, -(-celkem // na_strance)),
+        radky=vsechny[od:od + na_strance],
         prah=o.prah, kandidatu_pred_prahem=o.kandidatu_pred_prahem,
         cely_usek=o.cely_usek, usek_orezan=o.usek_orezan,
         atc_navrh=_atc_navrh(syrove.get("dotaz_text") or q, filtr) if not vsechny else [])
@@ -357,12 +390,40 @@ def _atc_navrh(dotaz: str, filtr: Filtr) -> list[Lecivo]:
             par["atc"] = atc + "%"
             cur.execute(f"""
                 SELECT kod_sukl, nazev, sila, lekova_forma, atc,
-                       na_predpis, hrazeno, ucinne_latky
-                FROM leciva WHERE {' AND '.join(kde)} ORDER BY nazev
+                       na_predpis, hrazeno, ucinne_latky, vek_od, pro_deti
+                FROM leciva WHERE coalesce(zastupce, true) AND {' AND '.join(kde)} ORDER BY nazev
             """, par)
             sl = [d.name for d in cur.description]
             ven += [_lecivo_z_radku(dict(zip(sl, r))) for r in cur.fetchall()]
     return ven
+
+
+class PolozkaSekce(BaseModel):
+    obsah_text: str
+    skupina: str | None = None
+    frekvence: str | None = None
+    organovy_system: str | None = None
+    strana_pdf: int | None = None
+
+
+@app.get("/api/lecivo/{kod_sukl}/sekce/{sekce}", response_model=list[PolozkaSekce],
+         tags=["léčiva"], summary="Všechny položky jedné sekce léku v pořadí dokumentu")
+def sekce_leciva(kod_sukl: str, sekce: str) -> list[PolozkaSekce]:
+    """Pro rozbaleni v GUI: „ostatni indikace leku" pod dalsimi shodami.
+
+    GUI si to nacita LINE az pri rozbaleni radku - aby se odpoved hledani
+    nezvetsovala o sekce vsech leku, ktere clovek nikdy nerozbali.
+    """
+    if sekce not in NAZEV_SEKCE:
+        raise HTTPException(400, f"neznámá sekce: {sekce}")
+    with psycopg.connect(PG_DSN) as c, c.cursor() as cur:
+        cur.execute("""SELECT obsah_text, sekce_atributy, frekvence, organovy_system,
+                              strana_pdf
+                       FROM leciva_search WHERE kod_sukl = %s AND sekce = %s
+                       ORDER BY id""", (kod_sukl, sekce))
+        return [PolozkaSekce(obsah_text=t, skupina=(a or {}).get("skupina"),
+                             frekvence=f, organovy_system=o, strana_pdf=s)
+                for t, a, f, o, s in cur.fetchall()]
 
 
 @app.get("/api/pdf/{kod_sukl}", tags=["léčiva"],

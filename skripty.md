@@ -20,16 +20,41 @@ níže v sekci 2.
 | `stahni_data.py` | Stáhne `api.json` + `spc.pdf` pro zvolená léčiva do `data/leciva/<kód>_<NÁZEV>/`. Čtyři režimy výběru: `--pilot` (3 léčiva na ověření), `--kody KOD...` (konkrétní SÚKL kódy), `--whitelist` (podle `ATC_WHITELIST` v souboru), `--vzorek-formatu` (1 lék z 20 ATC skupin, na průzkum formátů SPC). |
 | `postav_pool.py` | Stáhne detail VŠECH léčiv v registru SÚKL do cache `data/pool_leciv.json` (desítky minut). Používá se jako podklad pro `--whitelist` výběr — bez cache by se ATC musel zjišťovat po jednom. Pouští se jen když cache chybí nebo je stará. |
 
+### A2) Celý korpus obchodovaných léčiv (od 25. 9. 2026) — ZATÍM MIMO `pipeline.py`
+
+**Pozor, dvě úložiště:** původních 32 léčiv je v `data/leciva/<kód>_<NÁZEV>/`,
+celý korpus v `data/spc/<identita>/` (jedno SPC pro víc kódů SÚKL, mapa
+kód → SPC v `data/spc/_stav.sqlite`). Kroky 2+ zatím čtou jen
+`data/leciva/`. Sjednotit – viz `todo.md`.
+
+| skript | co dělá |
+|---|---|
+| `konvertuj_serve.py` | **Nahrazuje kroky „stažení" + „Krok 1" pro celý korpus.** Inventář (API SÚKL → identita SPC, deduplikace), stažení (SÚKL, EU z EMA s rozestupem), ořez Přílohy II, převod přes **Docling Serve** (DGX Spark), SPC ve Wordu přes MS Word (DOCX = obsah, PDF = stránky), kontroly kvality proti PDF. Navazuje po pádu, dávky, hlídač zatuhnutí. `--stav` = souhrn. |
+| `common/seznam_leciv.py` | **Krok 0:** aktuální měsíční vydání SÚKL (`/aktualni-davky`), seznam kódů (`dlpo`), hrazené (`scau`), detail každého kódu, číselník látek – jen VEŘEJNÉ API. Filtr `PLATNE_STAVY` (R B C F I K M Y) + `jeDodavka`. Voláno z `konvertuj_serve.py`. |
+| `common/kontrola_konverze.py` | Kontroly převodu (voláno z `konvertuj_serve.py` po každém dokumentu): pokrytí textu 4.8, frekvence proti značkám PDF (jinak geometrie tabulky), falešné nadpisy. Sekce hledá **stejně jako extrakce** (`common/sekce.py`). |
+| `common/report_konverze.py` | Report podezřelých `data/spc/_report/podezrele.html` – na konci KAŽDÉHO běhu `konvertuj_serve.py`. |
+| `extrahuj_sekce.py --korpus` | **Krok 2 pro celý korpus:** sekce 4.1/4.2/4.3/4.8 z `data/spc/<identita>/` (jen SPC používaná kódy z inventáře); do `sekce/_prehled.json` přidá `_konverze` = verdikt kontroly převodu. Bez modelu, ~10 min. |
+| `extrahuj_json_cloud.py --beh` | **Krok 3 pro celý korpus (od 29. 9.):** extrakce sekcí do JSON přes **OpenAI Batch API** (gpt-6-luna, reasoning none, temperature 0, seed). Prompt a zpracování odpovědi sdílí s `extrahuj_json.py` (`common/extrakce.py`). Stav po požadavku (SPC × sekce) v `data/spc/_extrakce/stav.sqlite`, log `…/_extrakce/log/`, `report.md` se všemi chybami podle ID; navazuje po pádu; `--znovu-chybne`, `--znovu-seznam`; rozpočtový strop `config.CLOUD_STROP_USD`. **Pro budoucí job:** nová závislost OpenAI (klíč, rozpočet), dávka dobíhá až 24 h, výstup `data/spc/<slozka>/json/`. Kontroly jsou zatím vypnuté (`extrakce_kontroly.md`). |
+| `common/doc_na_pdf.ps1` | MS Word: `.doc` → DOCX + PDF se značkami (voláno z `konvertuj_serve.py`). |
+
 ### B) Extrakce — TOHLE dělá `pipeline.py --vse`
+
+Podrobný výklad kroků 3–12 (co přesně dostane model, dopočty, stavy,
+co ověřují kontroly): **`extrakce.md`**.
+
+**Od 29. 9. `pipeline.py` kroky 4a/4b a `postav_slovnik.py --zkontroluj`
+NEPOUŠTÍ** (`config.KONTROLY_ZAPNUTE = False`, jednorázově
+`--s-kontrolami`). Pro budoucí job: kontroly se vrátí jako kroky po
+extrakci, popis v `extrakce_kontroly.md`.
 
 | pořadí | krok | skript | co dělá |
 |---|---|---|---|
-| 1 | Krok 1 | `konvertuj_spc.py` | PDF → Markdown přes Docling, ořez EU dokumentů na Přílohu I. |
+| 1 | Krok 1 | `konvertuj_spc.py` | PDF → Markdown přes LOKÁLNÍ Docling, ořez EU dokumentů na Přílohu I. Pro celý korpus nahrazen `konvertuj_serve.py` (sekce A2). |
 | 2 | Krok 2 | `extrahuj_sekce.py` | Vytáhne sekce 4.1/4.2/4.3/4.8 z markdownu, vytvoří ořezanou verzi (`_orez.md`) pro model. |
 | 3 | Krok 3 | `extrahuj_json.py` | Sekce → strukturovaný JSON přes `qwen3.5:122b`, včetně laického zjednodušení. Zapisuje `_stav.json`. |
 | 3b | — | `ocisti_json.py` | Deterministické čištění (BEZ modelu): frekvence na číselník, `organovy_system` na kanonický MedDRA SOC, laický tvar podle `slovnik_pojmu.json`. |
 | 4a | Krok 4a | `zkontroluj_json.py` | Deterministická kontrola extrakce proti zdrojovému textu (doslovná shoda po normalizaci). |
-| 4b | Krok 4b | `zkontroluj_modelem.py` | Kontrola JINÝM modelem (`gemma4:31b`) tam, kde deterministická kontrola nestačí (indikace/kontraindikace, sporné případy). |
+| 4b | Krok 4b | `zkontroluj_modelem.py` | Kontrola JINÝM modelem (`gemma4:26b`, `config.MODEL_KONTROLY`) tam, kde deterministická kontrola nestačí (indikace/kontraindikace, sporné případy). |
 | 5 | Krok 5 | `postav_slovnik.py` | Posbírá číselník odborný→laický termín ze všech extrakcí, volitelně ověří modelem. Zapisuje `slovnik_pojmu.json` (generovaný, přepisuje se) a čte `slovnik_rucni.json` (ruční opravy, autoritativní). |
 
 ### C) Krok, který `pipeline.py` NEVOLÁ, ale je součástí extrakce
@@ -44,6 +69,7 @@ níže v sekci 2.
 |---|---|---|
 | — | `priprav_infrastrukturu.py` | Založí soubory, které `docker compose` potřebuje jako bind-mount, ale nejsou v gitu (`pgpass` aj.). Idempotentní, pustit po `git clone` před prvním `docker compose up`. |
 | Krok 11 | `naplni_db.py` | Naplní Postgres z `data/leciva/*` a `slovnik_pojmu.json`: tabulky `leciva`, `extrakty`, `extrakce_stav`, `leciva_search`, `slovnik_pojmu`. Bez `--znovu` jen doplňuje chybějící; **`--znovu` po jakékoli změně dat POVINNĚ**, jinak hrozí tiché zdvojení řádků. |
+| Krok 11 (korpus) | `naplni_db.py --korpus` | **Od 30. 9.** celý korpus z `data/spc/` + `data/detaily_leciv/`. Vždy od nuly (TRUNCATE). Všechny kódy do `leciva` (sloupce `spc`, `zastupce`), extrakty a hledací řádky jen jednou za SPC u **zástupce** (nejmenší kód). ~40 min. **Pro budoucí job:** přírůstkové plnění po SPC a SPC-centrické schéma jsou v todo. |
 | Krok 12 | `vytvor_embeddingy.py` | Spočítá embeddingy (`bge-m3`, 1024 dim) pro `leciva_search.obsah_text`. Bez `--znovu` jen chybějící řádky. |
 
 ### E) Hledání a aplikace
@@ -65,6 +91,8 @@ níže v sekci 2.
 | `bench_embed_cloud.py` | Srovnání lokálního `bge-m3` s cloudovými embeddingy OpenAI (jen embedding, ne chat — viz CLAUDE.md peníze). |
 | `bench_rerank_nano.py` | Test, jestli `gpt-5-nano` jako reranker zlepší pořadí kandidátů z `bge-m3`. |
 | `test_klice.py` | Pokus: pomohl by krátký "klíč" (2–4 slova) pro hledání u dlouhých indikací? Nic nezapisuje. |
+| `postav_rejstrik.py` | Rejstřík korpusu pro člověka: `data/leky/<NÁZEV SÍLA>_<kód>` = odkaz (junction) na `data/spc/<id>` (v Total Commanderu psát název/kód) + `data/spc/_rejstrik.csv`. `--najdi vibrocil` / `--najdi 0218102`. Pustit po každé změně inventáře (měsíčně). |
+| `benchmarky/extrakce_cloud/bench_extrakce_luna.py` | Cena CELÉ extrakce v cloudu (luna): `--tokeny` spočítá vstup korpusu tiktokenem, `--beh` pustí reálnou extrakci na malém/středním/velkém SPC a odhadne výstup i cenu (sync/Batch). Pustit před každým hromadným cloudovým během (změna promptu = jiná cena). |
 
 ### G) `common/` — sdílené moduly (importují se, nespouští se samostatně)
 
@@ -77,6 +105,8 @@ níže v sekci 2.
 | `extrakce.py` | Prompty a volání modelu pro převod sekce → JSON. |
 | `slovnik.py` | Číselník odborný→laický termín, aplikace na data. |
 | `meddra.py` | Normalizace názvů orgánových systémů (MedDRA SOC) na kanonický tvar. |
+| `vek.py` | Věk použití léku z SPC 4.1–4.3 BEZ modelu (`vek_spc`: `vek_od`, `pro_deti`, důvody) a věk v dotazu laika (`vek_z_dotazu`, `bez_veku`). Plní ho `naplni_db.py` (`aktualizuj_vek`, i `--jen-vek`), filtr v `hledani.py`, volá `router.py`. |
+| `nazev_vzor.py` | Hledání podle části názvu: pevné formulace „lék začíná [na] XXX / obsahuje XXX / končí [na] XXX / přibližně XXX" (min. 3 znaky; přibližně = překlepy a fonetika) → filtr JEN na název léku (bez diakritiky). Volá `router.py` deterministicky, filtr v `hledani.py`. |
 | `router.py` | Dotaz v přirozené řeči → filtr + výběr sekce. |
 | `dotazy.py` | Rozšíření DOTAZU (ne dat) o formulace z dokumentů — číselník `slovnik_dotazu.json`. |
 | `hledani.py` | Hybridní hledání: cosine (bge-m3) + český fulltext přes RRF, aplikace filtrů. |

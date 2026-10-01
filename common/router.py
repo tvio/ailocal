@@ -18,6 +18,8 @@ zadne prepisovani dotazu. Kratky vystup = rychla odpoved.
 """
 
 import json
+import difflib
+import functools
 import unicodedata
 import logging
 
@@ -242,6 +244,89 @@ def obnov_diakritiku(dotaz_text: str, original: str) -> str:
 VSECHNY_SEKCE = ["indikace", "nezadouci_ucinky", "kontraindikace",
                  "davkovani", "atributy"]
 
+# Jak moc se musi preklep podobat skutecnemu nazvu (difflib ratio bez
+# diakritiky). "amokisklav" -> "amoksiklav" = 0,90; "paralen" proti
+# "algesal" 0,43. Na 32 lecivech; na tisicich se musi premerit.
+_PRAH_PREKLEPU = 0.8
+
+
+@functools.lru_cache(maxsize=1)
+def _ciselnik() -> tuple[tuple[str, ...], tuple[str, ...]]:
+    """(nazvy leciv, ucinne latky) z DB. Nacte se jednou za beh."""
+    import psycopg
+
+    from common.config import PG_DSN
+
+    with psycopg.connect(PG_DSN) as c:
+        nazvy = [r[0] for r in c.execute("SELECT DISTINCT nazev FROM leciva")]
+        latky = [r[0] for r in c.execute(
+            "SELECT DISTINCT unnest(ucinne_latky) FROM leciva")]
+    return tuple(nazvy), tuple(latky)
+
+
+def _najdi_nazev(hodnota: str, nazvy) -> str | None:
+    """Nazev leku z ciselniku, ktery odpovida hodnote - i s preklepem.
+
+    Porovnava se proti celemu nazvu i proti jeho prvnim slovum ve stejnem
+    poctu, jaky ma hodnota ("amoksiklav" proti "AMOKSIKLAV" z
+    "AMOKSIKLAV 1 G"). Vraci tu cast nazvu, ktera se shoduje.
+    """
+    h = _bez_diakritiky(hodnota).strip()
+    if not h:
+        return None
+    if any(h in _bez_diakritiky(n) for n in nazvy):
+        return hodnota                      # uz ted neco najde
+    nejlepsi, skore = None, 0.0
+    k = len(h.split())
+    for n in nazvy:
+        slova = n.split()
+        for kus in {n, " ".join(slova[:k])}:
+            r = difflib.SequenceMatcher(None, h, _bez_diakritiky(kus)).ratio()
+            if r > skore:
+                nejlepsi, skore = kus, r
+    return nejlepsi if skore >= _PRAH_PREKLEPU else None
+
+
+def oprav_nazev_a_latku(filtr: Filtr) -> list[str]:
+    """Srovna nazev a ucinnou latku z routeru s tim, co je v DB.
+
+    Proc (zjisteno 24.9.2026 v GUI): "amokisklav nezadouci ucinky" vratil
+    NULA vysledku, prestoze router sekci trefil. Filtr na nazev je
+    ILIKE '%...%' a filtry se spojuji pres AND, takze staci jedna z vad:
+
+      1. PREKLEP v nazvu - router ho poslusne opise do filtru.
+      2. NAZEV LEKU JAKO UCINNA LATKA - "amoksiklav" do `ucinna_latka`,
+         prestoze latky jsou amoxicilin a klavulanat. Dela to qwen
+         i gemma, nahodne (nedeterminismus).
+
+    Opravuje se deterministicky, ne dalsim pravidlem v promptu - to by
+    model dodrzel zase jen nekdy. Neznamy nazev ani latka se NEZAHAZUJI:
+    "ibuprofen" v korpusu neni a spravna odpoved je "nic", ne jine leky.
+    Vraci seznam provedenych oprav (pro log a vypis).
+    """
+    try:
+        nazvy, latky = _ciselnik()
+    except Exception as e:                  # oprava nesmi shodit hledani
+        logger.warning("ciselnik nazvu nenacten (%s), bez opravy", e)
+        return []
+    opravy = []
+
+    if filtr.ucinna_latka:
+        l = _bez_diakritiky(filtr.ucinna_latka)
+        if not any(l in _bez_diakritiky(x) for x in latky):
+            jako_nazev = _najdi_nazev(filtr.ucinna_latka, nazvy)
+            if jako_nazev:
+                opravy.append(f"látka „{filtr.ucinna_latka}“ je název léku")
+                filtr.ucinna_latka = None
+                filtr.nazev = filtr.nazev or jako_nazev
+
+    if filtr.nazev:
+        spravny = _najdi_nazev(filtr.nazev, nazvy)
+        if spravny and spravny != filtr.nazev:
+            opravy.append(f"název „{filtr.nazev}“ -> „{spravny}“")
+            filtr.nazev = spravny
+    return opravy
+
 
 def rozhodni(dotaz: str, *, model: str = MODEL_ROUTER,
              base_url: str | None = None) -> tuple[Filtr, str, dict]:
@@ -261,10 +346,12 @@ def rozhodni(dotaz: str, *, model: str = MODEL_ROUTER,
     except Exception as e:
         logger.warning("router selhal (%s: %s), hleda se ve vsem",
                        type(e).__name__, e)
-        return Filtr(), "nizka", {"chyba": f"{type(e).__name__}: {e}"}
+        d = {"chyba": f"{type(e).__name__}: {e}"}
+        return _pridej_vzor(_pridej_vek(Filtr(), dotaz, d), dotaz, d), "nizka", d
 
     if not isinstance(d, dict):
-        return Filtr(), "nizka", {"chyba": "router nevratil objekt"}
+        d = {"chyba": "router nevratil objekt"}
+        return _pridej_vzor(_pridej_vek(Filtr(), dotaz, d), dotaz, d), "nizka", d
 
     jistota = str(d.get("jistota") or "nizka").lower()
 
@@ -312,10 +399,72 @@ def rozhodni(dotaz: str, *, model: str = MODEL_ROUTER,
         organovy_system=d.get("organovy_system") or None,
         frekvence_rank_max=rank,
     )
+    opravy = oprav_nazev_a_latku(filtr)
+    if opravy:
+        d["opravy"] = opravy
+        logger.info("router: %s", "; ".join(opravy))
     # Dotaz pro semantiku: jen zbytek po vytazeni filtru. Kdyz ho router
     # nevratil nebo je prazdny, pouzije se puvodni dotaz - lepsi hledat
     # nad celou vetou nez nad nicim.
     # Diakritiku model obcas zahodi a stoji to ~0,2 podobnosti,
     # takze se deterministicky vraci podle puvodniho dotazu.
     d["dotaz_text"] = obnov_diakritiku(_text("dotaz_text") or dotaz, dotaz)
-    return filtr, jistota, d
+    return _pridej_vzor(_pridej_vek(filtr, dotaz, d), dotaz, d), jistota, d
+
+
+def _pridej_vzor(filtr: Filtr, dotaz: str, d: dict) -> Filtr:
+    """Cast nazvu („lek zacina oxy") - DETERMINISTICKY, common/nazev_vzor.py.
+
+    Router z „lek zacina oxy" obcas udela nazev="oxy" nebo latku "oxy"
+    (ILIKE '%oxy%') - to by vzor „zacina" rozbilo, proto se jeho nazev/latka
+    shodne s textem vzoru zahodi. Formulace vzoru se odstrani z textu pro
+    vektor; zbytek („na rymu") jde do semantiky.
+    """
+    from common.nazev_vzor import vzor_z_dotazu, bez_vzoru
+
+    v = vzor_z_dotazu(dotaz)
+    if v is None:
+        return filtr
+    filtr.nazev_vzor = v
+    d["nazev_vzor"] = {"druh": v.druh, "text": v.text, "platny": v.platny}
+    t = v.text.lower()
+    if v.druh == "priblizne":
+        # Router obcas opise preklep do nazvu („nurophen") - ILIKE by pak
+        # nenasel nic a shodil i priblizne hledani. Rozhoduje vzor.
+        from difflib import SequenceMatcher
+        from common.nazev_vzor import foneticky
+        for pole in ("nazev", "ucinna_latka"):
+            h = getattr(filtr, pole)
+            if h and SequenceMatcher(None, foneticky(h), foneticky(t)).ratio() >= 0.6:
+                setattr(filtr, pole, None)
+    if filtr.nazev and t in filtr.nazev.lower():
+        filtr.nazev = None
+    if filtr.ucinna_latka and t in filtr.ucinna_latka.lower():
+        filtr.ucinna_latka = None
+    zbytek = bez_vzoru(d.get("dotaz_text") or dotaz)
+    d["dotaz_text"] = zbytek or "lék"
+    if not bez_vzoru(dotaz) and v.platny:
+        # Jen vzor („lek zacina oxy"): hledat v identite leku (1 radek na lek)
+        # a radit abecedne - semantika nema co merit.
+        v.jen_vzor = True
+        filtr.sekce = ["atributy"]
+    return filtr
+
+
+def _pridej_vek(filtr: Filtr, dotaz: str, d: dict) -> Filtr:
+    """Vek pacienta z dotazu (common/vek.py) - DETERMINISTICKY, ne modelem.
+
+    Router je nedeterministicky a tohle je filtr s dopadem na bezpecnost
+    ("pro deti"), proto se nesmi ztratit. Zmínka o veku se zaroven odstrani
+    z textu pro vektor: "reflux pro deti" by jinak hledal i "deti".
+    """
+    from common.vek import vek_z_dotazu, bez_veku
+
+    pro_deti, vek = vek_z_dotazu(dotaz)
+    if pro_deti:
+        filtr.pro_deti = True
+        filtr.vek = vek
+        d["vek"] = {"pro_deti": True, "vek": vek}
+        if d.get("dotaz_text"):
+            d["dotaz_text"] = bez_veku(d["dotaz_text"]) or d["dotaz_text"]
+    return filtr

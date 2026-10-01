@@ -11,10 +11,18 @@ Mezistav zůstává na disku (viz zadani.md) – při ladění promptu pro
 extrakci do JSONB se pak nemusí znovu konvertovat PDF.
 
 Použití:
-  uv run python extrahuj_sekce.py --vse
+  uv run python extrahuj_sekce.py --vse              # původních 32 léčiv (data/leciva)
   uv run python extrahuj_sekce.py --kody 0254048
+  uv run python extrahuj_sekce.py --korpus           # celý korpus (data/spc, konvertuj_serve.py)
+
+--korpus bere jen SPC, která nějaký kód v inventáři SKUTEČNĚ používá
+(data/spc/_stav.sqlite) – staré verze a SPC zaniklých kódů vynechá.
+Do _prehled.json přidá "_konverze": verdikt kontroly převodu
+(kontrola.json) – ať extrakce a DB vědí, že sekce 4.8 může být neúplná
+(např. MENOPUR: Docling vynechal poznámky pod tabulkou NÚ).
 """
 
+import io
 import sys
 import json
 import argparse
@@ -29,13 +37,29 @@ def parse_args() -> argparse.Namespace:
     g = p.add_mutually_exclusive_group(required=True)
     g.add_argument("--vse", action="store_true")
     g.add_argument("--kody", nargs="+", metavar="KOD")
+    g.add_argument("--korpus", action="store_true",
+                   help="data/spc – SPC používaná kódy z inventáře konvertuj_serve.py")
     return p.parse_args()
 
 
+def adresare_korpusu() -> list:
+    """Složky SPC používaných kódy v inventáři (data/spc/_stav.sqlite)."""
+    import re
+    import sqlite3
+    from common.config import DATA_DIR
+    c = sqlite3.connect(DATA_DIR / "spc" / "_stav.sqlite")
+    ids = sorted(i for (i,) in c.execute(
+        "SELECT DISTINCT identita FROM kody WHERE identita IS NOT NULL"))
+    return [DATA_DIR / "spc" / re.sub(r"[^\w.-]+", "_", i)[:80] for i in ids]
+
+
 def main() -> None:
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     args = parse_args()
     if args.kody:
         adresare = [adresar_leciva(k) for k in args.kody]
+    elif args.korpus:
+        adresare = adresare_korpusu()
     else:
         adresare = sorted(p for p in LECIVA_DIR.iterdir() if p.is_dir())
 
@@ -48,6 +72,7 @@ def main() -> None:
     zdroje = Counter()
     chybejici = Counter()
     uspora = Counter()
+    verdikty = Counter()
     zpracovano = 0
 
     for adr in adresare:
@@ -95,15 +120,27 @@ def main() -> None:
                 "cislo": s.cislo,
             }
 
+        kontrola = adr / "kontrola.json"
+        if kontrola.exists():
+            k = json.loads(kontrola.read_text(encoding="utf-8"))
+            prehled["_konverze"] = {"verdikt": k.get("verdikt"), "duvody": k.get("duvody"),
+                                    "pokryti_48": k.get("pokryti_48")}
+            verdikty[k.get("verdikt")] += 1
         (cil / "_prehled.json").write_text(
             json.dumps(prehled, ensure_ascii=False, indent=1), encoding="utf-8"
         )
-        print(f"{adr.name[:31]:32} " + " ".join(f"{b:>11}" for b in bunky))
         zpracovano += 1
+        # U celého korpusu (tisíce SPC) jen průběh a problémy, ne řádek na SPC.
+        if not args.korpus or "CHYBÍ" in " ".join(bunky):
+            print(f"{adr.name[:31]:32} " + " ".join(f"{b:>11}" for b in bunky))
+        elif zpracovano % 500 == 0:
+            print(f"  ... {zpracovano}/{len(adresare)}", flush=True)
 
     print()
     print(f"Zpracováno {zpracovano} léčiv")
     print(f"Zdroj textu:  " + ", ".join(f"{k}={v}" for k, v in zdroje.most_common()))
+    if verdikty:
+        print(f"Kontrola konverze (v _prehled.json jako _konverze): {dict(verdikty)}")
     if uspora:
         print("Ořez na jádro (soubory <sekce>_orez.md vedle původních):")
         for k, v in uspora.most_common():
@@ -115,6 +152,12 @@ def main() -> None:
         print("  – musí být odlišené od 'selhala_extrakce', viz zadani.md.")
     else:
         print("Všechny sledované sekce nalezeny u všech léčiv.")
+    if args.korpus:
+        # Přehled celého korpusu na jednom místě – tisíce složek ručně
+        # neprojdeš (data/spc/_report/sekce.html + sekce.csv).
+        from common.report_sekce import vytvor_report_sekci
+        vytvor_report_sekci()
+        print("Přehled sekcí: data/spc/_report/sekce.html + sekce.csv")
 
 
 if __name__ == "__main__":

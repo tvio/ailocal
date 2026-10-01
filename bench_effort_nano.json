@@ -1,0 +1,616 @@
+[
+  {
+    "model": "gpt-5-nano/minimal",
+    "polozek": 106,
+    "klic_pokryti": 1.0,
+    "opora_klic": 0.953,
+    "klic_dlouhy": 0.104,
+    "laik_bez_op": 0.24,
+    "vstup_tok": 9665,
+    "vystup_tok": 5225,
+    "reason_tok": 0,
+    "cas_s": 72.2,
+    "cena_usd": 0.0026,
+    "podezrele": [
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "Bolesti mírné a střední intenzity různého původu, např. bolesti hlavy, kloubů a svalů prov",
+        "vystup": "bolesti různého typu doprovázejující nemoci s nachlazením, jako bolesti hlavy, kloubů a sv",
+        "bez_opory": [
+          "doprovazejujici",
+          "jako",
+          "nachlazenim",
+          "nemoci",
+          "typu"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "neuralgie",
+        "vystup": "neuralgická bolest (významná bolest nervu)",
+        "bez_opory": [
+          "bolest",
+          "nervu",
+          "vyznamna"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "bolesti vertebrogenního původu",
+        "vystup": "bolesti vycházející z páteře a okolí, např. z poruchy meziobratlových plotének",
+        "bez_opory": [
+          "meziobratlovych",
+          "napr",
+          "okoli",
+          "patere",
+          "plotenek",
+          "poruchy",
+          "vychazejici"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "horečnaté stavy zejména při akutních respiračních onemocněních chřipkového charakteru",
+        "vystup": "horečkové stavy zejména při akutních respiračních onemocněních podobných chřipce",
+        "bez_opory": [
+          "podobnych"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "klic",
+        "zdroj": "při pacientech s přecitlivělostí na kyselinu acetylsalicylovou, salicyláty, kofein nebo na",
+        "vystup": "alergie na aspirin"
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "při pacientech s přecitlivělostí na kyselinu acetylsalicylovou, salicyláty, kofein nebo na",
+        "vystup": "při přecitlivělosti na aspirin, salicyláty, kofein nebo na kteroukoliv pomocnou látku uved",
+        "bez_opory": [
+          "aspirin"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "předchozí výskyt astmatu, které bylo vyvoláno požitím salicylátů či substancí s obdobným ú",
+        "vystup": "dříve se vyskytlo astma vyvolané požitím salicylátů či podobných látek, zvláště nesteroidn",
+        "bez_opory": [
+          "drive",
+          "latek",
+          "podobnych",
+          "zvlaste"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "při krvácivých stavech nekonzumpčního charakteru",
+        "vystup": "krvácivé stavy, které nejsou běžné krvácení",
+        "bez_opory": [
+          "bezne",
+          "nejsou"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "při chirurgických výkonech spojených s masivnějším krvácením",
+        "vystup": "chirurgické zákroky s masivním krvácením",
+        "bez_opory": [
+          "zakroky"
+        ]
+      },
+      {
+        "lek": "0000009_ACYLCOFFIN",
+        "co": "laicky",
+        "zdroj": "u dětí a dospívajících do 16 let při současně probíhajícím horečnatém virovém onemocnění (",
+        "vystup": "u dětí a dospívajících do 16 let při současně probíhajícím horečnatém virovém onemocnění (",
+        "bez_opory": [
+          "reyuv"
+        ]
+      },
+      {
+        "lek": "0002479_DITHIADEN",
+        "co": "laicky",
+        "zdroj": "Projevy hypersenzitivity I. typu (zprostředkované IgE protilátkami)",
+        "vystup": "Projevy hypersenzitivity I. typu (reagují IgE protilátkami)",
+        "bez_opory": [
+          "reaguji"
+        ]
+      },
+      {
+        "lek": "0002479_DITHIADEN",
+        "co": "laicky",
+        "zdroj": "Hypersenzitivita na léčivou látku nebo na kteroukoli pomocnou látku uvedenou v bodě 6.1.",
+        "vystup": "Přecitlivělost na léčivou látku nebo na kteroukoliv pomocnou látku uvedenou v bodě 6.1.",
+        "bez_opory": [
+          "precitlivelost"
+        ]
+      },
+      {
+        "lek": "0002479_DITHIADEN",
+        "co": "laicky",
+        "zdroj": "Status asthmaticus",
+        "vystup": "Stav se silnou dušností a záchvatem astmatu, který vyžaduje okamžitou léčbu. Jinak řečeno,",
+        "bez_opory": [
+          "akutni",
+          "astmatu",
+          "dusnosti",
+          "jinak",
+          "lecbu",
+          "okamzitou",
+          "receno",
+          "silnou",
+          "stav",
+          "vyzaduje",
+          "zachvat",
+          "zachvatem"
+        ]
+      },
+      {
+        "lek": "0002479_DITHIADEN",
+        "co": "laicky",
+        "zdroj": "Ve všech případech, kde je na závadu ospalost.",
+        "vystup": "Ve všech případech, kdy zůstává problém kvůli ospalosti.",
+        "bez_opory": [
+          "kdy",
+          "kvuli",
+          "problem",
+          "zustava"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "bolest vertebrogenního původu",
+        "vystup": "bolest z oblasti páteře způsobená opotřebením nebo zádovou oblastí, která vyžaduje vyšetře",
+        "bez_opory": [
+          "oblasti",
+          "opotrebenim",
+          "patere",
+          "vysetreni",
+          "vyzaduje",
+          "zadovou",
+          "zpusobena"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "neuralgie",
+        "vystup": "bolest nervu/nerovnováha v oblasti obličeje nebo hlavy způsobující bolesti, často zubů či ",
+        "bez_opory": [
+          "bolest",
+          "bolesti",
+          "casto",
+          "celisti",
+          "hlavy",
+          "nerovnovaha",
+          "nervu",
+          "oblasti",
+          "obliceje",
+          "zpusobujici",
+          "zubu"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "bolesti kloubů spojené s akutními virovými onemocněními chřipkového charakteru",
+        "vystup": "bolest kloubů při respiračních virových onemocněních s chřipkovým charakterem",
+        "bez_opory": [
+          "respiracnich"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "bolesti svalů spojené s akutními virovými onemocněními chřipkového charakteru",
+        "vystup": "bolest svalů při respiračních virových onemocněních s chřipkovým charakterem",
+        "bez_opory": [
+          "respiracnich"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "Hypersenzitivita na léčivou látku , salicyláty, paracetamol, kofein nebo na kteroukoli pom",
+        "vystup": "Hypersenzitivita na léčivou látku a na některé pomocné složky uvedené v souhrnu (např. ale",
+        "bez_opory": [
+          "alergie",
+          "dalsi",
+          "napr",
+          "nektere",
+          "slozky",
+          "souhrnu"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "Pacienti , u nichž po podání nesteroidních protizánětlivých přípravků došlo k rozvoji astm",
+        "vystup": "Lidé, u kterých po podání nesteroidních protizánětlivých léků došlo k alergickým projevům ",
+        "bez_opory": [
+          "jako",
+          "jine",
+          "kterych",
+          "leku",
+          "lide",
+          "priznaky",
+          "ryma",
+          "silna"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "Vředová choroba gastroduodena",
+        "vystup": "Vředová choroba žaludku a dvanáctníku.",
+        "bez_opory": [
+          "dvanactniku",
+          "zaludku"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "Závažná renální a hepatální insuficience, akutní hepatitida",
+        "vystup": "Závažná porucha ledvin a jater, akutní hepatitida.",
+        "bez_opory": [
+          "jater",
+          "ledvin",
+          "porucha"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "Hemolytická anemie, krvácivé stavy a poruchy krevní srážlivosti",
+        "vystup": "Hemolytická anemie, krevní srážlivost narušená a krvácivé stavy.",
+        "bez_opory": [
+          "narusena"
+        ]
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "klic",
+        "zdroj": "Přípravek se nesmí podávat dětem a dospívajícím ve věku do 16 let při současně probíhající",
+        "vystup": "nedoporuceno u deti a dospivajici"
+      },
+      {
+        "lek": "0021727_ACIFEIN",
+        "co": "laicky",
+        "zdroj": "Přípravek se nesmí podávat dětem a dospívajícím ve věku do 16 let při současně probíhající",
+        "vystup": "Přípravek se nesmí podávat dětem a dospívajícím do 16 let při jakémkoli horečnatém onemocn",
+        "bez_opory": [
+          "jakemkoli",
+          "reyuv"
+        ]
+      },
+      {
+        "lek": "0028839_AERIUS",
+        "co": "laicky",
+        "zdroj": "Hypersenzitivita na léčivou látku nebo na kteroukoli pomocnou látku uvedenou v bodě 6.1 ne",
+        "vystup": "Přecitlivělost na léčivou látku nebo na kteroukoliv pomocnou látku uvedenou v bodě 6.1, př",
+        "bez_opory": [
+          "precitlivelost",
+          "pripadne"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "léčba esenciální a renální hypertenze všech stupňů, případně v kombinaci s thiazidovými di",
+        "vystup": "Léčba vysokého tlaku krve hlavně u esenciální a ledvinové hypertenze, což může být i v kom",
+        "bez_opory": [
+          "byt",
+          "coz",
+          "dalsimi",
+          "hlavne",
+          "krevni",
+          "krve",
+          "ledvinove",
+          "leky",
+          "muze",
+          "skupiny",
+          "tlak",
+          "tlaku",
+          "vysokeho"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "klic",
+        "zdroj": "dlouhodobá léčba poruch srdečního rytmu supraventrikulárních (síňová tachykardie, flutter ",
+        "vystup": "arytmie/nadzor rytmu"
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "dlouhodobá léčba poruch srdečního rytmu supraventrikulárních (síňová tachykardie, flutter ",
+        "vystup": "Dlouhodobé zvládání poruch srdečního rytmu, zejména srdeční tachykardie a síňové arytmie, ",
+        "bez_opory": [
+          "arytmie",
+          "nekterych",
+          "take",
+          "vyboju",
+          "zejmena",
+          "zvladani"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "profylaxe záchvatů námahové anginy pectoris",
+        "vystup": "Prevence vzniku záchvatů námahové anginy pectoris (bolesti na hrudi při námaze).",
+        "bez_opory": [
+          "bolesti",
+          "hrudi",
+          "vzniku"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "dlouhodobá léčba po infarktu myokardu (acebutolol snižuje riziko vzniku recidiv infarktu m",
+        "vystup": "Dlouhodobá léčba po infarktu myokardu (beta-blocker snižující riziko recidivy a náhlého úm",
+        "bez_opory": [
+          "beta",
+          "blocker"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "hypersenzitivita na léčivou látku nebo na kteroukoliv pomocnou látku uvedenou v bodě 6.1 n",
+        "vystup": "přecitlivělost na léčivou látku nebo na kteroukoliv pomocnou látku uvedenou v bodě 6.1 neb",
+        "bez_opory": [
+          "precitlivelost"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "dekompenzovaná či závažná forma bronchiálního astmatu a chronické obstrukční bronchopulmon",
+        "vystup": "závažná forma bronchiálního astmatu nebo chronické obstrukční plicní nemoci",
+        "bez_opory": [
+          "plicni"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "klic",
+        "zdroj": "dekompenzované srdeční selhání",
+        "vystup": "zavazne selhani srdce"
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "dekompenzované srdeční selhání",
+        "vystup": "závažné srdeční selhání, které se nedokáže zvládnout",
+        "bez_opory": [
+          "nedokaze",
+          "zavazne",
+          "zvladnout"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "sick sinus syndrom",
+        "vystup": "syndrom sick sinus (selhání sinuální činnosti)",
+        "bez_opory": [
+          "cinnosti",
+          "selhani"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "Prinzmetalova angina pectoris (při monoterapii acebutololem)",
+        "vystup": "Prinzmetalova angina pectoris (při samotné terapii acebutololem)",
+        "bez_opory": [
+          "samotne",
+          "terapii"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "výrazná bradykardie (pod 45 - 50 tepů/min.)",
+        "vystup": "výrazná bradykardie srdce (pod 45–50 tepů za minutu)",
+        "bez_opory": [
+          "minutu",
+          "srdce"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "hypotenze",
+        "vystup": "hypotenze neboli nízký krevní tlak",
+        "bez_opory": [
+          "krevni",
+          "neboli",
+          "nizky",
+          "tlak"
+        ]
+      },
+      {
+        "lek": "0075939_ACECOR",
+        "co": "laicky",
+        "zdroj": "závažné poruchy periferního oběhu (Raynaudův syndrom a pokročilá stadia ischemické choroby",
+        "vystup": "závažné poruchy periferního oběhu jako Raynaudův syndrom a pokročilá stadia ischemické cho",
+        "bez_opory": [
+          "jako"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "odstranění středně silné, až silné bolesti různého původu",
+        "vystup": "bolest různého původu středně silná až silná, která vyžaduje úlevu",
+        "bez_opory": [
+          "ulevu",
+          "vyzaduje"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "bolesti při degenerativních revmatických onemocněních jako je artróza",
+        "vystup": "bolest spojená s degenerativními onemocněními kloubů, jako je artróza",
+        "bez_opory": [
+          "kloubu",
+          "spojena"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "léčba akutní středně silné bolesti, kterou nelze zmírnit jinými analgetiky jako je paracet",
+        "vystup": "léčba středně silné akutní bolesti, kterou nelze zmírnit běžnými analgetiky (např. paracet",
+        "bez_opory": [
+          "beznymi",
+          "napr"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "při hypersenzitivitě na paracetamol a/nebo kodein nebo na kteroukoli pomocnou látku uveden",
+        "vystup": "při alergii na paracetamol, kodein nebo jakoukoli pomocnou látku uvedenou v bodě 6.1",
+        "bez_opory": [
+          "alergii",
+          "jakoukoli"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "u závažné poruchy funkce jater, u akutní hepatitidy",
+        "vystup": "při vážném poškození jater nebo akutní žloutence",
+        "bez_opory": [
+          "poskozeni",
+          "vaznem",
+          "zloutence"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "u onemocnění, u nichž je nutno zamezit útlumu dechového centra",
+        "vystup": "u nemocí, kdy hrozí zeslabení dýchání (dechové centrum nesmí být utlumené)",
+        "bez_opory": [
+          "byt",
+          "dychani",
+          "hrozi",
+          "kdy",
+          "nemoci",
+          "nesmi",
+          "zeslabeni"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "v případě chirurgického zásahu v oblasti žlučových cest",
+        "vystup": "při chirurgickém zákroku v oblasti žlučových cest",
+        "bez_opory": [
+          "zakroku"
+        ]
+      },
+      {
+        "lek": "0086023_TALVOSILEN_FORTE",
+        "co": "laicky",
+        "zdroj": "u všech pediatrických pacientů (0-18 let), kteří podstoupí tonsilektomii a/nebo adenoidekt",
+        "vystup": "u všech pediatrických pacientů (0–18 let), kteří podstoupí tonsilektomii a/nebo adenoidekt",
+        "bez_opory": [
+          "vyssimu"
+        ]
+      },
+      {
+        "lek": "0094156_ABAKTAL",
+        "co": "laicky",
+        "zdroj": "Akutní exacerbace chronické obstrukční plicní nemoci, včetně chronické bronchitidy",
+        "vystup": "akutní zhoršení chronické obstrukční plicní nemoci, včetně chronické bronchitidy",
+        "bez_opory": [
+          "zhorseni"
+        ]
+      },
+      {
+        "lek": "0094156_ABAKTAL",
+        "co": "laicky",
+        "zdroj": "Hypersenzitivita na léčivou látku nebo na kteroukoli pomocnou látku uvedenou v bodě 6.1, n",
+        "vystup": "Přecitlivělost na lék nebo na jiné součásti uvedené v bodě 6.1, nebo na jiný přípravek obs",
+        "bez_opory": [
+          "jine",
+          "lek",
+          "precitlivelost",
+          "soucasti"
+        ]
+      },
+      {
+        "lek": "0094156_ABAKTAL",
+        "co": "klic",
+        "zdroj": "Podávání u dětí a dospívajících v období růstu (z důvodu rizika závažných artropatií, zejm",
+        "vystup": "rastuici uziva"
+      },
+      {
+        "lek": "0094156_ABAKTAL",
+        "co": "laicky",
+        "zdroj": "Podávání u dětí a dospívajících v období růstu (z důvodu rizika závažných artropatií, zejm",
+        "vystup": "Podávání u dětí a dospívajících v období růstu (kvůli riziku vážných problémů s klouby, ze",
+        "bez_opory": [
+          "kvuli",
+          "problemu",
+          "vaznych"
+        ]
+      },
+      {
+        "lek": "0094156_ABAKTAL",
+        "co": "laicky",
+        "zdroj": "Podávání u pacientů, u kterých se v minulosti vyskytlo poškození šlach způsobené chinolony",
+        "vystup": "Podávání u pacientů, u kterých se v minulosti projevilo poškození šlach způsobené chinolon",
+        "bez_opory": [
+          "leky",
+          "projevilo"
+        ]
+      },
+      {
+        "lek": "0109797_ULTRACOD",
+        "co": "laicky",
+        "zdroj": "při akutním jaterním selhání , u závažné poruchy funkce jater",
+        "vystup": "při akutním selhání jater nebo vážné poruše funkce jater",
+        "bez_opory": [
+          "vazne"
+        ]
+      },
+      {
+        "lek": "0109797_ULTRACOD",
+        "co": "laicky",
+        "zdroj": "při respirační depresi nebo insuficienci , p při akutním astmatu",
+        "vystup": "při respirační depresi nebo nedostatečnosti dýchání, při akutním astmatu",
+        "bez_opory": [
+          "dychani",
+          "nedostatecnosti"
+        ]
+      },
+      {
+        "lek": "0109797_ULTRACOD",
+        "co": "laicky",
+        "zdroj": "při poraněních hlavy , p při zvýšeném nitrolebním tlaku",
+        "vystup": "při poranění hlavy, při zvýšeném tlaku v lebce",
+        "bez_opory": [
+          "lebce"
+        ]
+      }
+    ]
+  }
+]

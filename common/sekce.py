@@ -68,9 +68,17 @@ _ZAMENY = {
 
 
 def _cislo_na_vzor(cislo: str) -> str:
-    r"""'4.1' -> '4\.[1lI|!]' - cislice tolerantni k zamenam z OCR."""
+    r"""'4.1' -> '4\s*\.\s*[1lI|!]' - cislice tolerantni k zamenam z OCR.
+
+    Mezera kolem tecky je povolena: MENOPUR ma nadpis "4. 8. Nezadouci
+    ucinky" a prisny vzor "4\.8" sekci nenasel (25.9.2026, 34 SPC
+    korpusu s "4.8 v PDF nenalezena").
+    """
     ven = []
     for znak in cislo:
+        if znak == ".":
+            ven.append(r"\s*\.\s*")
+            continue
         zameny = _ZAMENY.get(znak)
         ven.append(f"[{re.escape(zameny)}]" if zameny else re.escape(znak))
     return "".join(ven)
@@ -347,6 +355,15 @@ _VYPADA_JAKO_DAVKA = re.compile(
 )
 
 
+# OŘEZ 4.2 VYPNUTÝ (30.9.2026). Vznikl kvůli pomalému lokálnímu qwenu, ale
+# v surovém textu PDF (bez nadpisů markdownu) řeže i na ŘÁDCÍCH DÁVKOVÁNÍ,
+# které začínají „Děti ve věku…" / „Starší pacienti…". VIBROCIL přišel
+# o dávkování dospělých i celý nosní sprej. Na korpusu zahodil text s
+# dávkami u 3 286 z 5 875 sekcí (56 %), u 1 246 víc dávek, než nechal.
+# V cloudu je vstup levný, takže do modelu jde celá sekce 4.2.
+OREZAT_DAVKOVANI = False
+
+
 def orizni_na_jadro(text: str, nazev_sekce: str) -> str:
     """Zkrátí text sekce na to podstatné pro extrakci.
 
@@ -355,6 +372,9 @@ def orizni_na_jadro(text: str, nazev_sekce: str) -> str:
                         popisů vybraných účinků a hlášení podezření
     ostatní          -> beze změny (jsou krátké)
     """
+    if nazev_sekce == "davkovani" and not OREZAT_DAVKOVANI:
+        return text.strip()
+
     if nazev_sekce == "davkovani":
         # Řeže se na PRVNÍM podnadpisu, po kterém ve zbytku pořád zůstane
         # nějaká konkrétní dávka. Klíčové slovo použité ve větě (ne jako

@@ -91,9 +91,23 @@ CREATE TABLE leciva (
     ucinne_latky        TEXT[],        -- nazvy, ne kody - kvuli hledani
     eu_registrace       BOOLEAN DEFAULT FALSE,
     api_json            JSONB,         -- cela odpoved API, at se da dohledat cokoli
+    -- Korpus (30.9.2026): jedno SPC patri k vice kodum (baleni). Extrakce
+    -- a hledaci radky jsou JEN u zastupce SPC, ostatni kody na nej odkazuji
+    -- sloupcem spc (= slozka data/spc/<spc>/). Jinak by tentyz lek byl ve
+    -- vysledcich 10x (kazde baleni) a radku by bylo 669 tis. misto 445 tis.
+    spc                 TEXT,
+    zastupce            BOOLEAN DEFAULT TRUE,
+    -- Vek (30.9.2026, common/vek.py): odvozeno z 4.1 + 4.2 + 4.3 BEZ modelu.
+    -- vek_od = od kolika let (jen z urciteho udaje), NULL = nejde urcit.
+    -- pro_deti = kladne davkovani pro nejakou detskou skupinu, NULL = nevim.
+    -- vek_duvody = z cehoz to plyne (audit, popisek v GUI).
+    vek_od              REAL,
+    pro_deti            BOOLEAN,
+    vek_duvody          JSONB,
     vytvoreno           TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE INDEX ON leciva (spc);
 CREATE INDEX ON leciva (atc);
 CREATE INDEX ON leciva (nazev);
 CREATE INDEX ON leciva (na_predpis);

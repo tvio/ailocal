@@ -185,6 +185,110 @@ class VysledekExtrakce:
     model: str = ""
     cas_s: float = 0.0
     surova_odpoved: str = ""
+    vstup_tokenu: int = 0      # jen u cloudu (usage z API) - kvuli cene
+    vystup_tokenu: int = 0
+
+
+# Cloud: JEN config.OPENAI_MODEL, vzdy bez reasoningu, temperature 0 a pevny
+# seed. Nesmysly v laickem tvaru jsou nedeterminismus (poznatky 23.9.), takze
+# vzorkovani se vypina, kde to jde.
+SEED = 42
+
+
+def uzivatelsky_prompt(nazev_sekce: str, text: str) -> str:
+    """User zprava: pokyn sekce + (uz orezany) text. Sdili sync i Batch."""
+    return f"{PROMPTY[nazev_sekce]}\n\n--- TEXT SEKCE ---\n{text}\n--- KONEC ---"
+
+
+# Strop vystupu. ZACYKLENI (ostry beh 30.9.2026): 16 z 23 495 odpovedi
+# opakovalo neviditelne znaky / mezery / "(sic) (sic)" az do limitu modelu
+# 128 000 tokenu = nevalidni JSON a 0,51 $ vyhozeno. Nejdelsi legitimni
+# vystup mel 29 860 tokenu (602 NU bortezomibu), proto 40 000.
+MAX_VYSTUP_TOKENU = 40_000
+
+# Opakovani po selhani: pri temperature 0 a stejnem seedu by se smycka
+# zopakovala, proto dalsi pokus vzorkuje (bez seedu).
+TEPLOTA_OPAKOVANI = 0.4
+
+# Sekce, ktere jdou se Structured Outputs (schema) uz od 1. pokusu.
+SCHEMA_VZDY = {"davkovani"}
+
+
+def _schema_sekce(nazev_sekce: str) -> dict:
+    """JSON Schema odpovedi pro Structured Outputs (strict).
+
+    PROC: zbyle 2 smycky (30.9.) mely STEJNOU pricinu - model v novem objektu
+    vynechal klic a napsal rovnou hodnotu: {"pacienti s poruchou funkce
+    ledvin...\\u200c\\u200b... - uvizl v NAZVU KLICE a vycpaval ho neviditelnymi
+    znaky do stropu. json_object vynuti jen "nejaky JSON", schema s strict
+    omezi generovani tak, ze klic vynechat NEJDE.
+
+    Strict rezim: vsechna pole povinna, volitelna jako ["string", "null"],
+    zadna dalsi pole. Frekvence NU jako enum 6 hodnot ciselniku.
+    """
+    s, n = {"type": "string"}, {"type": ["string", "null"]}
+    pole = {
+        "indikace": {"doslovne": s, "laicky": s, "klic": n, "skupina": n},
+        "kontraindikace": {"doslovne": s, "laicky": s, "klic": n},
+        "davkovani": {"pacient": s, "davka": s, "frekvence": n, "poznamka": n},
+        "nezadouci_ucinky": {
+            "ucinek": s, "ucinek_laicky": s,
+            "frekvence": {"type": "string", "enum": ["velmi časté", "časté", "méně časté",
+                                                     "vzácné", "velmi vzácné", "není známo"]},
+            "organovy_system": n},
+    }[nazev_sekce]
+    polozka = {"type": "object", "properties": pole, "required": list(pole),
+               "additionalProperties": False}
+    return {"type": "json_schema", "json_schema": {
+        "name": nazev_sekce, "strict": True,
+        "schema": {"type": "object",
+                   "properties": {nazev_sekce: {"type": "array", "items": polozka}},
+                   "required": [nazev_sekce], "additionalProperties": False}}}
+
+
+def telo_cloud(prompt: str, model: str, *, pokus: int = 1,
+               sekce: str | None = None) -> dict:
+    """Telo pozadavku na /v1/chat/completions. STEJNE pro sync i Batch API -
+    v Batch JSONL je to pole "body" kazdeho radku (kazdy radek nese cely
+    vlastni prompt, spolecny prompt Batch API nezna)."""
+    from common.config import OPENAI_MODEL, OPENAI_REASONING_EFFORT
+
+    if model != OPENAI_MODEL:
+        raise ValueError(f"cloud model {model} neni povoleny, jen {OPENAI_MODEL} "
+                         f"(CLAUDE.md: penize)")
+    body = {
+        "model": model,
+        "messages": [{"role": "system", "content": SYSTEM_PROMPT},
+                     {"role": "user", "content": prompt}],
+        "response_format": {"type": "json_object"},
+        "reasoning_effort": OPENAI_REASONING_EFFORT,
+        "max_completion_tokens": MAX_VYSTUP_TOKENU,
+        "temperature": 0,
+        "seed": SEED,
+    }
+    if pokus > 1:
+        body["temperature"] = TEPLOTA_OPAKOVANI
+        del body["seed"]
+    if sekce and (pokus > 2 or sekce in SCHEMA_VZDY):
+        # Schema misto volneho JSON - viz _schema_sekce(). Prvni pruchod
+        # korpusu (30.9.) bezel s json_object; u davkovani BEZ OREZU se ale
+        # model zacyklil ve ~3 % (12 z 417, pred tim 0,26 %) - vzdy stejne:
+        # vynechany klic u dalsi skupiny pacientu. Proto u davkovani vzdy.
+        body["response_format"] = _schema_sekce(sekce)
+    return body
+
+
+def _zavolej_cloud(prompt: str, model: str) -> tuple[str, int, int]:
+    """OpenAI chat completions v JSON modu. Vraci (text, vstup_tok, vystup_tok)."""
+    from openai import OpenAI
+
+    from common.config import nacti_openai_klic
+
+    klient = OpenAI(api_key=nacti_openai_klic())
+    r = klient.chat.completions.create(**telo_cloud(prompt, model))
+    u = r.usage
+    return (r.choices[0].message.content or "",
+            u.prompt_tokens if u else 0, u.completion_tokens if u else 0)
 
 
 def normalizuj_frekvenci(hodnota: str | None) -> tuple[str | None, int]:
@@ -409,7 +513,10 @@ def extrahuj_sekci(
     for pokus in range(2, pokusy + 1):
         if v.polozky and v.stav in ("neovereno", "castecna"):
             break
+        drive = (v.vstup_tokenu, v.vystup_tokenu)
         v = _jeden_pokus(nazev_sekce, text, model=model, base_url=base_url)
+        v.vstup_tokenu += drive[0]      # platil se i neuspesny pokus
+        v.vystup_tokenu += drive[1]
         if v.polozky and v.stav in ("neovereno", "castecna"):
             v.duvod = (v.duvod + f" (uspělo až na {pokus}. pokus)").strip()
             break
@@ -425,28 +532,53 @@ def _jeden_pokus(
 ) -> VysledekExtrakce:
     import time
 
-    prompt = f"{PROMPTY[nazev_sekce]}\n\n--- TEXT SEKCE ---\n{text}\n--- KONEC ---"
+    prompt = uzivatelsky_prompt(nazev_sekce, text)
 
     t0 = time.perf_counter()
+    vstup_tok = vystup_tok = 0
     try:
-        odpoved = chat(
-            prompt,
-            system=SYSTEM_PROMPT,
-            model=model,
-            base_url=base_url,
-            json_mode=True,
-        )
+        if model.startswith("gpt-"):
+            odpoved, vstup_tok, vystup_tok = _zavolej_cloud(prompt, model)
+        else:
+            odpoved = chat(
+                prompt,
+                system=SYSTEM_PROMPT,
+                model=model,
+                base_url=base_url,
+                json_mode=True,
+            )
     except Exception as e:
         return VysledekExtrakce(
             nazev_sekce, [], "selhala_extrakce",
             f"{type(e).__name__}: {e}", model, time.perf_counter() - t0,
         )
     cas = time.perf_counter() - t0
+    return zpracuj_odpoved(nazev_sekce, odpoved, model=model, cas=cas,
+                           vstup_tok=vstup_tok, vystup_tok=vystup_tok)
+
+
+def zpracuj_odpoved(
+    nazev_sekce: str,
+    odpoved: str,
+    *,
+    model: str,
+    cas: float = 0.0,
+    vstup_tok: int = 0,
+    vystup_tok: int = 0,
+) -> VysledekExtrakce:
+    """Odpoved modelu -> polozky + stav. Sdili sync volani i Batch API,
+    takze vysledek z davky projde PRESNE stejnou upravou jako sync."""
+
+    def V(*a) -> VysledekExtrakce:
+        """Vysledek i s tokeny - kvuli cene se pocitaji i neuspesne pokusy."""
+        v = VysledekExtrakce(*a)
+        v.vstup_tokenu, v.vystup_tokenu = vstup_tok, vystup_tok
+        return v
 
     try:
         data = json.loads(_ocisti_odpoved(odpoved))
     except json.JSONDecodeError as e:
-        return VysledekExtrakce(
+        return V(
             nazev_sekce, [], "selhala_extrakce",
             f"nevalidní JSON: {e}", model, cas, odpoved[:400],
         )
@@ -455,12 +587,12 @@ def _jeden_pokus(
     if polozky is None and isinstance(data, dict) and len(data) == 1:
         polozky = next(iter(data.values()))      # model použil jiný název klíče
     if not isinstance(polozky, list):
-        return VysledekExtrakce(
+        return V(
             nazev_sekce, [], "selhala_extrakce",
             f"očekáváno pole, přišlo {type(polozky).__name__}", model, cas, odpoved[:400],
         )
     if not polozky:
-        return VysledekExtrakce(nazev_sekce, [], "prazdna", "model vrátil prázdné pole", model, cas)
+        return V(nazev_sekce, [], "prazdna", "model vrátil prázdné pole", model, cas)
 
     # Kontrola povinných klíčů u objektových sekcí
     stav, duvod = "neovereno", ""
@@ -473,7 +605,7 @@ def _jeden_pokus(
                    for p in polozky]
         dobre = [p for p in polozky if isinstance(p, dict) and povinne <= p.keys()]
         if not dobre:
-            return VysledekExtrakce(
+            return V(
                 nazev_sekce, [], "selhala_extrakce",
                 f"žádná z {len(polozky)} položek nemá klíče {sorted(povinne)}",
                 model, cas, odpoved[:400],
@@ -496,7 +628,11 @@ def _jeden_pokus(
                 p["skupina_kod"] = kod
 
     # Klic bez opory v puvodnim textu se ZAHAZUJE - viz klic_ma_oporu().
-    if nazev_sekce in ("indikace", "kontraindikace"):
+    # Docasne vypnuto spolu s ostatnimi kontrolami (config.KONTROLY_ZAPNUTE,
+    # extrakce_kontroly.md).
+    from common.config import KONTROLY_ZAPNUTE
+
+    if KONTROLY_ZAPNUTE and nazev_sekce in ("indikace", "kontraindikace"):
         for p in polozky:
             if not isinstance(p, dict):
                 continue
@@ -538,4 +674,4 @@ def _jeden_pokus(
             duvod = (duvod + f" (laicky tvar: {ze_slovniku} ze slovniku, "
                              f"{od_modelu} od modelu)").strip()
 
-    return VysledekExtrakce(nazev_sekce, polozky, stav, duvod, model, cas)
+    return V(nazev_sekce, polozky, stav, duvod, model, cas)

@@ -26,6 +26,8 @@ Pouziti:
   uv run python naplni_db.py              # naplni, co jeste neni
   uv run python naplni_db.py --znovu      # smaze a naplni od nuly
   uv run python naplni_db.py --jen-ok     # jen sekce ve stavu 'ok'
+  uv run python naplni_db.py --korpus     # CELY korpus data/spc (od nuly)
+  uv run python naplni_db.py --obnov-sekci davkovani   # jen jedna sekce korpusu
 """
 
 import io
@@ -246,6 +248,301 @@ def text_polozky(sekce: str, p) -> tuple[str, dict | None]:
     return json.dumps(p, ensure_ascii=False), None
 
 
+
+# ===========================================================================
+# KORPUS (data/spc, 30.9.2026) - jedno SPC pro vice kodu SUKL
+# ===========================================================================
+# Extrakce je po SPC (data/spc/<slozka>/json), leciva po kodech
+# (data/detaily_leciv/<kod>.json). Do DB jdou VSECHNY kody (tabulka leciva,
+# sloupec spc), ale extrakty a hledaci radky JEN JEDNOU za SPC - u zastupce.
+# Zastupce = nejmensi kod SPC (deterministicky, stejny pri kazdem behu).
+# Filtry Rx/hrazeno/ATC se pak berou ze zastupce - v ramci SPC se lisi
+# jen vyjimecne (ruzna baleni teze registrace).
+
+SPC_DIR = Path("data/spc")
+DETAILY_DIR = Path("data/detaily_leciv")
+
+
+def mapa_kod_spc() -> dict[str, str]:
+    """kod SUKL -> slozka SPC (data/spc/<slozka>/) z inventare konverze."""
+    import re
+    import sqlite3
+    c = sqlite3.connect(SPC_DIR / "_stav.sqlite")
+    return {kod: re.sub(r"[^\w.-]+", "_", ident)[:80]
+            for kod, ident in c.execute(
+                "SELECT kod, identita FROM kody WHERE identita IS NOT NULL")}
+
+
+def vloz_lecivo_z_detailu(cur, a: dict, spc: str, zastupce: bool) -> str | None:
+    kod = str(a.get("kodSUKL") or "").strip()
+    if not kod:
+        return None
+    cur.execute("""
+        INSERT INTO leciva (kod_sukl, nazev, doplnek, sila, lekova_forma, cesta,
+                            atc, zpusob_vydeje, na_predpis, hrazeno,
+                            registracni_cislo, stav_registrace, je_dodavka, baleni,
+                            obal, indikacni_skupina, ucinne_latky, api_json,
+                            spc, zastupce)
+        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+    """, (kod, a.get("nazev"), a.get("doplnek"), a.get("sila"),
+          a.get("lekovaFormaKod"), a.get("cestaKod"), a.get("ATCkod"),
+          a.get("zpusobVydejeKod"), _na_predpis(a.get("zpusobVydejeKod")),
+          kod in nacti_hrazene(),
+          a.get("registracniCislo"), a.get("stavRegistraceKod"),
+          a.get("jeDodavka"), a.get("baleni"), a.get("obalKod"),
+          a.get("indikacniSkupinaKod"), _latky(a), json.dumps(a, ensure_ascii=False),
+          spc, zastupce))
+    return kod
+
+
+def radek_atributy_spc(detaily: list[dict]) -> str:
+    """Identita SPC jako hledatelny text: VSECHNY nazvy, sily a formy baleni.
+    Jedno SPC casto pokryva vic sil (5 mg i 10 mg) - lek se ma najit
+    i podle sily, kterou zastupce nema."""
+    videne: list[str] = []
+    for a in detaily:
+        for c in [a.get("nazev"), a.get("sila"), a.get("lekovaFormaKod")] + _latky(a):
+            if c and str(c) not in videne:
+                videne.append(str(c))
+    videne.append(detaily[0].get("kodSUKL"))
+    return ", ".join(videne)
+
+
+def nahraj_sekce(cur, kod: str, adr: Path, json_adr: Path, api: dict, poc: Counter,
+                 jen_ok: bool, sekce_k_nahrani=None) -> None:
+    """Extrakty + stav + hledaci radky jednoho leciva/SPC. Sdili 32 leciv i korpus."""
+    stav_f = json_adr / "_stav.json"
+    stavy = json.loads(stav_f.read_text(encoding="utf-8")) if stav_f.exists() else {}
+
+    for sekce in (sekce_k_nahrani or SEKCE_SPC):
+        js = json_adr / f"{sekce}.json"
+        st = stavy.get(sekce, {})
+        stav = st.get("stav", "neovereno")
+
+        if not js.exists():
+            cur.execute("""
+                INSERT INTO extrakce_stav (kod_sukl, sekce, stav, duvod)
+                VALUES (%s,%s,%s,%s)
+                ON CONFLICT (kod_sukl, sekce, extrakt_id) DO NOTHING
+            """, (kod, sekce, stav if stav != "neovereno" else "prazdna",
+                  st.get("duvod")))
+            poc[f"stav_{stav}"] += 1
+            continue
+
+        polozky = json.loads(js.read_text(encoding="utf-8"))
+        sekce_md = adr / "sekce" / f"{sekce}.md"
+        orez_md = adr / "sekce" / f"{sekce}_orez.md"
+
+        cur.execute("""
+            INSERT INTO extrakty (kod_sukl, sekce, sekce_cislo, zdrojovy_text,
+                                  zdrojovy_text_orez, polozky, model_extrakce,
+                                  metadata)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (kod_sukl, sekce, model_extrakce) DO UPDATE SET
+                polozky = EXCLUDED.polozky
+            RETURNING id
+        """, (kod, sekce, SEKCE_SPC[sekce],
+              sekce_md.read_text(encoding="utf-8") if sekce_md.exists() else None,
+              orez_md.read_text(encoding="utf-8") if orez_md.exists() else None,
+              json.dumps(polozky, ensure_ascii=False),
+              st.get("model") or "neznamy",
+              json.dumps(st, ensure_ascii=False)))
+        extrakt_id = cur.fetchone()[0]
+        poc["extrakty"] += 1
+
+        cur.execute("""
+            INSERT INTO extrakce_stav (kod_sukl, extrakt_id, sekce, stav,
+                                       pocet_polozek, model_extrakce,
+                                       model_kontroly, duvod, cas_extrakce_s)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
+            ON CONFLICT (kod_sukl, sekce, extrakt_id) DO UPDATE SET
+                stav = EXCLUDED.stav
+        """, (kod, extrakt_id, sekce, stav, len(polozky),
+              st.get("model"),
+              (st.get("kontrola_modelem") or {}).get("model"),
+              st.get("duvod"), st.get("cas_s")))
+        poc[f"stav_{stav}"] += 1
+
+        vadne = set()
+        if stav == "zamitnuto_kontrolou":
+            vadne = set((st.get("kontrola_modelem") or {}).get("chybne_indexy") or [])
+            if not vadne:
+                poc["preskoceno_cela_sekce"] += 1
+                continue
+        if jen_ok and stav != "ok":
+            poc["preskoceno_cela_sekce"] += 1
+            continue
+
+        strana = strana_sekce(adr, sekce)
+        radky = []
+        for i, p in enumerate(polozky):
+            if i in vadne:
+                poc["preskocena_polozka"] += 1
+                continue
+            obsah, atr = text_polozky(sekce, p)
+            if not obsah:
+                continue
+            je_nu = sekce == "nezadouci_ucinky" and isinstance(p, dict)
+            radky.append((kod, extrakt_id, sekce,
+                          p.get("frekvence") if je_nu else None,
+                          p.get("frekvence_rank") if je_nu else None,
+                          p.get("organovy_system") if je_nu else None,
+                          json.dumps(atr, ensure_ascii=False) if atr else None,
+                          kontext(api), obsah,
+                          (p.get("klic") if isinstance(p, dict) else None)
+                          or (p.get("pacient") if sekce == "davkovani"
+                              and isinstance(p, dict) else None),
+                          strana))
+        cur.executemany("""
+            INSERT INTO leciva_search
+                (kod_sukl, extrakt_id, sekce, frekvence, frekvence_rank,
+                 organovy_system, sekce_atributy, kontext_text,
+                 obsah_text, klic, strana_pdf)
+            VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
+        """, radky)
+        poc["radky_sekci"] += len(radky)
+        if strana:
+            poc["se_stranou"] += len(radky)
+
+
+def aktualizuj_vek(cur) -> Counter:
+    """Vek pouziti leku (common/vek.py) do leciva - pro VSECHNY kody SPC.
+
+    Pousti se po kazdem plneni korpusu i po obnove sekce (vek zavisi na
+    4.1, 4.2 a 4.3). Bez modelu, par desitek sekund.
+    """
+    from common.vek import vek_spc
+
+    cur.execute("ALTER TABLE leciva ADD COLUMN IF NOT EXISTS vek_od REAL; "
+                "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS pro_deti BOOLEAN; "
+                "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS vek_duvody JSONB; "
+                "CREATE INDEX IF NOT EXISTS leciva_vek_idx ON leciva (vek_od); "
+                "CREATE INDEX IF NOT EXISTS leciva_pro_deti_idx ON leciva (pro_deti);")
+    # Forma zastupce: jedno SPC casto popisuje tablety i injekce (NOVALGIN)
+    spcs = cur.execute("SELECT spc, lekova_forma FROM leciva "
+                       "WHERE spc IS NOT NULL AND zastupce").fetchall()
+    poc: Counter = Counter()
+    for spc, forma in spcs:
+        adr = SPC_DIR / spc / "json"
+
+        def nacti(s):
+            f = adr / f"{s}.json"
+            return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
+
+        r = vek_spc(nacti("davkovani"), nacti("indikace"), nacti("kontraindikace"), forma)
+        cur.execute("UPDATE leciva SET vek_od = %s, pro_deti = %s, vek_duvody = %s "
+                    "WHERE spc = %s",
+                    (r["vek_od"], r["pro_deti"], json.dumps(r["duvody"], ensure_ascii=False),
+                     spc))
+        poc[f"pro_deti={r['pro_deti']}"] += 1
+        poc["vek_znam" if r["vek_od"] is not None else "vek_nevim"] += 1
+    print(f"Vek: {dict(poc)}", flush=True)
+    return poc
+
+
+def obnov_sekci(sekce: str, jen_ok: bool) -> int:
+    """Znovu nahraje JEDNU sekci korpusu u vsech zastupcu SPC, ostatni nechá.
+
+    Proc: po preextrahovani jedne sekce (30.9.: davkovani bez orezu) by
+    --korpus smazal vse a embeddingy celych 451 tis. radku by se pocitaly
+    znovu (~2 h). Takhle se smazou a znovu vlozi jen radky te sekce
+    a vytvor_embeddingy.py dopocita jen je (radky bez vektoru).
+    """
+    import time
+    t0 = time.perf_counter()
+    poc: Counter = Counter()
+    with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
+        zastupci = cur.execute("SELECT kod_sukl, spc, api_json FROM leciva "
+                               "WHERE zastupce AND spc IS NOT NULL ORDER BY spc").fetchall()
+        # extrakty maji ON DELETE CASCADE na leciva_search i extrakce_stav
+        cur.execute("DELETE FROM leciva_search WHERE sekce = %s", (sekce,))
+        poc["smazano_radku"] = cur.rowcount
+        cur.execute("DELETE FROM extrakce_stav WHERE sekce = %s", (sekce,))
+        cur.execute("DELETE FROM extrakty WHERE sekce = %s", (sekce,))
+        print(f"Smazano {poc['smazano_radku']} radku sekce {sekce}, "
+              f"nahravam {len(zastupci)} SPC", flush=True)
+        for n, (kod, spc, api) in enumerate(zastupci, 1):
+            adr = SPC_DIR / spc
+            nahraj_sekce(cur, kod, adr, adr / "json", api, poc, jen_ok, [sekce])
+            if n % 1000 == 0:
+                conn.commit()
+                print(f"  ... {n}/{len(zastupci)}", flush=True)
+        conn.commit()
+        aktualizuj_vek(cur)
+        conn.commit()
+    print(f"Nahrano {poc['radky_sekci']} radku sekce {sekce} za "
+          f"{time.perf_counter() - t0:.0f} s. Ted vytvor_embeddingy.py (jen chybejici).")
+    return 0
+
+
+def main_korpus(jen_ok: bool, limit_spc: int | None) -> int:
+    """Nahraje korpus data/spc. VZDY od nuly (TRUNCATE) - prirustkove plneni
+    je v todo (mesicni job)."""
+    import time
+    mapa = mapa_kod_spc()
+    po_spc: dict[str, list[str]] = {}
+    for kod, spc in sorted(mapa.items()):
+        po_spc.setdefault(spc, []).append(kod)
+    spcs = sorted(po_spc)
+    if limit_spc:
+        spcs = spcs[:limit_spc]
+
+    poc: Counter = Counter()
+    t0 = time.perf_counter()
+    with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
+        # Schema z doby pred korpusem nema sloupce spc/zastupce.
+        cur.execute("ALTER TABLE leciva ADD COLUMN IF NOT EXISTS spc TEXT; "
+                    "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS zastupce BOOLEAN DEFAULT TRUE; "
+                    "CREATE INDEX IF NOT EXISTS leciva_spc_idx ON leciva (spc);")
+        cur.execute("TRUNCATE leciva CASCADE; TRUNCATE slovnik_pojmu;")
+        print(f"Tabulky vyprazdneny. SPC: {len(spcs)}, kodu: "
+              f"{sum(len(po_spc[s]) for s in spcs)}", flush=True)
+
+        for n, spc in enumerate(spcs, 1):
+            adr = SPC_DIR / spc
+            detaily = []
+            for kod in po_spc[spc]:
+                f = DETAILY_DIR / f"{kod}.json"
+                if f.exists():
+                    detaily.append(json.loads(f.read_text(encoding="utf-8")))
+                else:
+                    poc["kod_bez_detailu"] += 1
+            if not detaily:
+                poc["spc_bez_detailu"] += 1
+                continue
+            zastupce = detaily[0]           # kody serazene -> nejmensi kod
+            for a in detaily:
+                if vloz_lecivo_z_detailu(cur, a, spc, a is zastupce):
+                    poc["leciva"] += 1
+            kod = zastupce["kodSUKL"]
+            poc["spc"] += 1
+
+            cur.execute("INSERT INTO leciva_search (kod_sukl, sekce, obsah_text) "
+                        "VALUES (%s,'atributy',%s)", (kod, radek_atributy_spc(detaily)))
+            poc["radky_atributy"] += 1
+
+            nahraj_sekce(cur, kod, adr, adr / "json", zastupce, poc, jen_ok)
+            if n % 250 == 0:
+                conn.commit()
+                print(f"  ... {n}/{len(spcs)} SPC, {poc['radky_sekci']} radku, "
+                      f"{time.perf_counter() - t0:.0f} s", flush=True)
+        conn.commit()
+        aktualizuj_vek(cur)
+        conn.commit()
+
+    print(f"\n{'SPC (zastupcu)':24} {poc['spc']}")
+    print(f"{'kodu v leciva':24} {poc['leciva']}  (bez detailu: {poc['kod_bez_detailu']})")
+    print(f"{'extraktu':24} {poc['extrakty']}")
+    print(f"{'radku atributy':24} {poc['radky_atributy']}")
+    print(f"{'radku ze sekci':24} {poc['radky_sekci']} (z toho {poc['se_stranou']} s cislem strany)")
+    print("\nStavy:")
+    for k, v in sorted(poc.items()):
+        if k.startswith("stav_"):
+            print(f"    {k[5:]:24} {v}")
+    print(f"\nCas {time.perf_counter() - t0:.0f} s. Embeddingy zatim NEJSOU - "
+          f"spust vytvor_embeddingy.py")
+    return 0
+
 def main() -> int:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     ap = argparse.ArgumentParser(description="Naplneni DB z data/leciva/")
@@ -253,7 +550,23 @@ def main() -> int:
     ap.add_argument("--znovu", action="store_true", help="smazat a naplnit od nuly")
     ap.add_argument("--jen-ok", action="store_true",
                     help="jen sekce ve stavu 'ok' (bez zamitnutych)")
+    ap.add_argument("--korpus", action="store_true",
+                    help="cely korpus z data/spc (vzdy od nuly, maze i 32 puvodnich leciv)")
+    ap.add_argument("--limit-spc", type=int, help="s --korpus: jen prvnich N SPC (zkouska)")
+    ap.add_argument("--obnov-sekci", choices=sorted(SEKCE_SPC),
+                    help="korpus: znovu nahrat JEN tuto sekci, ostatni nechat (bez TRUNCATE)")
+    ap.add_argument("--jen-vek", action="store_true",
+                    help="korpus: jen prepocitat vek pouziti (common/vek.py), nic nemazat")
     a = ap.parse_args()
+    if a.jen_vek:
+        with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
+            aktualizuj_vek(cur)
+            conn.commit()
+        return 0
+    if a.obnov_sekci:
+        return obnov_sekci(a.obnov_sekci, a.jen_ok)
+    if a.korpus:
+        return main_korpus(a.jen_ok, a.limit_spc)
 
     adresare = ([adresar_leciva(k) for k in a.kody] if a.kody
                 else sorted(x for x in LECIVA_DIR.iterdir() if x.is_dir()))

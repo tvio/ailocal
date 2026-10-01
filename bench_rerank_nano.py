@@ -30,7 +30,8 @@ import argparse
 
 import psycopg
 
-from common.config import PG_DSN, OPENAI_MODEL, nacti_openai_klic
+from common.config import (PG_DSN, OPENAI_MODEL, OPENAI_REASONING_EFFORT,
+                           nacti_openai_klic)
 from common.ollama_client import embed
 
 KANDIDATU = 20
@@ -76,6 +77,7 @@ def preraz(dotaz: str, kand: list, klient) -> tuple[dict[int, int], dict]:
         model=OPENAI_MODEL,
         messages=[{"role": "system", "content": POKYN},
                   {"role": "user", "content": zprava}],
+        reasoning_effort=OPENAI_REASONING_EFFORT,
     )
     txt = (r.choices[0].message.content or "").strip()
     if txt.startswith("```"):

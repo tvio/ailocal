@@ -1,4 +1,4 @@
-data/
+/data/
 .venv
 __pycache__/
 *.py[oc]
@@ -13,3 +13,11 @@ zadaniVitek.old
 
 # generovany vystup auditu (3,4 MB), skript si ho vyrobi znovu
 audit_hledani.json
+
+# benchmark PDF extrakce: vstupy a generovane vystupy (skript si je vyrobi znovu)
+benchmarky/pdfextrakce/pdf/
+benchmarky/pdfextrakce/vystupy/
+benchmarky/pdfextrakce/report/
+/benchmarky/
+/benchmark/
+/benchmark/*

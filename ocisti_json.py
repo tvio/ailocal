@@ -105,6 +105,79 @@ def main() -> int:
         zmeny["laicky_tvar"] = slovnik_zmen
         souboru += slovnik_souboru
 
+    # --- DEDUPLIKACE A SJEDNOCENI KLICE -----------------------------------
+    # Deterministicke, bez modelu. Zjisteno 22.9.2026:
+    #
+    # 1) UPLNE SHODNE OBJEKTY. Pozor na to, co je a co NENI duplicita:
+    #    ACC ma 27 radku indikaci, ale nejsou to duplicity - je to
+    #    9 indikaci x 3 vekove skupiny (dospeli/dospivajici/deti), ktere
+    #    se lisi polem `skupina`. Proto se porovnava CELY objekt, ne text.
+    #    Uplne shodnych je jen 6, vsechny v nezadoucich ucincich.
+    #
+    # 2) TYZ TEXT DOSTAL RUZNE KLICE. Generovani klice je nedeterministicke,
+    #    takze tataz indikace ve trech vekovych skupinach dostala tri ruzne
+    #    klice - a tim tri ruzne vektory, na ktere se stejny dotaz chyta
+    #    ruzne:
+    #        ACC "dedicna nemoc s hustym hlenem v plicich"
+    #            deti        -> "dedicna nemoc s hustym hlenem v plicich"
+    #            dospeli     -> "husty hlen v plicich"
+    #            dospivajici -> "dedicna nemoc s hustym hlenem"
+    #    Klic se proto sjednoti: pro tyz zdrojovy text vsude TYZ klic.
+    #    Vybira se deterministicky - nejcastejsi, pri shode nejkratsi,
+    #    at je vysledek stejny pri kazdem behu.
+    odstraneno = sjednoceno = 0
+    for sekce in ("indikace", "kontraindikace", "nezadouci_ucinky", "davkovani"):
+        for f in sorted(LECIVA_DIR.glob(f"*/json/{sekce}.json")):
+            try:
+                polozky = json.loads(f.read_text(encoding="utf-8"))
+            except (json.JSONDecodeError, OSError):
+                continue
+            if not isinstance(polozky, list):
+                continue
+
+            # 1) uplne shodne objekty pryc, poradi se zachova
+            videne: set[str] = set()
+            ocistene = []
+            for x in polozky:
+                k = json.dumps(x, ensure_ascii=False, sort_keys=True)
+                if k in videne:
+                    odstraneno += 1
+                    continue
+                videne.add(k)
+                ocistene.append(x)
+
+            # 2) tyz zdrojovy text -> tyz klic
+            podle_textu: dict[str, Counter] = {}
+            for x in ocistene:
+                if not isinstance(x, dict) or not x.get("klic"):
+                    continue
+                zdroj = str(x.get("laicky") or x.get("doslovne") or "")
+                podle_textu.setdefault(zdroj, Counter())[str(x["klic"])] += 1
+            # nejcastejsi, pri shode nejkratsi - deterministicke
+            volba = {z: min(c.items(), key=lambda kv: (-kv[1], len(kv[0]), kv[0]))[0]
+                     for z, c in podle_textu.items() if len(c) > 1}
+            zmeneno_tady = 0
+            for x in ocistene:
+                if not isinstance(x, dict) or not x.get("klic"):
+                    continue
+                zdroj = str(x.get("laicky") or x.get("doslovne") or "")
+                if zdroj in volba and x["klic"] != volba[zdroj]:
+                    ukazky.setdefault(f"{x['klic']} -> {volba[zdroj]}", "klic")
+                    x["klic"] = volba[zdroj]
+                    zmeneno_tady += 1
+            sjednoceno += zmeneno_tady
+
+            # POZOR: musi se rozhodovat podle TOHOTO souboru, ne podle
+            # celkoveho souctu - jinak by se po prvni zmene prepisovaly
+            # i soubory, ktere se nezmenily.
+            if (len(ocistene) != len(polozky) or zmeneno_tady) and a.zapis:
+                f.write_text(json.dumps(ocistene, ensure_ascii=False, indent=1),
+                             encoding="utf-8")
+    if odstraneno:
+        zmeny["duplicitni_polozky"] = odstraneno
+    if sjednoceno:
+        zmeny["sjednoceny_klic"] = sjednoceno
+
     print(f"Souboru se zmenou: {souboru}")
     for k, v in zmeny.most_common():
         print(f"  {k:20} {v} polozek")

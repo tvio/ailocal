@@ -18,6 +18,7 @@ Pustit po KAZDE zmene promptu, modelu, chunkovani nebo vah RRF.
 Pouziti:
   uv run python evaluate.py                  # vsechny testy
   uv run python evaluate.py --jen 0          # jen kvalita dat (rychle, bez modelu)
+  uv run python evaluate.py --korpus         # CELY TRH: test 0 + ATC parafraze + negativni
   uv run python evaluate.py --pocet 200      # vic auto-dotazu v testu 2
   uv run python evaluate.py --prahy          # zmerit prah podobnosti
   uv run python evaluate.py --vahy           # porovnat zpusoby razeni
@@ -28,6 +29,8 @@ import sys
 import json
 import random
 import argparse
+from pathlib import Path
+from datetime import datetime
 from dataclasses import dataclass
 
 import psycopg
@@ -199,7 +202,42 @@ def test0() -> list[Vysledek]:
             f"nebude fungovat (fáze 2, GUI)"] if bez_strany else [])
     ven.append(Vysledek("Čísla stránek", vse - bez_strany, vse, det))
 
-    # 0f) porovnani variant extrakce - jen kdyz je vic modelu
+    # 0f) duplicitni radky a rozpor v klicich (pridano 22.9.2026)
+    #
+    # POZOR NA TO, CO RADEK ROZLISUJE. Radky se shodnym `obsah_text`
+    # duplicity byt NEMUSI - lisit se mohou jeste:
+    #   - skupinou pacientu: ACC ma 9 indikaci x 3 vekove skupiny = 27 radku
+    #   - frekvenci:         ADVANTAN ma tyz ucinek jako 'vzacne' i 'mene caste'
+    #   - organovym systemem: ACIFEIN ma "nevolnost" jako 'caste' u traveni
+    #                         a 'velmi vzacne' u imunity
+    # Merit duplicitu jen pres text je proto past - prvni mereni takhle
+    # nahlasilo 19 duplicitnich indikaci, a zadna z nich duplicita nebyla.
+    dupl = _sql("""
+        SELECT count(*) - count(DISTINCT (kod_sukl, sekce, obsah_text,
+               coalesce(sekce_atributy->>'skupina_kod','-'),
+               coalesce(frekvence,'-'), coalesce(organovy_system,'-')))
+        FROM leciva_search WHERE sekce <> 'atributy'""")[0][0]
+    vsech_r = _sql("SELECT count(*) FROM leciva_search WHERE sekce<>'atributy'")[0][0]
+    det = ([f"{dupl} řádků je úplná duplicita – zabírají místa ve výsledcích"]
+           if dupl else [])
+    ven.append(Vysledek("Bez duplicitních řádků", vsech_r - dupl, vsech_r, det))
+
+    # Tyz zdrojovy text musi mit VSUDE tyz klic. Generovani klice je
+    # nedeterministicke, takze tataz indikace ve trech vekovych skupinach
+    # dostala tri RUZNE klice - a tim tri ruzne vektory, na ktere se tyz
+    # dotaz chytal ruzne. Sjednocuje `ocisti_json.py`.
+    rozpor = _sql("""
+        SELECT count(*) FROM (
+            SELECT kod_sukl, sekce, obsah_text FROM leciva_search
+            GROUP BY 1,2,3 HAVING count(DISTINCT coalesce(klic,'')) > 1) q""")[0][0]
+    skupin = _sql("""SELECT count(*) FROM (SELECT 1 FROM leciva_search
+                     WHERE sekce<>'atributy' GROUP BY kod_sukl, sekce,
+                     obsah_text) q""")[0][0]
+    det = ([f"{rozpor} textů má víc různých klíčů – pusť ocisti_json.py --zapis"]
+           if rozpor else [])
+    ven.append(Vysledek("Jednotný klíč u téhož textu", skupin - rozpor, skupin, det))
+
+    # 0g) porovnani variant extrakce - jen kdyz je vic modelu
     modely = _sql("SELECT DISTINCT model_extrakce FROM extrakty")
     if len(modely) > 1:
         rozdily = _sql("""
@@ -263,10 +301,37 @@ def test1() -> Vysledek:
 # ===========================================================================
 # TEST 2 - dotazy generovane z dat. Doslovna shoda = spodni hranice.
 # ===========================================================================
-def test2(pocet: int, seed: int = 42) -> list[Vysledek]:
-    # POZOR: vzorkuje se pres ORDER BY random() na strane POSTGRESU, takze
-    # random.seed() v Pythonu na to nema zadny vliv - do 24.8. se kazdy beh
-    # meril na JINEM vzorku a vypadalo to jako nedeterminismus routeru.
+CESTA_VZORKU = Path("vzorek_eval.json")
+
+
+def _vzorek(pocet: int, seed: int = 42) -> list[tuple]:
+    """Vzorek pro auto-recall. ZMRAZENY do souboru, viz nize.
+
+    PROC ZMRAZENY (zmereno 22.9.2026):
+
+    Puvodne se losoval pres `setseed()` + `ORDER BY random()`. Seed byl
+    pevny, takze to vypadalo jako stabilni vzorek. NENI. `random()`
+    prirazuje cisla radkum v poradi, v jakem je databaze CTE Z DISKU -
+    a `naplni_db.py --znovu` tabulku prepise, takze se poradi zmeni.
+
+    Zmereno na docasnych tabulkach, tataz data, tentyz seed, jen jine
+    fyzicke poradi radku:
+
+        vzorek_a | vzorek_b | shodnych
+              60 |       60 |        5
+
+    Z 60 radku se shodovalo PET. A protoze postup "po zmene dat" konci
+    `naplni_db.py --znovu` a pak `evaluate.py`, KAZDA zmena dat vzorek
+    prelosovala. Cislo pred zmenou a po ni merilo jine polozky - presne
+    tak vzniklo "zhorseni" 47/47 -> 46/47, ktere zadne zhorseni nebylo.
+
+    Vzorek se proto vybere JEDNOU a ulozi. Kdyz soubor existuje, cte se
+    z nej a losovani se nepousti. Smazat soubor = prelosovat zamerne.
+    """
+    if CESTA_VZORKU.exists():
+        data = json.loads(CESTA_VZORKU.read_text(encoding="utf-8"))
+        return [tuple(r) for r in data["vzorky"]][:pocet]
+
     # setseed() musi bezet ve STEJNEM spojeni jako vyber, proto to neni
     # pres _sql().
     with psycopg.connect(PG_DSN) as c, c.cursor() as cur:
@@ -277,7 +342,21 @@ def test2(pocet: int, seed: int = 42) -> list[Vysledek]:
             WHERE s.sekce <> 'atributy' AND length(s.obsah_text) BETWEEN 8 AND 60
             ORDER BY random() LIMIT %s
         """, (pocet,))
-        vzorky = cur.fetchall()
+        vzorky = [tuple(r) for r in cur.fetchall()]
+
+    CESTA_VZORKU.write_text(json.dumps(
+        {"_popis": "ZMRAZENY vzorek pro evaluate.py test2. Nemazat bez duvodu - "
+                   "prelosovani znemozni porovnani s minulymi behy.",
+         "_vznik": datetime.now().isoformat(timespec="seconds"),
+         "_seed": seed,
+         "vzorky": [list(v) for v in vzorky]},
+        ensure_ascii=False, indent=1), encoding="utf-8")
+    print(f"      (vzorek {len(vzorky)} polozek ZMRAZEN do {CESTA_VZORKU})")
+    return vzorky
+
+
+def test2(pocet: int, seed: int = 42, prah: float = 0.0) -> list[Vysledek]:
+    vzorky = _vzorek(pocet, seed)
 
     zasah5 = zasah10 = 0
     n5 = n10 = 0
@@ -296,7 +375,7 @@ def test2(pocet: int, seed: int = 42) -> list[Vysledek]:
             WHERE sekce = %s AND lower(btrim(obsah_text)) = lower(btrim(%s))
         """, (sekce, text))[0][0]
 
-        o = hledej(text, filtr=Filtr(sekce=[sekce]), limit=60)
+        o = hledej(text, filtr=Filtr(sekce=[sekce]), limit=60, prah=prah)
         leciva = seskup(o.vysledky, leciv=10)
         poradi = [l.kod_sukl for l in leciva]
 
@@ -318,6 +397,7 @@ def test2(pocet: int, seed: int = 42) -> list[Vysledek]:
     # Jmenovatele se LISI a musi byt videt, jinak se cislo neda porovnat
     # se starsimi behy. @5 vynechava vzorky sdilene vic nez 5 lecivy,
     # @10 vic nez 10 - v obou pripadech uz neni co radit.
+    det.append(f"vzorek ZMRAZEN v {CESTA_VZORKU}, prah {prah:.2f}")
     det.append(f"z {len(vzorky)} vzorku meritelnych @5: {n5}, @10: {n10} "
                f"(zbytek ma text shodny u vic leciv, nez je hranice)")
     return [Vysledek("Auto-recall @5", zasah5, n5 or 1, []),
@@ -342,7 +422,7 @@ def overit_negativni() -> list[str]:
     return spatne
 
 
-def test3(prah: float) -> Vysledek:
+def test3(prah: float, router: str | None = None) -> Vysledek:
     # Negativni dotaz MUSI jit pres ROUTER, jako skutecny dotaz uzivatele.
     # Bez nej se hleda pres vsech ~1000 radku vcetne nezadoucich ucinku
     # a vzdy se neco vagne podobneho najde (0,50-0,65). S routerem se
@@ -352,8 +432,9 @@ def test3(prah: float) -> Vysledek:
 
     ok = 0
     det = list(overit_negativni())      # nejdriv overit sadu samotnou
+    kw = {"model": router} if router else {}
     for dotaz in NEGATIVNI:
-        filtr, _, syrove = rozhodni(dotaz)
+        filtr, _, syrove = rozhodni(dotaz, **kw)
         o = hledej(syrove.get("dotaz_text") or dotaz, filtr=filtr,
                    puvodni_dotaz=dotaz,
                    limit=10, prah=prah)
@@ -388,19 +469,119 @@ def overit_parafraze() -> list[str]:
     return spatne
 
 
-def test4(zpusob: str = "rrf") -> Vysledek:
-    ok = 0
+def test4(zpusob: str = "rrf", prah: float = 0.0) -> Vysledek:
+    # PRAH SE MUSI PREDAT. Do 22.9.2026 se tu volalo hledej() BEZ prahu,
+    # takze vychozi 0.0 - merilo se tedy poradi bez odrezani, ktere ale
+    # uzivatel nikdy nevidi. Cislo vychazelo optimistictejsi, nez jaka je
+    # skutecnost:
+    #     prah 0,00 (jak se merilo drive):  10/10
+    #     prah 0,60 (co vidi uzivatel):      9/10
+    #     padalo 'mám rýmu' -> ENDITRIL, HIDRASEC, IMODIUM (leky na prujem)
+    # Vypisuje se OBOJE, aby slo cislo porovnat se starsimi behy.
+    ok = bez_prahu = 0
     det = list(overit_parafraze())
     for dotaz, ocekavane in PARAFRAZE:
-        o = hledej(dotaz, filtr=Filtr(sekce=["indikace"]), limit=60, zpusob=zpusob)
-        leciva = seskup(o.vysledky, leciv=5)
-        nalezene = [l.nazev for l in leciva]
+        o = hledej(dotaz, filtr=Filtr(sekce=["indikace"]), limit=60,
+                   zpusob=zpusob, prah=prah)
+        nalezene = [l.nazev for l in seskup(o.vysledky, leciv=5)]
         if any(e in nalezene for e in ocekavane):
             ok += 1
         else:
             det.append(f"{dotaz!r}: čekal {ocekavane[0]}, dostal "
                        f"{', '.join(nalezene[:3]) or '(nic)'}")
+        if prah > 0:
+            o0 = hledej(dotaz, filtr=Filtr(sekce=["indikace"]), limit=60,
+                        zpusob=zpusob)
+            if any(e in [l.nazev for l in seskup(o0.vysledky, leciv=5)]
+                   for e in ocekavane):
+                bez_prahu += 1
+    if prah > 0:
+        det.append(f"měřeno s prahem {prah:.2f}; bez prahu by vyšlo "
+                   f"{bez_prahu}/{len(PARAFRAZE)}")
     return Vysledek("Parafráze (ručně)", ok, len(PARAFRAZE), det)
+
+
+# ===========================================================================
+# KORPUS (30.9.2026) - testy pro CELY TRH (5 880 SPC)
+# ===========================================================================
+# Testy 3 a 4 jsou postavene na 32 lecich a na celem trhu nefunguji:
+#   - "negativni" temata (HIV, malarie, Parkinson...) v trhu samozrejme JSOU
+#   - parafraze cekaji konkretni NAZEV (OMEPRAZOL FARMAX) - mezi tisici
+#     leku muze spravne vyjit jiny omeprazol a test by to pocital jako chybu
+# Proto se ocekava TERAPEUTICKA SKUPINA (ATC prefix prideleny SUKLem),
+# ne nazev. To je nezavisle na extrakci - ATC je z registru, ne z modelu.
+
+# (dotaz laika, ATC prefixy, ktere na nej odpovidaji)
+PARAFRAZE_KORPUS = [
+    ("pálí mě žáha",                  ["A02"]),
+    ("nemůžu dýchat nosem",           ["R01"]),
+    ("mám rýmu",                      ["R01", "R06"]),
+    ("bolí mě hlava",                 ["N02", "M01"]),
+    ("mám horečku",                   ["N02", "M01"]),
+    ("bolí mě klouby",                ["M01", "M02", "N02", "M04"]),
+    ("mám zácpu",                     ["A06"]),
+    ("mám průjem",                    ["A07"]),
+    ("mám alergii",                   ["R06", "D07", "S01G"]),
+    ("kašlu a nejde mi vykašlat hlen", ["R05"]),
+    ("bolí mě v krku",                ["R02"]),
+    ("nemůžu spát",                   ["N05C", "N05B", "N05CH"]),
+    ("mám vysoký tlak",               ["C02", "C03", "C07", "C08", "C09"]),
+    ("mám cukrovku",                  ["A10"]),
+    ("mám vysoký cholesterol",        ["C10"]),
+    ("mám plíseň na nohou",           ["D01"]),
+    ("mám opar na rtu",               ["D06B", "J05"]),
+    ("pálí mě při močení",            ["J01", "G04"]),
+    ("mám úzkosti",                   ["N05B", "N06A", "N05C"]),
+    ("mám depresi",                   ["N06A"]),
+]
+
+# Dotazy MIMO medicinu - na ty nesmi prijit nic (overuje prah + router).
+NEGATIVNI_KORPUS = [
+    "recept na svíčkovou",
+    "jak vyměnit pneumatiku",
+    "kurz eura dnes",
+    "jízdní řád vlaků do Brna",
+    "výsledky fotbalové ligy",
+    "jak naladit kytaru",
+]
+
+
+def test5(prah: float, top: int = 5) -> Vysledek:
+    """Parafraze podle ATC: je v top N leku aspon jeden ze spravne skupiny?
+    Detail: presnost = kolik z top N do skupiny patri."""
+    ok = 0
+    presnost = []
+    det = []
+    for dotaz, atc in PARAFRAZE_KORPUS:
+        o = hledej(dotaz, filtr=Filtr(sekce=["indikace"]), limit=100, prah=prah)
+        leky = seskup(o.vysledky, leciv=top)
+        trefy = [l for l in leky if any((l.nejlepsi.atc or "").startswith(a) for a in atc)]
+        presnost.append(len(trefy) / top)
+        if trefy:
+            ok += 1
+        spatne = [f"{l.nazev} ({l.nejlepsi.atc})" for l in leky if l not in trefy]
+        det.append(f"{dotaz!r:36} {len(trefy)}/{top} v {'/'.join(atc)}"
+                   + (f"   mimo: {', '.join(spatne[:3])}" if spatne else ""))
+    det.insert(0, f"průměrná přesnost top {top}: {sum(presnost) / len(presnost):.0%}")
+    return Vysledek(f"Parafráze ATC (top {top})", ok, len(PARAFRAZE_KORPUS), det)
+
+
+def test6(prah: float, router: str | None = None) -> Vysledek:
+    """Negativni dotazy mimo medicinu - jdou pres ROUTER jako skutecny dotaz."""
+    from common.router import rozhodni
+    ok = 0
+    det = []
+    kw = {"model": router} if router else {}
+    for dotaz in NEGATIVNI_KORPUS:
+        filtr, _, syrove = rozhodni(dotaz, **kw)
+        o = hledej(syrove.get("dotaz_text") or dotaz, filtr=filtr,
+                   puvodni_dotaz=dotaz, limit=10, prah=prah)
+        if not o.vysledky:
+            ok += 1
+        else:
+            v = o.vysledky[0]
+            det.append(f"{dotaz!r} -> {v.nazev} ({v.cosine:.3f}) {v.obsah_text[:40]!r}")
+    return Vysledek(f"Negativní mimo medicínu ({prah:.2f})", ok, len(NEGATIVNI_KORPUS), det)
 
 
 # ===========================================================================
@@ -462,6 +643,14 @@ def main() -> int:
     ap.add_argument("--zpusob", choices=["rrf", "cosine"], default="rrf")
     ap.add_argument("--prahy", action="store_true", help="změřit práh podobnosti")
     ap.add_argument("--vahy", action="store_true", help="porovnat způsoby řazení")
+    # Router vola jen TEST 3; ostatni testy maji filtr natvrdo a model
+    # routeru je nezajima. Srovnani celeho retezce vc. routeru dela
+    # bench_router.py.
+    ap.add_argument("--router", help="jiný model routeru pro test 3 "
+                                     "(výchozí config.MODEL_ROUTER)")
+    ap.add_argument("--korpus", action="store_true",
+                    help="CELY TRH: test 0 + parafráze podle ATC (5) + negativní "
+                         "mimo medicínu (6). Testy 1-4 jsou postavené na 32 lécích.")
     a = ap.parse_args()
 
     if a.prahy:
@@ -484,6 +673,17 @@ def main() -> int:
     if a.jen == "0":
         return 0
 
+    if a.korpus:
+        print()
+        print("=" * 70)
+        print("KORPUS: parafráze podle ATC + negativní mimo medicínu")
+        print("=" * 70)
+        for v in (test5(a.prah), test6(a.prah, a.router)):
+            print(v.radek())
+            for d in v.detaily:
+                print(f"      {d}")
+        return 0
+
     print()
     print("=" * 70)
     print("TEST 1-4: kvalita hledání")
@@ -493,7 +693,13 @@ def main() -> int:
         print("       hledání – lék, který v datech není, nemůže být nalezen.")
         print("       Nejdřív opravit data, pak ladit hledání.\n")
 
-    vysledky = [test1()] + test2(a.pocet) + [test3(a.prah), test4(a.zpusob)]
+    # Prah se predava VSEM testum, ktere hledaji. Driv ho dostaval jen
+    # test3, takze test2 a test4 merily stav bez odrezani - tedy neco
+    # jineho, nez co vidi uzivatel.
+    vysledky = ([test1()] + test2(a.pocet, prah=a.prah)
+                + [test3(a.prah, a.router), test4(a.zpusob, prah=a.prah)])
+    if a.router:
+        print(f"router pro test 3: {a.router}")
     for v in vysledky:
         print(v.radek())
         for d in v.detaily[:5]:

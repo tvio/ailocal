@@ -64,6 +64,14 @@ class Filtr:
     nazev: str | None = None                  # uzivatel jmenoval konkretni lek
     kod_sukl: str | None = None
     ucinna_latka: str | None = None
+    # Vek pacienta (30.9.2026, common/vek.py) - z dotazu deterministicky,
+    # v DB leciva.pro_deti / leciva.vek_od odvozene z 4.1 + 4.2 + 4.3.
+    # ZASADA: jen leky, kde SPC dite VYSLOVNE pripousti; "nevim" se nezobrazi.
+    pro_deti: bool | None = None
+    vek: float | None = None
+    # Cast nazvu (1. 10. 2026, common/nazev_vzor.py): „lek zacina oxy",
+    # „lek obsahuje pox", „lek konci prazol" - JEN v nazvu leku.
+    nazev_vzor: object | None = None      # NazevVzor
 
     def je_prazdny(self) -> bool:
         return all(getattr(self, f.name) is None for f in fields_of(self))
@@ -94,6 +102,8 @@ class Filtr:
         Prah na cosine by tady jen zahazoval spravne odpovedi: pri 0,55
         by vypadl ACIFEIN, prestoze paracetamol obsahuje.
         """
+        if self.nazev_vzor is not None and getattr(self.nazev_vzor, "platny", False):
+            return True        # vyber podle pismen nazvu - podobnost nema co merit
         return any([self.nazev, self.kod_sukl, self.ucinna_latka, self.sila,
                     self.atc_prefix, self.frekvence])
 
@@ -124,6 +134,13 @@ class Filtr:
             casti.append(f"kód SÚKL {self.kod_sukl}")
         if self.ucinna_latka:
             casti.append(f"účinná látka „{self.ucinna_latka}“")
+        if self.nazev_vzor is not None:
+            casti.append(self.nazev_vzor.popis())
+        if self.vek is not None:
+            v = (f"{self.vek * 12:.0f} měsíců" if self.vek < 1 else f"{self.vek:g} let")
+            casti.append(f"pro dítě {v} (jen léky, jejichž SPC tento věk výslovně připouští)")
+        elif self.pro_deti:
+            casti.append("pro děti (jen léky, jejichž SPC uvádí dávkování pro děti)")
         return "; ".join(casti) or "bez filtru"
 
 
@@ -153,6 +170,8 @@ class Vysledek:
     poradi_sem: int | None
     poradi_fts: int | None
     rrf: float
+    vek_od: float | None = None      # od kolika let (common/vek.py), NULL = nevim
+    pro_deti: bool | None = None
 
 
 @dataclass
@@ -207,6 +226,16 @@ def _podminky(f: Filtr) -> tuple[str, dict]:
     if f.frekvence_rank_max is not None:
         kde.append("s.frekvence_rank <= %(frank)s")
         par["frank"] = f.frekvence_rank_max
+    if f.pro_deti:
+        kde.append("l.pro_deti IS TRUE")
+    if f.vek is not None:
+        kde.append("l.vek_od <= %(vek)s")
+        par["vek"] = f.vek
+    if f.nazev_vzor is not None and f.nazev_vzor.platny:
+        # JEN nazev leku, ne ucinne latky (1. 10. 2026): kombinovane pripravky
+        # a vakciny maji desitky latek a vzor se pak chytal skoro vsude.
+        podminka, par["vzor"] = f.nazev_vzor.sql()
+        kde.append(podminka)
     if f.skupina_kod:
         kde.append("s.sekce_atributy->>'skupina_kod' = %(skup)s")
         par["skup"] = f.skupina_kod
@@ -301,22 +330,49 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
                       f"COALESCE(1 - (s.embedding_klic <=> %(vek{n_var})s::vector), -1)) "
                       f"ELSE {cosine_sql} END")
 
-    # Fulltextovy dotaz se prevadi na OR. websearch_to_tsquery slova
-    # SLUCUJE pres AND, takze kazde dalsi slovo mnozinu zuzuje - "paralen
-    # 500mg paracetamol" trefilo 1 radek a ACIFEIN vypadl, prestoze
-    # paracetamol obsahuje. S OR se navic ts_rank_cd stane pouzitelnym:
-    # radek, ktery trefi vic slov, ma vyssi rank (PARALEN 3,0 vs ACIFEIN
-    # 1,0), kdezto s AND vychazela u atributu binarni 0,4/0,0.
+    # FULLTEXTOVY DOTAZ: AND uvnitr pojmu, OR mezi pojmy.
     #
-    # Prevod se dela nad UZ ZPRACOVANYM tsquery, ne nad textem od
+    # Do 22.9.2026 slo do fulltextu JEN `dotaz` a cely se prevedl na OR.
+    # To melo dve vady, obe zmerene:
+    #
+    # 1. Slovnikove varianty do fulltextu NESLY VUBEC, pouzivaly se jen
+    #    pro vektory. Pritom cely ciselnik byl postaveny tak, aby mapoval
+    #    laicky vyraz na FORMULACI Z DOKUMENTU - a presne na to je
+    #    fulltext nejlepsi:
+    #        dotaz 'rýma'                -> OLYNTH fts =  0,0
+    #        dotaz 'zánět sliznice nosu' -> OLYNTH fts = 12,0
+    #
+    # 2. Plosny OR zahazoval konkretnost. Z variant 'ryma',
+    #    'ucpany nos', 'zanet sliznice nosu' vznikl jeden pytel slov,
+    #    takze stacilo jedine slovo 'zanet' a radek se pocital jako
+    #    shoda. Zmereno na sekci indikace:
+    #        jen puvodni 'rýma'                     3 radky
+    #        OR mezi vsemi slovy                   43 radku
+    #        AND uvnitr varianty, OR mezi nimi      5 radku
+    #    Tech 43 obsahovalo OSM ruznych zanetu AMOKSIKLAVU - kosti,
+    #    kuze, dutin, prudusek, zubu, ucha, mechyre, ledvin. U dotazu
+    #    'zánět kůže' je to jeste vic videt: 43 -> 1.
+    #
+    # PUVODNI VETA UZIVATELE ZUSTAVA NA OR. Prisny AND na ni pustit
+    # NELZE - veta 'mám rýmu' obsahuje i sloveso, takze by se vyzadovalo
+    # i 'mít' a nenaslo by se NIC. Rizeny pojem ze slovniku je proti tomu
+    # ocisteny, takze u nej AND smysl ma.
+    #
+    # Prevod na OR se dela nad UZ ZPRACOVANYM tsquery, ne nad textem od
     # uzivatele - websearch_to_tsquery vstup rozparsuje a uvozovkovane
     # fraze necha jako <->, takze zamena '&' za '|' je bezpecna.
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
-        par["fts_dotaz"] = cur.execute(
-            "SELECT replace(websearch_to_tsquery('czech_unaccent', %s)::text,"
-            "               '&', '|')",
-            (dotaz,),
-        ).fetchone()[0]
+        casti: list[str] = []
+        # varianty[0] je puvodni text dotazu -> OR, zbytek jsou rizene
+        # pojmy ze slovniku -> AND uvnitr.
+        for i, v in enumerate(varianty):
+            vyraz = ("replace(websearch_to_tsquery('czech_unaccent', %s)::text, '&', '|')"
+                     if i == 0 else
+                     "websearch_to_tsquery('czech_unaccent', %s)::text")
+            q = cur.execute(f"SELECT {vyraz}", (v,)).fetchone()[0]
+            if q:
+                casti.append(f"({q})")
+        par["fts_dotaz"] = " | ".join(casti)
 
         # Rozhodnuti, jestli je lepsi puvodni veta nebo text od routeru.
         # Levne - jen dve agregace nad uz vyfiltrovanou mnozinou.
@@ -343,7 +399,7 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
         WITH zaklad AS (
             SELECT s.id, s.kod_sukl, l.nazev, l.sila,
                    l.na_predpis, l.hrazeno, l.ucinne_latky, l.atc,
-                   l.lekova_forma, s.strana_pdf,
+                   l.lekova_forma, s.strana_pdf, l.vek_od, l.pro_deti,
                    s.sekce, s.obsah_text,
                    s.frekvence, s.organovy_system, s.sekce_atributy,
                    {cosine_sql} AS cosine,
@@ -399,7 +455,14 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     #
     # V takovem pripade se vraci CELA sekce v poradi, v jakem stoji
     # v dokumentu - to je to, co clovek chce precist.
-    if f.sekce and len(f.sekce) == 1 and (f.nazev or f.kod_sukl):
+    # Router k obsahove sekci casto prida i 'atributy' ("davkovani vibrocil"
+    # -> davkovani + atributy, 1. 10. 2026). Cteni sekce se pak nezaplo,
+    # nejlepsi pasazi byla identita leku a na davkovani zbyla 2 mista
+    # z 5. Lek uz vybral filtr na nazev, atributy jsou tu navic.
+    obsahove = [s for s in (f.sekce or []) if s != "atributy"]
+    if len(obsahove) == 1 and (f.nazev or f.kod_sukl) \
+            and any(r["sekce"] == obsahove[0] for r in radky):
+        radky = [r for r in radky if r["sekce"] == obsahove[0]]
         dle_id = {r["id"]: r for r in radky}
         serazene = [(r["id"], 0.0) for r in sorted(radky, key=lambda r: r["id"])]
         odp = _sestav(serazene, dle_id, poradi_sem, poradi_fts,
@@ -440,6 +503,7 @@ def _sestav(serazene, dle_id, poradi_sem, poradi_fts,
             na_predpis=r["na_predpis"], hrazeno=r["hrazeno"],
             ucinne_latky=r["ucinne_latky"], atc=r["atc"],
             lekova_forma=r["lekova_forma"], strana_pdf=r["strana_pdf"],
+            vek_od=r.get("vek_od"), pro_deti=r.get("pro_deti"),
             sekce=r["sekce"], obsah_text=r["obsah_text"],
             frekvence=r["frekvence"], organovy_system=r["organovy_system"],
             sekce_atributy=r["sekce_atributy"],
@@ -505,8 +569,12 @@ class LecivoVysledek:
 
 
 def seskup(vysledky: list["Vysledek"], *, leciv: int = 10,
-           pasazi_na_lecivo: int = 3) -> list[LecivoVysledek]:
-    """Seskupi radky po lecivech. Poradi leku urcuje jeho NEJLEPSI pasaz."""
+           pasazi_na_lecivo: int = 3, abecedne: "bool | dict" = False) -> list[LecivoVysledek]:
+    """Seskupi radky po lecivech. Poradi leku urcuje jeho NEJLEPSI pasaz.
+
+    abecedne=True: dotaz byl JEN vzor nazvu („lek zacina oxy") - semantika
+    nema co merit a poradi podle skore by bylo nahodne.
+    """
     podle_leku: dict[str, list[Vysledek]] = {}
     for v in vysledky:
         podle_leku.setdefault(v.kod_sukl, []).append(v)
@@ -518,5 +586,19 @@ def seskup(vysledky: list["Vysledek"], *, leciv: int = 10,
             kod_sukl=kod, nazev=polozky[0].nazev, sila=polozky[0].sila,
             nejlepsi=polozky[0], dalsi=polozky[1:pasazi_na_lecivo]))
 
-    ven.sort(key=lambda l: -l.skore)
+    if isinstance(abecedne, dict):
+        # „lek priblizne XXX": nejpodobnejsi nazev nahore, pak abecedne
+        ven.sort(key=lambda l: (-abecedne.get(l.kod_sukl, 0.0), l.nazev or "", l.sila or ""))
+    elif abecedne:
+        ven.sort(key=lambda l: (l.nazev or "", l.sila or ""))
+    else:
+        ven.sort(key=lambda l: -l.skore)
     return ven[:leciv]
+
+
+def je_abecedne(filtr: "Filtr | None") -> bool:
+    """Radit vysledek abecedne? (jen vzor nazvu, zadny dalsi text)"""
+    v = getattr(filtr, "nazev_vzor", None)
+    if v is not None and v.platny and v.jen_vzor and v.druh == "priblizne":
+        return v.podobnost or {}          # radit podle podobnosti nazvu
+    return bool(v is not None and v.platny and v.jen_vzor)

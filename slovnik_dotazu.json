@@ -1,108 +1,101 @@
 {
-  "_komentar": "Rozsireni DOTAZU pro hledani: vyraz uzivatele -> formulace, ktera je v textech SPC. NEPLETI se se slovnik_pojmu.json, ten mapuje odborny termin na laicky tvar pro ZOBRAZENI. Tenhle soubor se pouziva JEN pri hledani, do dat se nic nepridava a uzivatel dal vidi vetu z dokumentu. Radky zacinajici podtrzitkem se ignoruji.",
-  "_jak_pridavat": "Klic = KMEN toho, co napise laik (male pismena, bez diakritiky) - cestina pri sklonovani vyhazuje -e-, proto jsou tu oba tvary 'kasl' i 'kasel'. Hodnoty = formulace, ktere v datech OPRAVDU JSOU; vymyslena formulace nenajde nic. Vyplati se je vybrat MERENIM - u antihistaminik reaguje kazdy lek na jinou. Max 4 hodnoty na klic. Po uprave restartovat API (cachuje se v pameti); prehrani DB ani embeddingu potreba NENI. Navod je v hledej.md.",
-  "reflux": [
-    "vracení kyselého obsahu ze žaludku do úst",
-    "návrat obsahu žaludku do jícnu",
-    "regurgitace"
-  ],
-  "pálení žáhy": [
-    "pyróza",
-    "pálení žáhy"
-  ],
-  "zácpa": [
-    "zácpa",
-    "obtížné vyprazdňování"
-  ],
-  "rýma": [
-    "ucpaný nos",
-    "zánět sliznice nosu"
-  ],
-  "kopřivka": [
-    "kopřivka",
-    "urtikarie"
-  ],
-  "vysoký tlak": [
-    "vysoký krevní tlak",
-    "hypertenze"
-  ],
-  "cukrovka": [
-    "diabetes mellitus",
-    "cukrovka"
-  ],
-  "zánět průdušek": [
-    "bronchitida",
-    "zánět průdušek"
-  ],
-  "žáha": [
-    "pálení žáhy",
-    "pyróza"
-  ],
-  "říhá": [
-    "časté říhání",
-    "nadměrné říhání"
-  ],
-  "kasl": [
-    "kašel",
-    "vykašlávání hlenu",
-    "zánět průdušek"
-  ],
-  "kasel": [
-    "kašel",
-    "vykašlávání hlenu"
-  ],
-  "ucpan": [
-    "ucpaný nos",
-    "přetížení nosu"
-  ],
-  "zacp": [
-    "zácpa",
-    "obtížné vyprazdňování"
-  ],
-  "alergi": [
-    "alergie",
-    "alergická reakce",
-    "alergická rýma",
-    "úleva od příznaků alergie"
-  ],
-  "styt": [
-    "štítná žláza"
-  ],
-  "stitn": [
-    "štítná žláza"
-  ],
-  "tlak": [
-    "vysoký krevní tlak",
-    "hypertenze"
-  ],
-  "cholesterol": [
-    "zvýšený cholesterol",
-    "krevní tuky"
-  ],
-  "ekzem": [
-    "ekzém",
-    "atopický ekzém"
-  ],
-  "horeck": [
-    "horečka",
-    "zvýšená tělesná teplota"
-  ],
-  "bolest": [
-    "bolest",
-    "bolesti",
-    "tlumení bolesti",
-    "středně silné až silné bolesti"
-  ],
-  "antihistaminik": [
-    "alergická reakce",
-    "úleva od příznaků alergie",
-    "příznaky alergie",
-    "kopřivka"
-  ],
-    "antihistamika": [
-    "alergická reakce",
-    "úleva od příznaků alergie",
-    "příznaky alergie",
-    "kopřivka"
-  ]
+ "_komentar": "Rozsireni DOTAZU pro hledani: vyraz uzivatele -> formulace, ktera je v textech SPC. NEPLETI se se slovnik_pojmu.json, ten mapuje odborny termin na laicky tvar pro ZOBRAZENI. Tenhle soubor se pouziva JEN pri hledani, do dat se nic nepridava a uzivatel dal vidi vetu z dokumentu. Radky zacinajici podtrzitkem se ignoruji.",
+ "_jak_pridavat": "Klic = KMEN toho, co napise laik (male pismena, bez diakritiky) - cestina pri sklonovani vyhazuje -e-, proto jsou tu oba tvary 'kasl' i 'kasel'. Hodnoty = formulace, ktere v datech OPRAVDU JSOU; vymyslena formulace nenajde nic. Vyplati se je vybrat MERENIM - u antihistaminik reaguje kazdy lek na jinou. Max 4 hodnoty na klic. Po uprave restartovat API (cachuje se v pameti); prehrani DB ani embeddingu potreba NENI. Navod je v hledej.md.",
+ "reflux": [
+  "vracení kyselého obsahu ze žaludku do úst",
+  "návrat obsahu žaludku do jícnu",
+  "regurgitace"
+ ],
+ "pálení žáhy": [
+  "pyróza",
+  "pálení žáhy"
+ ],
+ "vysoký tlak": [
+  "vysoký krevní tlak",
+  "hypertenze"
+ ],
+ "zánět průdušek": [
+  "bronchitida",
+  "zánět průdušek"
+ ],
+ "říhá": [
+  "časté říhání",
+  "nadměrné říhání"
+ ],
+ "kasl": [
+  "kašel",
+  "vykašlávání hlenu",
+  "zánět průdušek"
+ ],
+ "kasel": [
+  "kašel",
+  "vykašlávání hlenu",
+  "zánět průdušek"
+ ],
+ "ucpan": [
+  "ucpaný nos",
+  "přetížení nosu"
+ ],
+ "zacp": [
+  "zácpa",
+  "obtížné vyprazdňování"
+ ],
+ "alergi": [
+  "alergie",
+  "alergická reakce",
+  "alergická rýma",
+  "úleva od příznaků alergie"
+ ],
+ "styt": [
+  "štítná žláza"
+ ],
+ "stitn": [
+  "štítná žláza"
+ ],
+ "cholesterol": [
+  "zvýšený cholesterol",
+  "krevní tuky"
+ ],
+ "ekzem": [
+  "ekzém",
+  "atopický ekzém"
+ ],
+ "horeck": [
+  "horečka",
+  "zvýšená tělesná teplota"
+ ],
+ "bolest": [
+  "bolest",
+  "bolesti",
+  "tlumení bolesti",
+  "středně silné až silné bolesti"
+ ],
+ "antihistaminik": [
+  "alergická reakce",
+  "úleva od příznaků alergie",
+  "příznaky alergie",
+  "kopřivka"
+ ],
+ "antihistamika": [
+  "alergická reakce",
+  "úleva od příznaků alergie",
+  "příznaky alergie",
+  "kopřivka"
+ ],
+ "rým": [
+  "ucpaný nos",
+  "zánět sliznice nosu"
+ ],
+ "kopřivk": [
+  "kopřivka",
+  "urtikarie"
+ ],
+ "cukrovk": [
+  "diabetes mellitus",
+  "cukrovka"
+ ],
+ "žáh": [
+  "pálení žáhy",
+  "pyróza"
+ ]
 }

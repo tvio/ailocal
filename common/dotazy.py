@@ -25,6 +25,7 @@ o dohledatelnost, coz je hlavni prednost cele ukazky.
 
 import json
 import logging
+import re
 import unicodedata
 from pathlib import Path
 
@@ -55,12 +56,44 @@ def _bez_diakritiky(s: str) -> str:
                    if unicodedata.category(c) != "Mn").lower()
 
 
+def _slova(s: str) -> list[str]:
+    """Rozpad na slova. Interpunkce se zahazuje, diakritika taky."""
+    return re.findall(r"[a-z0-9]+", _bez_diakritiky(s))
+
+
+def _sedi(klic: str, slova: list[str]) -> bool:
+    """Sedi klic slovniku na dotaz? Porovnava se PO SLOVECH, ne podretezcem.
+
+    Do 22.9.2026 tu bylo `if _bez_diakritiky(klic) in d`, tedy hledani
+    PODRETEZCE kdekoliv uvnitr textu. To melo dve vady:
+
+      1. Klic se trefil doprostred jineho slova. Zmereno: klic 'tlak'
+         se trefil v 'tlak v uchu' i v 'nizky tlak' a pridal k dotazu
+         'vysoky krevni tlak' - tedy OPACNY vyznam. (Ten klic je navic
+         pryc, viz slovnik - 'vysoky tlak' ho plne nahrazuje.)
+      2. Nic to neresilo se sklonovanim, jen to matlo. 'ryma' se
+         netrefila v 'rymu', protoze posledni pismeno je jine.
+
+    Ted se dotaz rozpadne na slova a klic sedi, kdyz jeho slova tvori
+    PREFIXY po sobe jdoucich slov dotazu. Tim projdou KMENY, na kterych
+    slovnik stoji ('kasl' je prefix 'kaslu'), ale uz se netrefi
+    doprostred slova.
+    """
+    kl = _slova(klic)
+    if not kl or len(kl) > len(slova):
+        return False
+    for i in range(len(slova) - len(kl) + 1):
+        if all(slova[i + j].startswith(k) for j, k in enumerate(kl)):
+            return True
+    return False
+
+
 def rozsir(dotaz: str, *, cesta: Path | None = None, limit: int = 4) -> list[str]:
     """Vrati varianty dotazu VCETNE puvodniho, prvni je vzdy puvodni.
 
-    Hleda klice jako podretezce - uzivatel napise "mám reflux", klic je
-    "reflux". Delsi klice maji prednost, aby "pálení žáhy" prebilo
-    "žáha", kdyby tam bylo oboje.
+    Klice se hledaji PO SLOVECH, jako prefixy (viz _sedi()) - uzivatel
+    napise "mám reflux", klic je "reflux". Delsi klice maji prednost,
+    aby "pálení žáhy" prebilo "žáha", kdyby tam bylo oboje.
 
     Porovnava se BEZ DIAKRITIKY, protoze lide bezne pisou "kaslu" misto
     "kašlu" - a bge-m3 je na diakritiku citlivy (zmereno: "kasel" vraci
@@ -70,11 +103,11 @@ def rozsir(dotaz: str, *, cesta: Path | None = None, limit: int = 4) -> list[str
     """
     if not dotaz:
         return []
-    d = _bez_diakritiky(dotaz)
+    slova = _slova(dotaz)
     slovnik = nacti(cesta)
     ven: list[str] = [dotaz]
     for klic in sorted(slovnik, key=len, reverse=True):
-        if _bez_diakritiky(klic) in d:
+        if _sedi(klic, slova):
             for varianta in slovnik[klic]:
                 if varianta not in ven:
                     ven.append(varianta)

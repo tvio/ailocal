@@ -18,7 +18,7 @@ Kratky vystup je i rychly vystup.
 Pouziti:
   uv run python zkontroluj_modelem.py --vzorek 3      # zkusit na par sekcich
   uv run python zkontroluj_modelem.py --vse
-  uv run python zkontroluj_modelem.py --vse --model gpt-5-nano   # cloud
+  uv run python zkontroluj_modelem.py --vse --model gpt-6-luna   # cloud
   uv run python zkontroluj_modelem.py --vse --zapis
 """
 
@@ -29,7 +29,8 @@ import argparse
 from pathlib import Path
 from collections import Counter
 
-from common.config import LECIVA_DIR, adresar_leciva, MODEL_KONTROLY, OPENAI_MODEL
+from common.config import (LECIVA_DIR, adresar_leciva, MODEL_KONTROLY,
+                           OPENAI_MODEL, OPENAI_REASONING_EFFORT)
 from common.sekce import orizni_na_jadro
 
 SYSTEM = (
@@ -80,11 +81,16 @@ def _zavolej_model(prompt: str, model: str, cloud: bool) -> str:
         from common.config import nacti_openai_klic
 
         klient = OpenAI(api_key=nacti_openai_klic())
+        # Vypinac reasoningu ma kazdy model jiny (luna "none", nano
+        # "minimal", to druhe vraci 400), takze jen pro model z configu.
+        extra = ({"reasoning_effort": OPENAI_REASONING_EFFORT}
+                 if model == OPENAI_MODEL else {})
         r = klient.chat.completions.create(
             model=model,
             messages=[{"role": "system", "content": SYSTEM},
                       {"role": "user", "content": prompt}],
             response_format={"type": "json_object"},
+            **extra,
         )
         return r.choices[0].message.content or ""
 

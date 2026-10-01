@@ -34,7 +34,8 @@ Výpis léčiv (`/api/leciva`) model nepotřebuje a jede hned.
 | metoda | cesta | k čemu |
 |---|---|---|
 | GET | `/api/stav` | jsou modely v paměti? |
-| GET | `/api/leciva` | výpis korpusu, stránkovaný a řaditelný |
+| GET | `/api/lecivo/{kod}/sekce/{sekce}` | všechny položky jedné sekce léku v pořadí dokumentu (GUI: „Ostatní indikace léku" v rozbalení, načítá se až při rozbalení) |
+| GET | `/api/leciva` | výpis korpusu (jen zástupci SPC), stránkovaný (`strana`, `na_strance` 5–200, GUI nabízí 10/25/50/100) a řaditelný |
 | GET | `/api/hledat` | sémantické hledání |
 | GET | `/api/pdf/{kod_sukl}` | původní SPC v PDF |
 
@@ -191,3 +192,27 @@ a worker), takže je potřeba zabít oba.
 Zabití podle PID jde i klasicky:
 
     taskkill /F /PID 12345
+
+## Dva režimy výsledku (od 1. 10. 2026)
+
+| režim | kdy | řádek | rozbalení |
+|---|---|---|---|
+| **hledání** | „pálí mě žáha" | záhlaví „Nalezeno (nejlepší shoda)", v buňce [sekce] + pasáž, pod ní drobně „pro: … · věk · +N shod ▼" | další shody podle podobnosti, metadata |
+| **čtení sekce** (`cely_usek`) | „nežádoucí účinky paralen", „dávkování vibrocil" | **souhrn sekce**: NÚ počty podle frekvence, dávkování skupiny pacientů, indikace počet + začátek | celá sekce uspořádaná podle smyslu: **NÚ seskupené podle frekvence** (nejčastější nahoře), **dávkování jako tabulka** (pro koho / dávka / jak často / poznámka), indikace seznam; metadata sbalená v „Údaje o léku a skóre" |
+
+Čtení sekce s 1–2 léky se **rozbalí samo**. Sekce zúžená filtrem
+(„vzácné NÚ paralen") má v souhrnu „(odpovídá filtru)".
+
+Proč: dřív se i u čtení sekce ukazovala v řádku PRVNÍ položka – NÚ
+s první položkou „vzácné" vypadaly, jako by lék měl jen vzácné účinky.
+
+Štítky u nálezu: **„indikace pro: …"** = skupina pacientů dané indikace
+(z 4.1, jen když je známá); **„věk: od X let"** = věk použití léku
+(`vek_pacienta.md`), podle něj filtruje „pro dítě X let".
+
+**Buňka Nalezeno** (1. 10. 2026): vlevo **barevná značka sekce** s pevnou
+šířkou (Indikace / Kontraindikace / Dávkování / Nežád. účinky / Identita,
+plný název v bublině), vpravo dva zarovnané řádky – text nálezu
+(u NÚ s frekvencí) a pod ním šedé doplňky „pro: skupina indikace (zkrácená
+na 40 zn.) · věk použití · +N shod ▼". Co znamená sloupec, říká záhlaví
+(„nejlepší shoda" / „souhrn sekce"), ne štítek v každém řádku.

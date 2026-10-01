@@ -82,7 +82,8 @@ def main() -> int:
                 stavy[stav.get(nazev, {}).get("stav", "?")] += 1
                 continue
 
-            # Přednostně ořezaná verze; ta plná je záloha pro porovnání.
+            # Čte se PLNÁ sekce. Ořez na jádro dělá až extrahuj_sekci()
+            # (orezat=True); <sekce>_orez.md na disku je jen k nahlédnutí.
             plny = zdroj / f"{nazev}.md"
             if not plny.exists():
                 stav[nazev] = {"stav": "chybi_v_dokumentu",

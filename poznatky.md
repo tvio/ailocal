@@ -5,6 +5,1532 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-01 — Hledání podle části názvu: pevné formulace, ne sémantika
+
+Laik si pamatuje část názvu („oxy něco"). **Embedding to neumí** – zachycuje
+význam, ne písmena; „oxy" význam nemá. Je to úloha na písmena →
+deterministický filtr (`common/nazev_vzor.py`), stejný princip jako věk.
+
+Rozhodnuto: jen **pevné formulace** (žádné „něco jako" – motalo by se
+s „něco na rýmu"): `lék začíná [na] XXX`, `lék obsahuje XXX`,
+`lék končí [na] XXX`, XXX ≥ 3 znaky. Hledá se **jen v názvu léku**,
+bez diakritiky. (Původně i v účinných látkách – vyřazeno týž den:
+kombinované přípravky a vakcíny mají desítky látek a vzor se chytal
+skoro všude. Tabulka níže je z verze S látkami.)
+Zbytek dotazu jde do sémantiky.
+
+| dotaz | výsledek |
+|---|---|
+| lék začíná oxy | OXYCOMP, OXYNALON (oxykodon), SINEX, BENOXI |
+| lék začíná na oxy na rýmu | AFRIN, SINEX, NASIVIN (oxymetazolin) – oxykodon zmizel |
+| lék končí na prazol | lansoprazol… ale i aripiPRAZOL, brexpiPRAZOL (antipsychotika) |
+| lék začíná ox | vzor nepoužit (< 3 znaky), řečeno v popisu filtru |
+
+- Router z formulace občas vyrobí `nazev="oxy"` (ILIKE `%oxy%`), což by
+  „začíná" rozbilo → shodný název/látka z routeru se zahodí.
+- Koncovka ≠ skupina léků („prazol" chytí i ARIPIPRAZOL).
+- **„Končí na" = konec SLOVA v názvu**, ne celého názvu: názvy končí
+  výrobcem („OMEPRAZOL TEVA") a „lék končí na prazol" jen nad názvem
+  nenašel nic. PostgreSQL regex `\M`.
+- **Jen vzor bez dalšího textu** („lék začíná oxy") → hledá se v identitě
+  léku (sekce atributy, 1 řádek na lék) a **řadí se abecedně** – podle
+  skóre by bylo pořadí náhodné. Popisek to říká („řazeno abecedně").
+
+### „lék přibližně XXX" – překlepy a fonetický zápis
+
+Laik píše, jak slyší: „zirtek" (ZYRTEC), „oxicilin" (OXACILIN), „nurophen".
+
+- **Trigramy (pg_trgm) řadily špatně:** „oxicilin" → AMPICILIN i PENICILIN
+  0,56, OXACILIN jen 0,50 (společná koncovka -icilin). „zirtek" ZYRTEC
+  nenašly vůbec. (Rozšíření v DB zapnuté, ale nepoužívá se.)
+- **Řešení:** fonetická normalizace obou stran (y→i, ph→f, c/ck→k,
+  x→ks, w→v, bez diakritiky) + podobnost po SLOVECH názvu (difflib,
+  práh 0,75) nad indexem ~ tisíců slov v paměti. **20–30 ms.**
+- Výsledky: oxicilin→OXACILIN 0,89; zirtek→ZYRTEC 1,0; nurophen→NUROFEN;
+  amokisklav→AMOKSIKLAV 0,9; paralem→PARALEN; helicyd→HELICID.
+- Řazení podle podobnosti (nejpodobnější nahoře). Název od routeru
+  podobný vzoru se zahodí – router občas opíše překlep do ILIKE filtru.
+
+---
+
+## 2026-10-01 — „Dávkování vibrocil" ukázalo 2 z 5 dávek: router přidal atributy a vypnul čtení sekce
+
+V JSONu i DB bylo všech 5 dávkování, GUI ukázalo 2. Restart API s tím
+nesouvisel (data se čtou z DB při každém dotazu) – časově jen sedl na
+dokončení embeddingů.
+
+- Router vrátil `sekce: davkovani, atributy`. Režim **čtení celé sekce**
+  (všechno v pořadí dokumentu) se zapínal jen při JEDNÉ sekci → šlo běžné
+  hledání: na lék nejlepší pasáž + 2 další. Nejlepší pasáží byla
+  **identita léku** (atributy, cosine 0,665), na dávkování zbyla 2 místa.
+- Oprava (`common/hledani.py`): když dotaz jmenuje lék a je jen jedna
+  OBSAHOVÁ sekce, atributy se zahodí a čte se celá sekce. API teď vrací
+  5/5 dávkování u obou Vibrocilů. Router byl stabilní (3× totéž).
+- Vedlejší: VIBROCIL kapky a sprej mají vlastní SPC a ve výsledku se
+  jmenovaly STEJNĚ → u názvu se nově ukazuje léková forma (GUI i CLI).
+
+---
+
+## 2026-10-01 — Kolik stojí zpracování SPC: metrika z ceníku podle skutečných tokenů
+
+Z finálního stavu `data/spc/_extrakce/stav.sqlite` (23 495 sekcí, 0 chyb,
+dávkování už bez ořezu). Tokeny = skutečně účtované OpenAI (`usage`),
+poslední úspěšný pokus každé sekce. Ceník gpt-6-luna: vstup 0,10 $,
+výstup 0,50 $ za 1 M; **Batch API −50 % → 0,05 $ / 0,25 $**.
+
+### Tokeny a položky po sekcích (celý korpus, 5 880 SPC)
+
+| sekce | vstup | výstup | položek | výstup / položku |
+|---|---|---|---|---|
+| nežádoucí účinky | 14,31 M | **16,67 M** | 350 067 | 48 tok |
+| dávkování (bez ořezu) | 10,31 M | 4,13 M | 46 540 | 89 tok |
+| indikace | 6,47 M | 1,51 M | 24 321 | 62 tok |
+| kontraindikace | 4,00 M | 2,63 M | 45 260 | 58 tok |
+| **celkem** | **35,09 M** | **24,95 M** | **466 188** | 54 tok |
+
+**Výstup tvoří 78 % ceny** (24,95 M × 0,25 $ = 6,24 $ proti vstupu
+35,09 M × 0,05 $ = 1,75 $). Platí se za vyrobený JSON, ne za čtení SPC.
+Laický tvar a klíč jsou v položce jen pár slov – nejdražší jsou
+nežádoucí účinky (2/3 výstupu), protože jich je hodně, ne protože se
+zjednodušují.
+
+### Metrika: co dostaneme za 1 M výstupních tokenů
+
+| za 1 M výstupních tokenů | |
+|---|---|
+| kompletně zpracovaných SPC (všechny 4 sekce) | **~236 SPC** |
+| strukturovaných položek | **~18 700** |
+| cena výstupu | 0,25 $ (Batch) / 0,50 $ (sync) |
+| k tomu potřebný vstup | ~1,41 M tok = 0,07 $ (Batch) |
+| **celkem** | **~0,32 $ Batch / ~0,64 $ sync za 236 SPC** |
+
+### Na jedno SPC (průměr)
+
+| | Batch | sync |
+|---|---|---|
+| tokeny | 5 968 vstup + 4 243 výstup | stejné |
+| cena | **0,00136 $** | 0,0027 $ |
+| 100 SPC | 0,14 $ | 0,27 $ |
+| 1 000 SPC | 1,36 $ | 2,72 $ |
+| **celý korpus 5 880 SPC** | **~8,0 $** | ~16 $ |
+| za 1 $ | ~735 SPC | ~367 SPC |
+
+### Skutečně zaplaceno vs. „čistá" cena
+
+- Čistá cena jednoho průchodu korpusu: **~8,0 $** (Batch).
+- **Zaplaceno celkem 10,18 $:** + dávkování dvakrát (nejdřív s ořezem,
+  pak bez – ~1,5 $), + smyčky modelu do stropu (16 × 128 k a ~75 × 40 k
+  tokenů ≈ 0,9 $), + testy.
+- Odhad z 3 SPC (29. 9.) byl 5,5 $ – výstup podstřelil o 62 %.
+  **Pro budoucí odhady brát poměr výstup/vstup 0,71** (24,95/35,09),
+  u NÚ 1,16, dávkování 0,40, indikace 0,23, kontraindikace 0,66.
+
+### Pro měsíční job
+
+Platí se jen za nová a změněná SPC. Kolik jich měsíčně přibude/změní se,
+zatím nevíme (změřit při prvním přírůstkovém běhu). Orientačně:
+**100 změněných SPC ≈ 0,14 $, 500 ≈ 0,7 $**. Rezerva na smyčky ~10 %;
+se schématem u všech sekcí (todo) by měla klesnout.
+
+---
+
+## 2026-09-30 večer — Věk použití z SPC bez modelu: filtr „lék pro děti" u 90 % SPC
+
+Cíl: „lék na reflux pro děti", i když indikace věk neuvádí. Věk je
+v už vyextrahovaných sekcích: 4.1 (skupina), **4.2 (povinná podsekce
+„Pediatrická populace")**, 4.3 (zákazy „děti do 2 let"). 4.4 neextrahujeme.
+Modul `common/vek.py`, v DB `leciva.vek_od`, `pro_deti`, `vek_duvody`.
+
+| | SPC |
+|---|---|
+| věk od určen | **5 103 z 5 880 (87 %)** |
+| pro děti ANO / NE / nevím | 2 559 / 2 734 / 587 |
+
+Kontrolní léky (vše sedí): VIBROCIL kapky od 1 roku, sprej od 6;
+GAVISCON od 12; PARALEN 500 od 6, 125 mg od 3; NOVALGIN tablety od 15,
+injekce od 3 měsíců; IBALGIN BABY a NUROFEN 20 mg/ml od 3 měsíců;
+ASPIRIN 500 od 12; XARELTO jen dospělí.
+
+### Pasti, které odhalily kontrolní léky (každá změněna měřením)
+
+- **„Kojení" (4.3) = zákaz při kojení MATKY**, ne pro kojence.
+- **„Nesmí" v poznámce není zákaz** („max. dávka nesmí být překročena") →
+  zákaz se posuzuje podle pole `davka`.
+- **Dávka „neuvedeno" není kladný důkaz** (GAVISCON „děti mladší 12 let:
+  jen na doporučení lékaře" vyšel „od 0").
+- **Slovo „děti" samo neurčuje věk:** kontraindikace „děti s hmotností
+  pod 20 kg" posunula PARALEN na 18; „děti s glaukomem" dávalo „od 0"
+  u 512 SPC. → `vek_od` jen z čísla nebo slov s jasnou hranicí,
+  obecné „děti" jen do `pro_deti`.
+- **„Děti DO 6 let" jako kladný údaj neurčuje spodní hranici** (PARALEN
+  125, IBALGIN BABY vycházely od 0).
+- **„Jen na lékařský předpis" u dětí = pro laika NE:** ASPIRIN 500 má pro
+  děti 60 mg/kg, ale „nemají užívat bez lékařského předpisu" (Reye až v 4.4).
+- **Jedno SPC = víc forem:** NOVALGIN tablety + injekce (dětské dávky jen
+  injekce), VIBROCIL kapky + sprej („sprej ne do 6 let"). → rodiny forem
+  podle kódu lékové formy (GTT/SPR/TBL/SUP/INJ…) proti slovům v textu.
+
+### Zapojení
+
+- Věk v dotazu **deterministicky** (`vek_z_dotazu`), ne routerem – filtr
+  s dopadem na bezpečnost se nesmí ztratit. „kojení" ≠ kojenec,
+  „bolesti 3 roky" ≠ věk. Zmínka o věku se z textu pro vektor odstraní.
+- Filtr: `pro_deti IS TRUE` / `vek_od <= věk`. **„Nevím" se nezobrazí.**
+- `hledej.py "něco na horečku pro tříleté dítě"` → IBALGIN BABY, NUROFEN
+  PRO DĚTI, PARALEN SUS…; ASPIRIN zmizel. Mezi výsledky jsou ale
+  nemocniční injekce (FORTUM, PARACETAMOL B. BRAUN) – jiné téma (forma/OTC).
+
+---
+
+## 2026-09-30 odpoledne — Evaluace nad celým trhem: parafráze 20/20, ořez 4.2 zahazoval dávky u 56 % SPC
+
+### Ořez sekce 4.2 byl na korpusu škodlivý
+
+VIBROCIL (`cz_63634`): do modelu šlo jen dávkování dětí 1–6 let, dospělí
+a celý nosní sprej chyběli. Příčina: `orizni_na_jadro()` řeže na řádku
+začínajícím „Děti / Starší / Pediatr…". V surovém textu PDF (bez `##`)
+tak začínají i SAMOTNÉ ŘÁDKY DÁVKOVÁNÍ („Děti ve věku 6–12 let: 3–4 kapky").
+
+| | sekcí |
+|---|---|
+| dávkování celkem | 5 875 |
+| ořez něco ubral | 5 451 |
+| ořez zahodil text s dávkami | **3 286 (56 %)** |
+| zahodil víc dávek, než nechal | **1 246 (21 %)** |
+
+Ořez vznikl kvůli pomalému qwenu; v cloudu nemá smysl → **vypnut**
+(`common/sekce.py: OREZAT_DAVKOVANI = False`), 5 451 sekcí se
+přeextrahovává (~1,4 $). Cena celé 4.2: 29,7 M znaků místo 18,6 M.
+
+### Nová evaluace pro celý trh (`evaluate.py --korpus`)
+
+Testy 3/4 jsou na trhu nepoužitelné: „negativní" témata (HIV, malárie,
+Parkinson) v trhu jsou; parafráze čekají konkrétní NÁZEV. Nové testy
+čekají **terapeutickou skupinu (ATC)** – ta je z registru, ne z modelu.
+
+- **Parafráze ATC: 20/20 trefa v top 5, průměrná přesnost 67 %.**
+  „Mimo skupinu" je většinou legitimní: bylinné čaje V11 (mají ty
+  indikace), homeopatika V12, paracetamol na krk, J02 na plíseň nohou,
+  quetiapin na depresi. Opravdu slabé: „mám alergii" 1/5 (mořská voda,
+  MUTAFLOR), „pálí mě při močení" 1/5 (čaje, IBEROGAST).
+- **Negativní mimo medicínu 5/6:** „jak vyměnit pneumatiku" → LIDOCAINE
+  „při výměně dýchací trubičky" 0,652 – slovo „výměna" přes práh.
+- **Test 0 na korpus nesedí:** pokrytí počítá po kódech (nezástupci
+  sekce nemají → 64 %), heuristika „podezřelé sekce" hlásí 99 %.
+  Skutečné nálezy: **10 145 úplných duplicit (2,3 %)**, 342 textů
+  s různými klíči (na korpus ještě neběžel `ocisti_json.py`), 2 689
+  řádků bez strany, 19 % NÚ s frekvencí „není známo".
+
+---
+
+## 2026-09-30 — Ostrý běh dokončen: 23 479 sekcí za ~9 h, 7,94 $ (odhad 5,5 $ podstřelil výstup)
+
+`extrahuj_json_cloud.py --beh`, 29. 9. 20:37 → 30. 9. 05:40.
+
+| | |
+|---|---|
+| hotovo | **23 479** (neovereno 22 903, castecna 293, prazdna 283) |
+| chyba | 16 – všechny nevalidní JSON od modelu (Unterminated string / Expecting delimiter), nejspíš useknutý výstup velké 4.8 |
+| bez sekce | 25 |
+| dávek | 69 (vč. selhaných na limitu fronty, ty 0 $) |
+| **cena** | **7,94 $** |
+| tokeny | vstup 31,57 M (odhad 31,5 M ✔), **výstup 25,44 M (odhad 15,7 M ✘)** |
+
+- **Vstup tiktoken odhadl přesně, výstup o 62 % víc.** Poměr výstup/vstup
+  ze 3 SPC (29. 9.) byl pro korpus podhodnocený. **Pro budoucí job:**
+  odhad výstupu brát z tohoto běhu (celkový poměr 0,81), ne ze vzorku.
+- Rozpočtová pojistka fungovala jen díky rezervě – skutečnost 7,94 $
+  proti stropu 8,00 $. Na účtu zbývá ~2 $.
+- Změna velikosti dávek uprostřed běhu (1 000 požadavků → 850 k tokenů)
+  nevadila: stav se vede po požadavku, dávka je jen obálka.
+
+### 16 chyb = ZACYKLENÍ modelu, ne useknutý výstup velké sekce
+
+Všech 16 nevalidních JSON: `finish_reason=length`, **přesně 128 000
+výstupních tokenů** (limit modelu). Model opakoval neviditelné znaky
+(`‌‍`), mezery, prázdné řádky nebo fráze („(sic) (sic)",
+„(viz bod 5.1) (odkaz v textu)"). 15× dávkování, 1× kontraindikace,
+vstupy **krátké i dlouhé** (402–8 602 zn) → není to délkou sekce.
+
+- **Ve zdroji žádné neviditelné znaky nejsou** (0 v celém korpusu),
+  model si je vymyslel.
+- **Mezi hotovými se smyčka neschovává:** nejdelší hotový výstup 29 860
+  tokenů (602 NÚ bortezomibu, legitimní), mezi 30 k a 128 k nic.
+- **Cena smyček: 2,05 M tokenů ≈ 0,51 $** (čtvrtina přečerpání odhadu).
+- **Oprava** (`common/extrakce.py: telo_cloud`): `max_completion_tokens
+  = 40 000` (smyčka stojí max. ~0,01 $) a **opakování s `temperature
+  0.4` bez seedu** – při teplotě 0 a stejném seedu by se smyčka
+  zopakovala. Ověřeno sync na 3 z 16: **3/3 validní**, 337–987 tokenů,
+  0,0012 $.
+- **Dávkou s teplotou 0,4 prošlo 14 z 16, 2 se zacyklily znovu**
+  (utnuto na 40 k). Jeden z nich (`cz_58424`) přitom v sync testu prošel,
+  takže teplota pomáhá jen napůl.
+- **Skutečná příčina:** v obou případech model v novém objektu **vynechal
+  klíč** a napsal rovnou hodnotu: `{"pacienti s poruchou funkce ledvin…
+  ‌​…`. Uvízl v NÁZVU KLÍČE, který nemá jak ukončit, a
+  vycpával ho neviditelnými znaky. `json_object` vynutí jen „nějaký
+  JSON", ne strukturu.
+- **Oprava: Structured Outputs** (`response_format: json_schema, strict`,
+  `common/extrakce.py: _schema_sekce`). Model pak klíč vynechat NEMŮŽE.
+  Sync na obou: **6/6 validní** (3× každý), 178–314 tokenů. Zatím jen
+  pro 3. pokus, první průchod korpusu běžel s `json_object`.
+- **Pro budoucí job: zvážit schéma VŠUDE** (i frekvence NÚ jako enum –
+  překlepy „neste známo" by nevznikly). Změní to ale výstup celého
+  korpusu → nejdřív změřit kvalitu na vzorku proti dnešnímu běhu.
+
+---
+
+## 2026-09-29 večer — Ostrý běh: limit fronty Batch API 2 M tokenů, dávky se musí plnit podle tokenů
+
+Hned po startu ostrého běhu (5 dávek po 1 000 požadavcích najednou)
+prošla jen jedna. Ostatní skončily `failed` při validaci:
+
+    token_limit_exceeded: Enqueued token limit reached for gpt-6-luna in
+    organization … Limit: 2,000,000 enqueued tokens.
+
+- Limit platí pro **součet vstupních tokenů všech rozjetých dávek
+  organizace** a model. Dávka 1 000 požadavků má ~1,3 M, takže se vejde
+  jen jedna.
+- Selhání na limitu **nic nestojí** a runner požadavky vrátil do fronty
+  správně. Ale každou minutu posílal další dávky, které zase selhaly.
+- **Oprava:** dávka se plní podle tokenů (`config.OPENAI_BATCH_TOKENU_DAVKA`
+  = 850 k) a pošle se, jen když se vejde do volného místa ve frontě
+  (`OPENAI_BATCH_LIMIT_FRONTY` = 1,8 M, rezerva pod 2 M). Po zásahu do
+  limitu je 5 min pauza.
+- **Důsledek pro čas:** vstup korpusu je 31,5 M tokenů → ~37 dávek po
+  850 k, ve frontě nejvýš 2 najednou. Celková doba = ~19 × doba jedné
+  dávky. **Pro budoucí job:** limit fronty je vlastnost účtu (tier),
+  s vyšším tierem roste. Patří do konfigurace, ne do kódu.
+
+---
+
+## 2026-09-29 večer — Batch API v praxi: jeden vadný řádek shodí celou dávku, validace trvá 20 s až 15 min, sirotčí dávka nastala doopravdy
+
+Runner `extrahuj_json_cloud.py` otestovaný na 5 SPC (20 požadavků,
+data/spc/_extrakce_test) s úmyslnými chybami. Utraceno 0,0045 $.
+
+| scénář | co udělalo OpenAI | co udělal runner |
+|---|---|---|
+| dávka s neexistujícím souborem | `batches.create` **PROJDE**, chyba až při validaci: `failed` po **15 min**, `invalid_request: Cannot find file` | 20 požadavků → `chyba` s důvodem, 0 $; `--znovu-chybne` je vrátí |
+| 1 požadavek bez `messages` | **celá dávka `failed`** za 20 s: `missing_required_parameter`, **line 1** | vadný řádek → `chyba`, **19 zdravých zpět do fronty bez započtení pokusu**, hned další dávka |
+| proces zabit mezi `batches.create` a zápisem do DB | dávka u OpenAI existuje (`metadata.davka=3`), v DB ne | nově `srovnej_s_openai()` při startu: převezme ji podle metadat a lokálního JSONL, **neposílá dvakrát** |
+
+Další zjištění:
+
+- **Zdravá dávka 19 požadavků: 20 s validace + ~2 min zpracování.**
+  Průběh je vidět průběžně (`request_counts` 11/19 → 19/19).
+- **Model vrátil `[]` u 3 z 3 radiofarmak** („Specifické nežádoucí účinky
+  nejsou známy") – je to SPRÁVNĚ. `prazdna` je proto výsledek (`hotovo`),
+  ne chyba; při `temperature=0` by opakování dalo totéž a stálo peníze.
+  Priorita „SPC s nejvíc kódy" dává nahoru radiofarmaka (jedno SPC pro
+  mnoho kódů/aktivit).
+- **Moje chyba při testu:** druhý testovací běh bez `--limit-spc` naplnil
+  testovací DB celým korpusem (23 475 požadavků) a odeslal dávku 1 000
+  požadavků. Zastaveno do 1 min, dávka shodou okolností `failed` na
+  validaci (0 $), sirotčí dávka 3 zrušena. Pojistka: `--test --beh`
+  bez `--limit-spc` skript odmítne.
+- Přidáno: lokální kontrola těla požadavku před odesláním (vadný požadavek
+  nesmí shodit celou dávku), `--max-davek N` pro pilot.
+
+---
+
+## 2026-09-29 — Celá extrakce v cloudu (luna): korpus ~5,5 $ přes Batch. Slabé místo je generovaný slovník, ne luna
+
+Rozhodnuto: extrakce jde do cloudu **celá** (produkční prompt
+`common/extrakce.py`, jedno volání na sekci). Nástroj:
+`benchmarky/extrakce_cloud/bench_extrakce_luna.py`, výsledky
+`bench_extrakce_luna.json`, výstupy `vystupy/<spc>/`.
+
+Volání: `gpt-6-luna`, `reasoning_effort="none"`, **`temperature=0`,
+`seed=42`**. Luna to všechno bere bez chyby (ověřeno). V
+`common/extrakce.py` přibyla cloudová cesta (`_zavolej_cloud`, jen
+`config.OPENAI_MODEL`) a tokeny z `usage` ve výsledku, včetně
+neúspěšných pokusů.
+
+### Vstup celého korpusu – spočítáno tiktokenem (o200k_base)
+
+| sekce | volání | prompt/volání | text | prompt celkem | vstup |
+|---|---|---|---|---|---|
+| indikace | 5 867 | 908 tok | 1,14 M | 5,33 M | 6,46 M |
+| dávkování | 5 875 | 264 | 5,23 M | 1,55 M | 6,78 M |
+| kontraindikace | 5 875 | 496 | 1,08 M | 2,91 M | 3,99 M |
+| nežádoucí účinky | 5 810 | 1 055 | 8,10 M | 6,13 M | 14,23 M |
+| **celkem** | 23 427 | | 15,6 M | **15,9 M** | **31,5 M** |
+
+**Polovinu vstupu tvoří prompt, ne text SPC.** Odhad sedí na skutečný
+účet z API na 0,1 % (18 254 odhad / 18 266 účtováno na 12 voláních).
+
+### Reálná extrakce na 3 SPC (malé p10 / střední p50 / velké p95, konverze „ok")
+
+| SPC | sekce 4.8 | vstup → výstup tok | položek | čas (sync) |
+|---|---|---|---|---|
+| cz_82815 (malé) | 1 208 zn | 1 254 → 459 | 9 | 4 s |
+| cz_87127 (střední) | 1 783 zn | 1 695 → 1 623 | 37 | 11 s |
+| MINJUVI (velké) | 18 661 zn | 5 372 → 3 788 | 77 | 27 s |
+
+Ostatní sekce: 2–10 s, 115–1 252 výstupních tokenů. Všech 12 sekcí
+`neovereno` napoprvé, žádná chyba. Cena 12 volání: **0,0065 $**.
+
+Poměr výstup/vstup: indikace 0,31, dávkování 0,39, kontraindikace 0,25,
+**4.8 0,71** (rozptyl 0,37–0,96, vychází jen ze 3 SPC).
+
+### Cena celého korpusu
+
+| | výstup | sync | **Batch (−50 %)** |
+|---|---|---|---|
+| odhad (poměry výše) | 15,7 M tok | 11,0 $ | **5,5 $** |
+| pesimisticky (4.8 poměr 0,96) | ~19 M | ~12,8 $ | ~6,4 $ |
+| opakování selhaných | +pár % | | |
+
+Starý odhad 6,8 $ (23. 9., 6 618 SPC) seděl řádově. **Na účtu jsou
+jednotky dolarů**, takže je potřeba ověřit zůstatek a strop před
+odesláním (rozpočtová pojistka z `todo.md`).
+
+### Kvalita – co je vidět na první pohled (bez kontrol, jen oči)
+
+- Luna překládá dobře: „bronchitida → zánět průdušek", „scintigrafie
+  perfuze myokardu → zobrazení prokrvení srdečního svalu". Klíče jsou
+  většinou rozumné („folikulární lymfom", „rakovina prsu").
+- **Nejhorší laické tvary NEjsou od luny, ale z generovaného slovníku**
+  (`slovnik_pojmu.json`, vyrobený qwenem na 32 léčivech), který laický tvar
+  modelu PŘEPÍŠE: „bradykardie → Pomalý tep **srce**", „dušnost →
+  těžkosti s dýcháním a **nedostatky** vzduchu". Ze 142 položek se
+  laickým tvarem přepsalo slovníkem **59 (42 %)**. Tohle je nález N12
+  (`extrakce.md`), teď potvrzený.
+- Klíče u kontraindikací „Hypersenzitivita na léčivou látku" →
+  **„léčivá látka"**, „pomocná látka". Jsou obecné a sedí na každý lék (N3).
+- Laický tvar indikací z dlouhé věty zůstává v 7. pádě
+  („…nereagujícím difuzním velkobuněčným B-lymfomem") a s odborným
+  termínem. Opisuje pád zdroje.
+
+---
+
+## 2026-09-29 — Zmapovaná extrakce: laický tvar a klíč neověřuje skoro nic, luna změřená na jiném úkolu. Kontroly dočasně vypnuté
+
+Podklad: `extrakce.md` (celý řetěz), `extrakce_kontroly.md` (kontroly).
+
+### Co se ukázalo jinak, než se čekalo
+
+- **Laický tvar i klíč vznikají v TÉMŽE volání jako doslovná extrakce.**
+  Samostatný krok „zjednodušení" v kódu není.
+- **Luna byla 23. 9. změřena na jiném úkolu, než jaký dělá produkce.**
+  `bench_zjednoduseni.py` jí dával hotové `doslovne` a chtěl jen
+  laický tvar + klíč, s promptem bez diakritiky. Na extrakci ze sekce
+  (hlavně 4.8, vazba účinek → frekvence) změřená není.
+- **Laický tvar dlouhých indikací a kontraindikací neověřuje žádný krok.**
+  4a ho vynechává, prompt 4b zjednodušení výslovně toleruje a slovník
+  bere jen termíny do 3 slov. Tudy prošel „náhlý záškrt".
+- **Opora klíče (`klic_ma_oporu`) se ověřuje proti `laicky`**, tedy
+  proti výstupu téhož modelu, ne proti `doslovne`.
+- **Vazba účinek → frekvence se v sekcích `ok` neověřuje.** 4a zjišťuje
+  jen, jestli se slovo „časté" vyskytuje někde v sekci.
+- **Indexy vadných položek z 4b jsou pozice v seznamu** a `ocisti_json.py`
+  / `rozdel_vycty.py` je po kontrole posunou.
+- Nenastavuje se `temperature` ani `seed`, takže nedeterminismus je
+  v kódu přímo vidět.
+
+### Klíč – naměřeno na 32 léčivech (164 klíčů z 316 položek)
+
+| porušení | počet |
+|---|---|
+| delší než 4 slova | **36 (22 %)** |
+| obecný („alergie" samotná, „onemocnění") | 8 |
+| bez diakritiky / překlep („ucpany nos", „bolest na hruci") | 2 |
+| začíná „prevence" | 1 |
+
+Pravidla z promptu (1–4 slova, 1. pád, ne obecná slova) nikdo
+nevynucuje.
+
+### Velikost vstupu pro extrakci v korpusu
+
+~68 mil. znaků po ořezu, z toho **4.8 = 42,5 mil. (dvě třetiny)**,
+dávkování 18,6 mil., indikace 3,4 mil., kontraindikace 3,1 mil.
+
+### ROZHODNUTO 29. 9.: kontroly extrakce dočasně vypnuté
+
+`config.KONTROLY_ZAPNUTE = False`: vypíná `klic_ma_oporu`, kroky 4a/4b
+v `pipeline.py` a kontrolu slovníku modelem. Důvod je čas: zbývá tento
+týden a Batch API (okno 24 h) zabere ~2 dny. Nový korpus půjde přes
+cloud bez kontrol a sekce zůstanou `neovereno`. **Kontroly se
+zapracují až nad novým korpusem.** Co chybí, je v `extrakce_kontroly.md`
+kap. 3.
+
+---
+
+## 2026-09-25 večer — Kontrola konverze: falešné poplachy měly jednu příčinu – vlastní kopii pravidel pro hledání sekce
+
+Report podezřelých ukazoval dokumenty, které byly v pořádku (uživatel
+ručně: MENOPUR, ERMM-1, STOPTUSSIN). Všechny tři případy stejný kořen:
+**kontrola hledala nadpis „4.8" vlastními, slabšími pravidly** než
+`common/sekce.py`, který řeže sekce pro extrakci.
+
+| dokument | tvar nadpisu | kontrola ukázala | skutečnost |
+|---|---|---|---|
+| MENOPUR | „4. 8." (mezera) | 4.8 nenalezena | sekce je; ALE Docling vynechal poznámky a–e pod tabulkou → 66 % = SKUTEČNÁ vada |
+| ERMM-1 | „## 4.8.Nežádoucí" (bez mezery) | pokrytí 0 % | sekce celá, 99,6 % |
+| STOPTUSSIN | Docling udělal z nadpisu ODRÁŽKU „- 4.8 …" | pokrytí 0 % | extrakce bere sekci bez tabulky ze SUROVÉHO textu – celá |
+| PARALEN | zalomený odkaz „(viz bod / 4.8)." | (regrese opravy) 93 % → 14 % | první volnější vzor bral „4.8)." za nadpis |
+
+**Opraveno:**
+1. Kontrola hledá sekce **funkcí `vytahni_sekci()` z `common/sekce.py`**
+   – jedno místo pro pravidla, kontrola i extrakce najdou sekci stejně.
+2. **Pokrytí se hodnotí jen tam, kde ho extrakce opravdu použije:**
+   NÚ z Doclingu jen s tabulkou; bez tabulky jde ze surového textu
+   a pokrytí Markdownu je irelevantní (`zdroj_48` v kontrola.json).
+3. `common/sekce.py`: tolerance mezery „4. 8." (regrese na 32 léčivech:
+   94/34 zdrojů, 128 sekcí beze změny).
+
+Podezřelých 456 → **395**. Pokrytí < 50 % 93 → ~50. Zbytek hlavně
+80–90 % (spíš přeskládání než ztráta).
+
+**Poučení:** kontrola potřebuje REGRESNÍ SADU známých případů (todo) –
+oprava jedné falešné chyby rozbila jiný dokument a přišlo se na to jen
+ručním zkoušením i „dobrých" dokumentů.
+
+**Důležité rozlišení pro extrakci:** surový text se NEBERE tam, kde
+Docling chyboval, ale podle STRUKTURY (dávkování/NÚ bez tabulky, nebo
+sekce nenalezená v Markdownu). Vadnou TABULKU Doclingu (AUBAGIO posun
+sloupce, MENOPUR chybějící poznámky) nic automaticky nenahrazuje –
+jen ji označí kontrola (`_konverze` v `sekce/_prehled.json`).
+
+---
+
+## 2026-09-25 — Seznam léčiv z veřejného API: měsíční vydání, detail všech 69 759 kódů za 3,5 min
+
+- **Veřejné API `/dlp/v1` má MĚSÍČNÍ vydání** (`/aktualni-davky`: DLPO
+  vydáno 27. 8., platnost od 1. 9. 2026). API webu `/prehledy/v1` má
+  TÝDENNÍ přírůstky – **nemíchat**; pro pipeline jen veřejné API
+  (integrace, stabilní kontrakt; API webu se může změnit bez ohlášení).
+- **`uvedeneCeny` seznam nezužuje** (true i false = 69 759 kódů).
+  Obchodovanost (`jeDodavka`) a stav registrace jsou jen v detailu →
+  stáhnout detail všech kódů: **16 souběžně = 213 s, 0 chyb.**
+- `scau` = seznam hrazených kódů (8 607) → příznak `hrazeno`.
+- Srpen → září: obchodovaných R **8 803 → 8 825**, **68 kódů vypadlo**
+  (zanikly / přestaly být obchodované), **58 nových SPC** (nové kódy +
+  nové verze dokumentů). Převod 58 SPC: 3 min, 0 chyb.
+- Seznam z 24. 8. byl o jedno vydání pozadu → 5 „zaniklých" kódů
+  (REPAGLINIDE ACCORD 0193259…). Nezanikly přes noc, ale během měsíce.
+
+Implementace: `common/seznam_leciv.py`, voláno na začátku
+`konvertuj_serve.py` (stahuje jen při novém vydání; `--bez-obnovy`).
+
+### Platné stavy registrace NEJSOU jen R
+
+Číselník `/ciselniky/stavy-registrace`. Pracuje se s **R, B, C, F, I, K,
+M, Y** (`PLATNE_STAVY`). Obchodovaných v září: R 8 825, **B 286, F 80,
+I 5**, C/K/M/Y 0. Mimo: G J N U Z ZI ZS a **P = potravina pro zvláštní
+lékařské účely** (460 obchodovaných – nejsou to léčiva).
+
+- **B** (po změně, na trhu ještě 6 měsíců): SPC mají, +230 SPC převedeno.
+- **F a I** (specifický léčebný program, mimořádné opatření – zahraniční
+  neregistrované přípravky): **SPC NEMAJÍ.** Metadata vrací 404, nebo
+  odkaz na WEBOVOU STRÁNKU SÚKL o povolení
+  (`sukl.gov.cz/neregistrovane-lecive-pripravky/…`). Skript takový odkaz
+  zpočátku bral jako EMA (identita `eu_…`) a zkoušel ho převést přes
+  Word – opraveno: odkaz mimo EMA = bez SPC.
+
+---
+
+## 2026-09-25 — Jedno SPC na registrační číslo? Souběžné dovozy mají vlastní SPC, SÚKL je ignoruje
+
+121 z 4 563 CZ registračních čísel má pod různými kódy různá SPC.
+**Příčina: souběžné dovozy** (`registracniCisloSoubDov` = `PI/…` v detailu
+léku `/dlp/v1/lecive-pripravky/{kod}`). Každý dovozce má vlastní verzi
+SPC – AMOKSIKLAV 1 G (`15/496/00-C`): držitel Lek SPC231074, dovozy
+PI/001/13, PI/004/17, PI/057/21 každý jiné; MIRENA (`17/372/97-C`)
+4 kódy = 4 SPC.
+
+**Jak to řeší SÚKL** (web „detail registrace", neveřejné API
+`/prehledy/v1/dlprc/base/{kod}`): pro KAŽDÝ kód registrace, i pro
+souběžný dovoz, vrátí týž „základní" kód držitele a jeho SPC. Dovozy
+se ignorují. **Rozhoduje držitel, ne datum** – dovozy MIRENY mají
+NOVĚJŠÍ SPC (SPC235411) než zobrazené (SPC231153).
+
+Ověřeno na všech 121 (419 kódů, dokumentované API):
+- **116:** kódy držitele (bez souběžného dovozu) mají JEDNO SPC ✔
+- **1:** mezi obchodovanými jen dovozy, kód držitele chybí (`17/154/84-C`)
+- **4:** i držitel má víc SPC – a **SÚKL sám ukazuje víc SPC na jednu
+  registraci** (NOLPAZA 2, ZENARO 3, DEVENAL 2 – liší se balením).
+  ALMIRAL: detail ukazuje PDF (SPC236432), ne `.doc` (SPC328207) od
+  staršího kódu.
+
+**Důsledek:** „jedno SPC na registrační číslo" platí pro EU vždy, pro
+CZ po vyřazení souběžných dovozů skoro vždy – ale ne úplně (4 případy
+má víc SPC i SÚKL). Pravidlo pro pipeline: **SPC souběžného dovozu
+nezpracovávat, kódy dovozu namapovat na SPC držitele.** Ušetří konverzi
+i placenou extrakci. Neveřejné `dlprc` na to není potřeba – stačí pole
+`registracniCisloSoubDov` z dokumentovaného API.
+
+---
+
+## 2026-09-25 — Limit EMA (EU EPARy): řídí ho `Retry-After`, ne pevný rozestup. Reálně ~7 dokumentů/min
+
+- `robots.txt` EMA **nemá `Crawl-delay`**, dokumenty výslovně povoluje
+  (`Allow: /*/docume…`). CloudFront, žádné hlavičky `RateLimit-*`.
+- **Limit je malá dávka:** 429 přišlo i při rozestupu **10 s po 5
+  staženích**. Odpověď nese **`Retry-After: 10.000`** (desetinné číslo,
+  i `6.971` – zbytek okna). Blokace po překročení vyprší rychle (< 1 min).
+- **S přesným respektováním `Retry-After` a bez pevného rozestupu:**
+  25 dokumentů za 207 s = **7,2 dok/min**, 11× 429, čekání 107 s.
+  808 EU dokumentů ≈ **112 min**.
+- **Chyba, kvůli které šlo dopoledne stahování ~1 dok/min:** skript četl
+  `Retry-After` jen jako celé číslo (`isdigit()`), `"10.000"` neprošlo
+  a čekalo se 30–180 s místo 10 s. Opraveno (`float`).
+- Ranní „trest" za 4 souběžná stahování (826× 429) nebyl dlouhodobý –
+  byl to týž krátký limit, jen se na něj narazilo 826×.
+
+---
+
+## 2026-09-25 — Strukturní značky PDF (tagged PDF) jako reference: Docling i pymupdf4llm přiřazují frekvence skoro bez chyby
+
+**94 ze 100 SPC jsou tagovaná PDF** (exporty z Wordu, `/StructTreeRoot`).
+Značky `Table/TR/TH/TD` nesou tabulku tak, jak ji autor postavil.
+PyMuPDF je čte: `get_text("xml", flags=TEXT_COLLECT_STRUCTURE)` →
+`<struct raw="TD" bbox="…">` s textem. Nástroj:
+`benchmarky/pdfextrakce/struktura_pdf.py`.
+
+Formát 2 (sloupce = frekvence), 54 léčiv s tabulkou 4.8 ve značkách,
+**po slovech**: pod jakou frekvencí slovo leží ve značkách vs ve variantě.
+
+| | slov | správná frekvence | JINÁ frekvence | chybí |
+|---|---|---|---|---|
+| Docling | 1 488 | 97,6 % | **1** | 35 |
+| pymupdf4llm starý režim | 1 488 | **99,1 %** | **0** | 13 |
+| pymupdf4llm layout | 1 488 | 90,4 % | 2 | 141 |
+
+**Na tagovaných PDF je záměna frekvence u obou nástrojů prakticky
+nulová.** Chyba AUBAGIO (Docling posunul sloupec) je na PDF BEZ značek
+(patří mezi 6 ze 100). Riziko se tedy soustředí do netagovaných PDF.
+
+### Značky NEJSOU samy o sobě „100 % správná data" — tři pasti
+
+Každá z nich dala zpočátku falešné výsledky (Docling i pymupdf4llm
+„chybovaly" STEJNĚ — dva nezávislé nástroje se stejnou chybou = chyba
+v referenci):
+
+1. **Sloučená buňka přes víc řádků se do značek NEZAPÍŠE** (Word nedává
+   RowSpan). ANAGRELIDE: záhlaví má 5 buněk místo 6, „Velmi časté"
+   skočí do 1. sloupce → 111/173 slov „špatně". **Sloupec se musí určit
+   z POLOHY buňky (`bbox` od MuPDF), ne z pořadí v řádku.**
+2. **Ořez PDF (Příloha II) strukturní strom zahodí** — `insert_pdf` do
+   nového souboru ho nepřenese (tagovaných 83 místo 94). Značky číst
+   z ORIGINÁLU.
+3. **Párování podle textu buňky nefunguje** — nástroje dělí buňky
+   a řádky různě (úlomek „enie" z „trombocytop-enie"). Měřit po slovech.
+
+**Nadpisy ve značkách jsou nespolehlivé** (PARALEN: věta „Jedna tableta
+obsahuje…" je H1, nadpis „4.2 Dávkování" je P) — značky brát jen na
+TABULKY.
+
+### Zapojeno do konverze (25. 9.)
+
+- `kontrola_konverze.frekvence_proti_znackam()` — když PDF značky má,
+  frekvence se ověřují proti nim; jinak geometrií (`find_tables`).
+  Podezření: ≥ 3 slova a > 2 % pod jinou frekvencí.
+- **SPC jen jako Word (.doc, CAVINTON):** MS Word -> **DOCX = zdroj
+  obsahu** (Docling čte strukturu přímo, žádný odhad z vzhledu) + **PDF
+  se značkami** jen pro GUI a čísla stránek. Docling u DOCX dělá `##`
+  jen ze stylu „Nadpis" — CAVINTON má nadpisy jako tučný text, proto
+  `povys_nadpisy()`. CAVINTON: pokrytí 100 %, frekvence proti značkám
+  35/35, sekce 4.1/4.3/4.8 nalezené.
+
+### Co z toho plyne
+
+- Značky + poloha z MuPDF = spolehlivá KONTROLA tabulek NÚ na 94 %
+  dokumentů. Nahrazuje odhad sloupců v `kontrola_konverze.py`, který
+  hranice sloupců dopočítává.
+- U netagovaných PDF (6 %) zůstává kontrola přes geometrii
+  `find_tables`; tam je i reálné riziko (AUBAGIO).
+
+---
+
+## 2026-09-25 — Inventář obchodovaných SPC: 8 803 kódů → 5 613 unikátních SPC
+
+`konvertuj_serve.py --obchodovana --jen-inventar` (40 s, 6 souběžných
+dotazů na `/dokumenty-metadata`). Potvrzuje odhad ze vzorku (5 500 ± 570).
+
+| | počet |
+|---|---|
+| kódy SÚKL (registrované + obchodované) | 8 803 |
+| s SPC v API | 8 466 |
+| bez SPC | 337 (4 %) |
+| **unikátní SPC** | **5 613** |
+| z toho EU (EPAR na EMA) | 839 — 2,15 kódu na SPC |
+| z toho CZ | 4 774 — 1,4 kódu na SPC |
+
+Deduplikace podle identity dokumentu ušetří **36 %** konverzí proti
+kódům. Sdílí se i národní SPC (1,4 kódu na dokument), ne jen EU.
+
+---
+
+## 2026-09-24 — Docling Serve na DGX Spark (CUDA): 13× rychlejší, výstup totožný s lokálním. Rychlostní důvod pro pymupdf4llm padá
+
+Benchmark Codexu `benchmark/docling_serve/` (85 PDF z téhož vzorku,
+sekvenčně přes SSH tunel, `/v1/convert/file`, pypdfium2, bez OCR,
+tabulky `accurate`). Server Docling 2.117, lokálně 2.119.
+
+| | čas | na PDF |
+|---|---|---|
+| Docling lokálně (notebook) | 3 122 s | 36,7 s |
+| **Docling Spark, HTTP vč. tunelu** | **238 s (13,1×)** | 2,8 s (medián 2,04) |
+| Docling Spark, čas serveru | 121 s | 1,4 s |
+| pymupdf4llm starý režim lokálně (100 PDF) | 209 s | 2,1 s |
+
+**Kvalita = lokální Docling** (přeměřeno metrikami z
+`benchmarky/pdfextrakce`): vazby tabulek NÚ 3 820/3 850 (99,2 %)
+shodné, pokrytí textu PDF 4.8 97,5 % vs 97,6 %, **0 buněk s jinou
+frekvencí**. „Markdown shodný jen 32/85" jsou formátovací rozdíly.
+Nese si tedy i známé vady Doclingu (AUBAGIO posun sloupce, falešné
+nadpisy, CASARO přeskládání).
+
+- Medián HTTP 2,01–2,04 s u většiny PDF při čase serveru 0,5–1 s —
+  vypadá na **~2s minimum synchronního endpointu**. Server je vytížený
+  jen z poloviny; paralelní požadavky / async API by měly propustnost
+  dál zvednout. NEZMĚŘENO.
+- Odhad pro ~5 500 SPC: sekvenčně ~4,3 h (proti 61 h na notebooku).
+
+---
+
+## 2026-09-24 — Benchmark PDF extrakce na 100 SPC: pymupdf4llm 17,6× rychlejší, ale ve 3 % tiše zahodí celou tabulku NÚ. Docling taky chybuje
+
+Nástroj a všechny výstupy k prohlédnutí: `benchmarky/pdfextrakce/`
+(README, `report/index.html`). 32 léčiv korpusu + 68 náhodných, jedno
+SPC na přípravek, **15 EU**. Převádí se CELÝ dokument.
+
+| | Docling | pymupdf4llm starý režim | pymupdf4llm layout |
+|---|---|---|---|
+| čas 100 SPC | 3 684 s | **209 s (17,6×)** | 1 316 s (2,8×) |
+| pokrytí textu PDF v 4.8 | 97,7 % | **98,8 %** | 98,1 % |
+| léků pod 90 % pokrytí | 4 | 3 | 2 |
+| vazby tabulky (proti Doclingu) | — | 81 % | 64 % |
+| formát 2 (proti Doclingu) | — | 76 % | 76 % |
+| podnadpisy 4.1+4.3 (ověřené v PDF) | 44/44 | 41/44 (93 %) | 38/44 |
+| slepená slova v 4.8 | 0 | 19 | **143** |
+
+**Layout režim pymupdf4llm je vyřazený**: pomalý, slepuje slova,
+nejhorší vazby.
+
+### Pokrytí proti PDF je jediná metrika, která nezávisí na Doclingu
+
+Slova sekce 4.8 ze surového textu PDF → kolik jich je ve výstupu.
+Rozlišuje dva různé druhy „ztráty":
+
+- **starý režim pymupdf4llm — SKUTEČNÁ ztráta:** CHAMPIX (35 %),
+  ZAVESCA (71 %), MYFORTIC (87 %). Tabulka NÚ zmizela celá, bez
+  varování, chybějící účinky nejsou nikde v dokumentu. PyMuPDF
+  `find_tables()` tabulku NAJDE, pymupdf4llm ji pak nevypíše.
+  Layout režim ji má.
+- **Docling — přeskládání:** CASARO (35 %) — všech 39 „chybějících"
+  slov je jinde v dokumentu, Docling je dal za nadpis 4.9. Obsah celý,
+  pořadí špatně (pro vyřezání sekce stejně škodlivé).
+
+**Návrh pojistky:** pymupdf4llm + kontrola pokrytí proti surovému
+textu; pod prahem → Docling na ten dokument / stránku. Tichá ztráta
+tabulky je tak poznatelná bez Doclingu.
+
+### Docling NENÍ pravda — dva doložené druhy chyb
+
+1. **Posun sloupce = špatná frekvence.** AUBAGIO: Docling dal
+   „Chřipka", „Neutropenie", „úzkost"… do Velmi časté, v PDF leží pod
+   Časté (x = 228 pt, záhlaví Časté 252 pt, Velmi časté 165 pt).
+   pymupdf4llm je měl správně. `arbitr_pdf.py` (rozhodčí podle polohy
+   slov v PDF): ze 5 sporů o frekvenci má pravdu p4l ve 4, Docling v 1
+   — ale srovnává jen buňky se shodným textem, takže sporů najde málo.
+2. **Falešné nadpisy.** Docling dělá `##` i z obyčejných vět (ACECOR
+   „Přípravek je indikován:", AFRIN „Afrin nesmí být používán") —
+   v PDF normální řez. Skutečné podnadpisy skupin („Dospělí",
+   „Pediatrické použití") jsou v PDF **PODTRŽENÉ** (nakreslená čára,
+   ne vlastnost písma) nebo kurzívou. Metrika podnadpisů proto bere
+   za referenci PDF (tučně / kurzíva / podtržení), ne Docling.
+
+„Vazby proti Doclingu 81 %" proto NENÍ chybovost pymupdf4llm — část
+rozdílů jsou chyby Doclingu, část jiné rozdělení buněk. Rozhodnout jde
+jen proti PDF.
+
+### Chyby v měření, které se cestou ukázaly (a jsou opravené)
+
+Každá z nich zkreslila výsledek o desítky procent:
+
+- odstraňování HTML `<[^>]+>` sežralo text od „< 1/10" k dalšímu „>"
+  (pymupdf4llm píše „<" doslova, Docling `&lt;`) — MAALOX 73 slov
+  místo 167, 33 falešných „ztrát textu"
+- sekce nenalezená v PDF se počítala jako 100 % pokrytí — schovala
+  CHAMPIX (nadpis „4.8" na samostatném řádku)
+- výřez „od 4.1 po 4.2" se u chybějícího „4.2" táhl přes celý
+  dokument (DIENILLE: 66 „chybějících podnadpisů" z 83)
+- konec výřezu na „1. …" ukončil sekci na první číslované odrážce
+- první stahování vzorku: `/dokumenty/{id}` vrací 400, prošly jen EU
+  odkazy → vzorek 68/68 EU; správně `/dokumenty/{kod}/spc`
+
+### Marker
+
+Na Windows neběží: surya potřebuje binárku `llama-server` (llama.cpp),
+kterou by bylo třeba stáhnout z GitHubu. Neměřeno.
+
+---
+
+## 2026-09-24 — Kolik je doopravdy SPC: ~5 500, ne 3 000 a ne 6 618
+
+Odhad „kolem 3 000" (různé kódy téhož přípravku sdílí SPC) ověřen přes
+`/dlp/v1/dokumenty-metadata/{kodSukl}` — vrací **ID dokumentu SPC**
+(`{"id": 82842, "typ": "SPC", "nazev": "SPC224025.pdf"}`), u EU
+přípravků odkaz na EPAR na EMA (`{"typ": "SPC", "link": "...epar..."}`).
+
+| jednotka | počet |
+|---|---|
+| kódy SÚKL (obchodované + registrované) | 8 803 |
+| registrační čísla | 6 618 |
+| po sloučení EU na přípravek (`EU/1/xx/yyy`) | 5 661 |
+| **různá SPC podle ID dokumentu (vzorek)** | **~5 500 ± 570** |
+
+Vzorek: 150 náhodných názvů ze 4 116, u každého VŠECHNY jeho kódy
+(321 volání). Na název 1,33 SPC proti 1,46 registračním číslům, tedy
+sdílení jen ~9 %. SPC se mezi různými názvy prakticky nesdílí, proto
+se vzorkuje po názvech. 9/150 názvů (6 %) SPC v API nemá vůbec.
+
+Proč ne 3 000: národní registrace mají pro různé SÍLY vlastní číslo
+**i vlastní SPC**; sdílí se hlavně u EU (jedno EPAR na přípravek).
+Balení se rozpustilo už mezi kódy a registračními čísly.
+
+**Pro pipeline:** deduplikovat PŘED stažením a konverzí podle ID
+z `dokumenty-metadata`, ne podle registračního čísla. Přesné číslo =
+8 803 volání (~25 min).
+
+---
+
+## 2026-09-24 — Konverze na všech 32 léčivech: OCR šetří jen 8 %, pymupdf4llm 3,2× a drží frekvence, ale slepuje slova
+
+Změřeno `bench_konverze.py` (přepsaný): Docling se zahřeje mimo měření,
+PDF se ořízne jako v produkci (EU příloha II) a věrnost tabulek NÚ se
+měří **po buňkách** — je buňka Doclingu ve variantě ve STEJNÉM sloupci?
+U formátu 2 (sloupce = frekvence) je sloupec přesně ta frekvence.
+
+| varianta | čas 32 PDF | zrychlení | shoda s plným | buňky NÚ ve sloupci |
+|---|---|---|---|---|
+| Docling plný | 701 s | 1,0× | — | — |
+| Docling `do_ocr=False` | 642 s | **1,1×** | 31/32 znak po znaku | 850/850 |
+| pymupdf4llm | 220 s | **3,2×** | — | 789/850 (93 %) |
+| pymupdf4llm, formát 2 (6 léčiv) | | | | **182/188 (97 %)** |
+
+### Oprava zápisu z 23. 9.: produkce NEPADALA
+
+„Docling spadne na `InvalidCxxCompiler` i v produkční cestě" **neplatí.**
+`common/konverze.py` nastavuje `TORCHDYNAMO_DISABLE` sám při importu;
+ověřeno konverzí AERIUS bez proměnné v prostředí. Padal jen benchmark,
+který importoval Docling napřímo. Opraveno v benchmarku.
+
+### OCR: vypnuto, ale úspora je 8 %, ne 15 %
+
+Dřívějších 15 % bylo měřeno i s načtením modelů (první konverze trvá
+~114 s, další ~20 s). Jediný rozdíl ve výstupu (ABLYMICO) je text
+z legendy grafu v bodě 5.1 — smetí. `do_ocr=False` je v produkci.
+
+### pymupdf4llm: frekvence drží, ztrácí se jinde
+
+- **Chybějící buňky jsou hlavně artefakt metriky.** Docling kopíruje
+  sloučenou buňku (název orgánové třídy přes celou šířku) do všech
+  sloupců, pymupdf4llm ji dá jednou (OLYNTH 6/10, IMODIUM, PARALEN).
+- **Skutečná vada: SLEPENÁ SLOVA** — ~40 v sekcích 4.8 korpusu:
+  „srdečníporuchy", „poruchyjater", „renálníselhání", „areakce vmístě".
+  Jsou to právě názvy orgánových tříd a účinků. Docling má opačnou vadu
+  (rozdělená slova), kterou už řeší `slep_rozdelena_slova()`; na
+  slepená by šlo totéž obráceně (rozdělit, když obě půlky jsou slova
+  téhož dokumentu).
+- Dál: `<br>` v buňkách, `**tučné**` hlavičky, `<sup>` u poznámek,
+  u 3 léčiv jiný počet tabulek (OMEPRAZOL, ALTHYXIN, AMOKSIKLAV).
+- pymupdf4llm **nevyrábí nadpisy s čísly stránek** jako Docling —
+  `strany.json` by se musel dělat jinak.
+
+### Připomínky Codexu (`codex_pripominky.md`) — přeměřeno
+
+**1. Metrika buněk byla děravá — Codex měl pravdu.** Hledala „stejný
+sloupec, KTERÝKOLI řádek" a tolerovala obsažení (`x in b`). Umělý test
+(`bench_konverze.overit_metriku()`):
+
+| případ | stará metrika | nová (trojice text–sloupec–řádek, přesně) |
+|---|---|---|
+| shodné | 6/6 | 6/6 |
+| záměna účinků mezi „časté" a „vzácné" | **6/6** | 4/6 |
+| zkrácení „vyrážka, bolest hlavy, nevolnost" → „vyrážka" | **6/6** | 5/6 |
+
+Přeměřeno přísně na uložených výstupech (32 léčiv):
+
+| varianta | vazby | formát 2 | podnadpisy 4.1+4.3 |
+|---|---|---|---|
+| Docling bez OCR | 826/826 | 188/188 | 81/81 |
+| pymupdf4llm layout | **566/826 (69 %)** | 165/188 (88 %) | 78/81 |
+| pymupdf4llm starý režim | **779/826 (94 %)** | 164/188 (87 %) | 80/81 |
+
+**Layout režim tím padá.** Ve starém režimu jsou chybějící vazby
+u BISACODYLu jen řádek záhlaví (pymupdf4llm doplní do prázdného rohu
+„Col1", změní se popisek řádku) — frekvence účinků sedí. **Zbytek do
+94 % není prověřený**; referencí pro sporné případy má být PDF, ne
+Docling (i Docling chybuje).
+
+**2. Docling nedělá jen tabulky, ale i podnadpisy** („Děti") — platí.
+Starý režim pymupdf4llm je ZACHOVÁVÁ jako samostatné řádky (80/81),
+ale jako `_kurzíva_`, `<u>podtržení</u>`, `**tučně**` místo `##`.
+První kontrola hlásila 5/81, protože nemazala `<u>` — artefakt měření.
+`extrahuj_sekce.py` by musel tyhle tvary brát jako nadpis.
+
+**3. Sdílený `DocumentConverter`** — zavedeno (`konverze._prevodnik()`),
+přínos malý: 2. a 3. PDF v procesu 11,0 → 10,7 s a 13,6 → 12,9 s
+(3–5 %), výstup shodný. Docling drží modely globálně, instance
+převodníku skoro nic nestojí. (První PDF 102 s vs 22 s není srovnatelné
+— mezi běhy se zahřála cache OS.)
+
+**4. `_prehled.json`/`strany.json` vznikají až po Doclingu** — platí;
+pro nový dokument se hranice sekcí i tabulky musí určit PŘEDEM
+(PyMuPDF text + `find_tables()`, viz níž).
+
+### Slepená slova dělá LAYOUT režim pymupdf4llm, ne PDF
+
+PDF mezeru jako znak MÁ (OLYNTH: „a" · mezera 2,76 pt · „reakce").
+Holý `get_text()` i `find_tables()` vrací text správně. Slepuje až
+výchozí layout režim (`pymupdf.layout`, AI model rozvržení), který
+skládá text znovu. Starý režim `pymupdf4llm.use_layout(False)`:
+
+| pymupdf4llm | čas 32 PDF | buňky NÚ ve sloupci | formát 2 | slepená v 4.8 |
+|---|---|---|---|---|
+| layout (výchozí) | 220 s (3,2×) | 93 % | 97 % | ~40 |
+| **starý režim** | **46 s (15×)** | **99 %** | 97 % | ~2 |
+
+Háček starého režimu: tabulky přes zlom stránky se rozpadají
+(ABLYMICO 1 → 7 tabulek v 4.8, u 11 léčiv jiný počet). Obsah buněk
+přitom sedí. Layout režim má navíc vlastní OCR (`pymupdf4llm/ocr`,
+RapidOCR) — to je ta hláška „OCR on page.number=18/19".
+
+### Selektivní Docling je proveditelný
+
+Ze `strany.json` a `_prehled.json`: **ze 312 stran (po ořezu) je jen
+71 (23 %) v sekcích, které mají tabulku**; 7 léčiv tabulku v našich
+4 sekcích nemá vůbec. Tabulky se ale musí poznat PŘEDEM — `ma_tabulku`
+dnes vzniká až z výstupu Doclingu. PyMuPDF `page.find_tables()` sedí
+s Doclingem ve **114/126 sekcích** (10 s na celý korpus); 11 z 12
+rozdílů je „PyMuPDF vidí tabulku navíc" (bezpečné, Docling zpracuje
+stranu navíc), jediný opačný je ZYRTEC dávkování.
+
+---
+
+## 2026-09-24 — „amokisklav nežádoucí účinky" = 0 výsledků. Není to vada gemmy, ale filtru na název
+
+Zjištěno při testu GUI po přepnutí routeru. Router sekci trefil, filtr
+nepustil nic. Dvě nezávislé vady, obě stačí na nulu, protože filtry se
+spojují přes AND a název je `ILIKE '%…%'`:
+
+1. **Překlep** — router „amokisklav" poslušně opíše do `nazev`.
+2. **Název léku jako účinná látka** — „amoksiklav" jde i do
+   `ucinna_latka`, přestože látky jsou amoxicilin + klavulanát.
+
+**qwen3.5:122b dělá obojí taky** (ověřeno, 2 běhy na dotaz: jednou
+latka, jednou název None). Jen náhodně, takže to dřív nebylo vidět.
+
+**Oprava deterministicky, ne v promptu:** `router.oprav_nazev_a_latku()`
+srovná výstup s číselníkem z DB. Překlep → nejbližší název (difflib
+≥ 0,8 bez diakritiky; „amokisklav"→AMOKSIKLAV 0,90, „Olyntt"→OLYNTH).
+Látka, která v DB není, ale je to název léku → přesune se do názvu.
+**Neznámý název ani látka se NEZAHAZUJE** — „ibuprofen" v korpusu není
+a správná odpověď je „nic", ne jiné léky.
+
+Po opravě 6/6 běhů vrací AMOKSIKLAV (42 záznamů NÚ). `evaluate.py`
+beze změny. Práh 0,8 je naměřený na 32 názvech — na tisících se
+podobné názvy začnou plést, přeměřit.
+
+---
+
+## 2026-09-24 — gemma4:26b (MoE) je jako router 3× rychlejší než qwen a stejně správná. gemma4:31b (dense) je nejpomalejší ve všem
+
+gemma4:31b je dense, gemma4:26b je MoE: **128 expertů, aktivních 8**
+(`/api/show`), takže na token počítá jen zlomek z 25,2 mld. parametrů.
+Změřeno proti qwen3.5:122b na routeru, laickém tvaru + klíči
+a evaluaci.
+
+### Router (`bench_router.py`, nový): 26 dotazů × 3 běhy + 10 parafrází × 3
+
+| model | medián | p90 | tok/s | OK ve všech 3 bězích | stabilní | end-to-end |
+|---|---|---|---|---|---|---|
+| qwen3.5:122b | 4,56 s | 5,64 s | 30 | 21/26 | 17/26 | 30/30 |
+| gemma4:31b | **11,79 s** | 14,60 s | **10** | 23/26 | 24/26 | 30/30 |
+| **gemma4:26b** | **1,51 s** | 1,65 s | **103** | **24/26** | 23/26 | 30/30 |
+
+„End-to-end" = parafráze přes router a hledání s prahem 0,60, jako
+`hledej.py`. `evaluate.py` test 4 router NEVOLÁ (filtr má natvrdo),
+tohle je jediné místo, kde se měří celý řetěz.
+
+- **Router je 92 % času dotazu, takže 26b srazí čekání ze ~4,6 s na
+  ~1,5 s** při stejné nebo lepší správnosti.
+- **Dense 31b je 2,6× POMALEJŠÍ než 122b MoE.** Na DGX Sparku
+  rozhoduje propustnost paměti, tedy aktivní parametry, ne celkové.
+  Týž závěr jako u qwen 18. 8.: u MoE se z velikosti rychlost neodhaduje.
+- qwen je nejméně stabilní (17/26 dotazů dalo ve 3 bězích totéž).
+  Jednou ztratil název léku, u „hrazené antibiotikum" si domyslel
+  `atc_prefix='J'`, u „časté a častější" zúžil na přesně „časté".
+  **31b to posledně jmenované dělá 3/3, 26b ani jednou.**
+- „něco na kasel" nechají bez diakritiky **všechny tři** 3/3. Dnes to
+  nevadí — slovník dotazů to zachrání, `kasel` i `kašel` vrátí ACC
+  0,833 shodně.
+- **Sporný případ, ne chyba modelu:** „co dělá Paralen se srdcem".
+  Prompt routeru má dvě pravidla, která si odporují — příklad „co dělá
+  ten lék se srdcem → nezadouci_ucinky" a výjimka „konkrétní lék +
+  příznak bez směru → obě sekce". Gemmy volí výjimku, qwen příklad.
+  Chce to v promptu rozhodnout.
+
+### Evaluace: s každým routerem SHODNĚ
+
+`evaluate.py --router MODEL` (nový přepínač): invarianty 212/212,
+recall @5 46/47, @10 51/51, negativní 7/8, parafráze 10/10 — **u všech
+tří modelů identicky**. Jediný negativní neúspěch („léčba roztroušené
+sklerózy" → CEDEPOS 0,624) padá u všech tří, na routeru nezávisí.
+Evaluace tedy modely nerozliší; router vidí jen test 3 (8 dotazů).
+
+### Laický tvar + klíč (`bench_zjednoduseni.py`, 106 položek z 8 léčiv)
+
+| model | pokrytí | opora | dlouhý | čas |
+|---|---|---|---|---|
+| qwen3.5:122b | 0,915 | 0,897 | 0,155 | 181,5 s |
+| gemma4:31b | 0,991 | 0,990 | 0,248 | **502,1 s** |
+| **gemma4:26b** | 0,962 | 0,980 | **0,049** | **58,7 s** |
+
+(časy včetně načtení modelu: qwen 13 s, 31b 17 s, 26b 6 s)
+
+**POZOR, chyba v benchmarku:** prompt v `bench_zjednoduseni.py` je
+psaný BEZ diakritiky („akutni prujem"), produkční v `common/extrakce.py`
+s ní. 26b formát promptu napodobuje víc než ostatní: **39 % jeho klíčů
+bylo bez diakritiky** (qwen 12 %, 31b 8 %), laický tvar přitom 0 %.
+Přeměřeno s promptem s diakritikou:
+
+| prompt s diakritikou | pokrytí | opora | dlouhý | klíč bez diakritiky |
+|---|---|---|---|---|
+| qwen3.5:122b | 0,934 | 0,919 | 0,283 | 0 % |
+| gemma4:26b | 0,972 | **1,000** | **0,049** | 0 % |
+
+**Starší srovnání s cloudem (23. 9.) jelo na tomtéž ASCII promptu.**
+Diakritika se tehdy neměřila; než se čísla použijí k rozhodnutí,
+přeměřit s diakritikou.
+
+**Kde 26b prohrává: klíč nechává odborný.** Laický tvar přeloží
+(„alergie", „selhání ledvin a jater"), ale klíč opíše ze zdroje
+(„hypersenzitivita na léčivou látku", „status asthmaticus",
+„renální a hepatální insuficience"). Klíč obsahuje odborné slovo, které
+vlastní laický tvar nahradil, **u 26b v 31 % klíčů, u qwen v 15 %.**
+Opora 1,000 je proto zčásti tím, že opisuje — `klic_ma_oporu()` měří
+shodu se zdrojem, ne srozumitelnost. Pokyn „drž se slov ze zadaného
+textu" to u 26b nejspíš přitahuje.
+
+**31b skoro nezjednodušuje:** 37 % laických tvarů je doslovný opis
+zdroje včetně „uvedenou v bodě 6.1" (qwen 15 %, 26b 19 %). Proto má
+nejlepší oporu — nic nepřekládá.
+
+### ROZHODNUTO 24. 9.: router i kontrola → gemma4:26b, cloud → gpt-6-luna
+
+V `config.py`: `MODEL_ROUTER` a `MODEL_KONTROLY` = `gemma4:26b`,
+`OPENAI_MODEL` = `gpt-6-luna` s `OPENAI_REASONING_EFFORT = "none"`.
+**Kontrola se na 26b neměřila**, rozhodnuto podle routeru a zjednodušení.
+Tatáž konstanta je výchozí model i pro `postav_slovnik.py --zkontroluj`.
+
+### Co z toho plyne
+
+- **Router → gemma4:26b je silný kandidát.** Za provozu (API) je
+  potřeba jen router + bge-m3, takže by odpadlo držet v paměti 86 GB
+  qwenu kvůli dotazům. Před přepnutím: pustit scénáře ze `scenare.md`
+  a ověřit, že se 26b vejde do paměti vedle qwenu (při tomhle měření
+  Ollama qwen po načtení obou gemm odložila). `/api/ps` hlásí u 26b
+  jen 2,6 GB — účetní zvláštnost, na disku má 18,6 GB.
+- **Laický tvar a klíč: 26b je 3× rychlejší než qwen a lepší na
+  pokrytí, oporu i délku klíče, ale klíče jsou odbornější.** Jasná
+  výhra to není; rozhodnutí gpt-6-luna pro hromadný běh zůstává.
+- **gemma4:31b nemá kde vyhrát.** Nejpomalejší ve všem, nezjednodušuje.
+  Jako `MODEL_KONTROLY` zůstává (kontrola se tu neměřila); 26b je
+  kandidát i tam, jde o jinou rodinu než qwen, takže pravidlo „kontrola
+  jiným modelem" by platilo dál.
+
+---
+
+## 2026-09-23 — Docling na tomhle stroji NEBĚŽÍ VŮBEC. A pymupdf4llm drží frekvence, na rozdíl od dřívějšího závěru
+
+### Nejdřív blokující vada: konverze je rozbitá, ne pomalá
+
+Každé volání Doclingu končí:
+
+    ConversionError: ... Errors: InvalidCxxCompiler: Compiler: cl
+
+torch chce zkompilovat model přes MSVC (`cl`), který tu není. Netýká se
+to jen benchmarku — **spadne i přesná produkční cesta**
+(`common/konverze.py`) a úplně výchozí `DocumentConverter()`. V srpnu
+konverze běžela (`konverze.log` z 13. 8.), takže to přineslo až
+pozdější povýšení torche.
+
+**Řešení, ověřeno:**
+
+    TORCHDYNAMO_DISABLE=1
+
+Pak projde všech pět variant. **Bez téhle proměnné se korpus rozšířit
+nedá vůbec**, takže to patří před všechny úvahy o paralelizaci
+a serverech.
+
+### OCR nestojí skoro nic a hypotéza o něm byla ŠPATNĚ
+
+Předpoklad zněl: `DocumentConverter` má `do_ocr=True`, SPC jsou
+digitální PDF, takže RapidOCR na CPU žere čas zbytečně. **Změřeno na
+3 PDF — neplatí:**
+
+| varianta | čas | znaků | tabulek |
+|---|---|---|---|
+| plný (dnešní stav) | 58,4 s | 39 496 | 6 |
+| `do_ocr=False` | **49,7 s (1,2×)** | **39 496** | 6 |
+| `do_ocr=False, do_table_structure=False` | 38,7 s (1,5×) | 32 808 | 6 |
+| pymupdf (holý text) | **0,0 s** | — | 0 |
+| pymupdf4llm | **~3,9× rychlejší** | — | 6 |
+
+OCR tedy stojí **15 %, ne většinu**, a výstup nemění ani o znak
+(39 496 = 39 496). Vypnout ho je pořád zadarmo, ale **problém to
+neřeší.** Vypnutí tabulkového modelu už ubírá text (32 808), takže
+to není cesta.
+
+Zbylých 85 % času je layout model, který běží tak jako tak.
+
+### pymupdf4llm frekvence NESLÉVÁ. Dřívější zamítnutí neplatí plošně
+
+V seznamu slepých uliček je „pymupdf4llm místo Doclingu — 3× rychlejší,
+ale slévá frekvence do odstavců". **Přeměřeno na 8 léčivech**, metrika
+je podíl výskytů frekvence, které zůstaly NA ŘÁDKU TABULKY (tedy
+vazba frekvence -> účinek):
+
+| lék | docling | pymupdf4llm | |
+|---|---|---|---|
+| ACYLCOFFIN | 63 % | 60 % | OK |
+| DITHIADEN | 58 % | 58 % | OK |
+| ACIFEIN | 0 % | 0 % | OK (bez tabulky) |
+| AERIUS | 31 % | 31 % | OK |
+| ACECOR | 60 % | 60 % | OK |
+| TALVOSILEN FORTE | 52 % | 52 % | OK |
+| ABAKTAL | 12 % | 12 % | OK |
+| ULTRACOD | 56 % | 56 % | OK |
+
+**8 z 8 shodně**, počet řádků tabulky sedí taky (26/26, 14/14, 23/23…).
+
+Co to znamená: zamítnutí nejspíš vzniklo na jednom formátu (SPC jich
+mají pět, viz `POPIS_FORMATU`), ne na všech. **Ale zobecňovat z 8 léčiv
+je stejná chyba jako zobecnit z jednoho** — než se to nasadí, musí se
+to pustit na celém korpusu a hlavně na formátu 2 (sloupce jsou
+frekvence), kde je slévání nejpravděpodobnější.
+
+Pozor na artefakty pymupdf4llm, které Docling nemá: `<br>` uvnitř
+buněk, `<sup>1</sup>` u poznámek, `**tučné**` v hlavičce a **rozpad
+jedné tabulky na dvě přes zlom stránky** včetně čísla stránky v textu.
+Nic z toho není neřešitelné, ale `extrahuj_sekce.py` by to muselo umět.
+
+### Čím se PyMuPDF dá krmit už dnes
+
+Ne všechny sekce tabulku potřebují. Napříč korpusem:
+
+| sekce | zdroj docling_md | zdroj pymupdf_raw | s tabulkou |
+|---|---|---|---|
+| indikace | 32 | 0 | 1 |
+| kontraindikace | 32 | 0 | 0 |
+| dávkování | 7 | 25 | 7 |
+| nežádoucí účinky | 23 | 9 | 23 |
+
+**Tabulku má 31 ze 128 sekcí. 34 sekcí už dnes jede z PyMuPDF.**
+Selektivní Docling (jen stránky, kde tabulka je) je tedy reálná cesta
+a `_prehled.json` i `strany.json` už vědí, kde to je.
+
+### Nástroj
+
+`bench_konverze.py` (nový) — porovná plný Docling, bez OCR, bez
+tabulkového modelu, holý PyMuPDF a pymupdf4llm. Měří **čas i věrnost**
+(počet tabulek, délka textu), protože zrychlení, které rozbije
+sekci 4.8, je k ničemu — je tam 23 z 31 tabulek korpusu.
+
+---
+
+## 2026-09-23 — Nesmysly v laickém tvaru NEJSOU vlastnost modelu, ale nedeterminismus. Cloud je proto neřeší
+
+Zadání znělo: model vyrábí nesmysly, tak to zkusme dát do cloudu, kde
+to navíc půjde rychleji. **Měření to obrátilo.**
+
+### 8 z 8 známých nesmyslů zmizelo i při druhém spuštění qwenu
+
+Vzato přesně těch 8 položek, které jsou v tomhle souboru zapsané jako
+zkomolené. Zdrojové texty načteny **z korpusu**, ne opsané ručně, takže
+všechny tři modely dostaly bajt po bajtu totéž:
+
+| případ | co je v datech | qwen3.5 ZNOVU | gpt-5-nano | gpt-6-luna |
+|---|---|---|---|---|
+| ULTRACOD | „při ALENZII na paracetamol" | opraveno | opraveno | opraveno |
+| OMEPRAZOL | „kyselé ŘINČENÍ do krku" | opraveno | opraveno | opraveno |
+| BISACODYL | „bolestí VE TŘASU" | opraveno | opraveno | opraveno |
+| ACIDUM ASC. | „ZAMEZOVÁNÍ LÉČBĚ" | opraveno | opraveno | opraveno |
+| ZYRTEC | klíč „kožní vyrážka S SVĚDĚNÍM" | opraveno | opraveno | opraveno |
+| ZYRTEC ledviny | „ledviny PŘESTALY FUNGOVAT" | opraveno | opraveno | opraveno |
+| HIDRASEC | klíč `onemocnění` | `null` správně | **`průjem`** | `null` správně |
+| ACC | klíč „zánět průdušek s dušností" | opraveno | opraveno | opraveno |
+
+**Týž model, týž prompt, týž vstup — a výsledek jiný.** Nejde tedy
+o to, že by qwen tenhle úkol neuměl. Umí ho a většinou ho udělá
+správně; občas ne. Je to týž jev, který je u routeru popsaný jako
+„občas ztratí název léčiva", a sedí na to i starší zápis
+„přeextrahování chyby neopraví, jen je přesune jinam".
+
+**Důsledek: cloud tuhle vadu nevyřeší, protože to není vada
+schopnosti.** Na velkém korpusu vyrobí kterýkoli model stejný podíl
+zmetků, jen dráž. Jediná obrana je **kontrola laického tvaru proti
+zdroji**, která dnes chybí (obě kontroly ověřují `doslovne`, ne
+`laicky`). Musí být hotová PŘED hromadným během, ne po něm.
+
+Vedlejší nález: gpt-5-nano u HIDRASECu vymyslelo klíč `průjem`, který
+ve zdrojovém textu NENÍ — ví to o racekadotrilu odjinud. Věcně správně,
+ale porušuje to „nevymýšlej si" a `klic_ma_oporu()` by ten klíč stejně
+zahodila.
+
+### Reprodukovatelná vada je jiná: qwen a nano nezjednodušují
+
+Když čeština nezkomolí, oba modely latinu prostě OPÍŠÍ:
+
+| zdroj | qwen3.5 | gpt-5-nano | gpt-6-luna |
+|---|---|---|---|
+| `astmoidní bronchitida` | „astmatická bronchitida" | „Astmoidní bronchitida." | **„zánět průdušek podobný astmatu"** |
+| `chronická idiopatická kopřivka` | beze změny | „Chronická kopřivka." | **„dlouhodobá kopřivka bez známé příčiny"** |
+| `kyselá regurgitace` | beze změny | beze změny | **„návrat kyselého obsahu"** |
+
+Pro laika je to k ničemu a celý krok „zjednodušení" tím ztrácí smysl.
+**gpt-6-luna jako jediná ze tří skutečně překládá.** Pro cílovou
+skupinu je tohle podstatnější než cena.
+
+Výhrady k luně: u ZYRTECu klíč `pacienti s nízkým eGFR` (eGFR není
+laický pojem) a `zácpa při hemoroidech`, kde jsou hemoroidy ve zdroji
+jen jako příklad.
+
+### gpt-5-nano je s VÝCHOZÍM nastavením nejhorší volba ve všech směrech
+
+Na téže regresní sadě: **qwen 11,5 s · luna 36,9 s · nano 269 s.**
+Nano je zároveň nejpomalejší i nejdražší, a to kvůli reasoningu:
+
+    trivialni polozka:  in=45  out=1089  reason=960   (88 %)
+    davka 16 polozek:   in=1296 out=16866 reason=16128 (96 %)
+
+Reasoning se účtuje jako výstup. **`reasoning_effort` je proto jediný
+parametr, který rozhoduje, jestli je účet 2 $ nebo 47 $** — víc než
+volba modelu. Do `bench_zjednoduseni.py` přidán jako `--effort`.
+
+### Reasoning JDE vypnout a je to jediné, co u ceny rozhoduje
+
+Každý model má **jiné klíčové slovo**, to druhé vrací 400:
+
+| model | vypínač | výstup | reasoning | čas |
+|---|---|---|---|---|
+| gpt-5-nano | výchozí | 6 201 | 6 016 (97 %) | 51,4 s |
+| gpt-5-nano | **`minimal`** | **229** | **0** | **2,8 s** |
+| gpt-5-nano | `none` | 400 Unsupported | | |
+| gpt-5-nano | `low` | 1 913 | 1 728 (**90 %**) | 14,9 s |
+| gpt-6-luna | výchozí | 866 | 677 (78 %) | 10,7 s |
+| gpt-6-luna | **`none`** | **180** | **0** | **2,2 s** |
+| gpt-6-luna | `minimal` | 400 Unsupported | | |
+| gpt-6-luna | `low` | 700 | 512 (73 %) | 11,5 s |
+
+**`low` jako úsporné nastavení NEFUNGUJE** — reasoning zůstává na
+90 %. Buď se vypne úplně, nebo se platí.
+
+Cena pro 6 618 SPC (jen zjednodušení + klíč) s vypnutým reasoningem:
+
+| model | standard | Batch −50 % |
+|---|---|---|
+| gpt-5-nano `minimal` | 46,56 $ → **4,77 $** | **2,38 $** |
+| gpt-6-luna `none` | **4,86 $** | 2,43 $ |
+
+**Rozdíl mezi modely je 9 centů, cena tedy přestala rozhodovat.**
+Sériově 12–15 h, s paralelizací pod 2 h (proti 197 h lokálně).
+
+### Měření na celé sadě: 106 položek z 8 léčiv
+
+| model | pokrytí | opora | dlouhý | laik_bez_op | výstup | reason | čas | USD |
+|---|---|---|---|---|---|---|---|---|
+| qwen3.5:122b | 0,849 | 0,944 | **0,256** | 0,221 | 4 861 | 0 | 173 s | 0 |
+| gpt-5-nano výchozí | 0,981 | **0,962** | 0,000 | 0,140 | 136 460 | **131 776** | **1 150 s** | 0,0551 |
+| gpt-5-nano `minimal` | **1,000** | 0,953 | 0,104 | 0,240 | 5 225 | 0 | **72 s** | 0,0026 |
+| gpt-6-luna výchozí | 0,896 | 0,937 | 0,000 | 0,321 | 20 712 | 16 515 | 244 s | 0,0113 |
+| gpt-6-luna `none` | 0,943 | 0,930 | 0,150 | 0,285 | 4 081 | 0 | 60 s | 0,0030 |
+
+Co z toho plyne:
+
+- **qwen nechává 15 % položek bez klíče** a čtvrtina jeho klíčů je
+  delší než povolené 4 slova. Pravidlo „1-4 slova" nevynucuje nikdo,
+  což už je zapsané níž. Oba cloudové modely tenhle limit drží
+  (dlouhý 0,000) — s vypnutým reasoningem se ale i jim rozvolní
+  (0,104 a 0,150).
+- **Vypnutí reasoningu stojí nejvýš setinu opory.** nano 0,962 → 0,953,
+  luna 0,937 → 0,930. Za to je běh **16× rychlejší a 21× levnější**
+  (nano 1 150 s / 0,0551 $ → 72 s / 0,0026 $). **To je nejdůležitější
+  číslo celého měření:** plný reasoning si u tohohle úkolu nekupuje
+  prakticky nic.
+- **`laik_bez_op` se NEDÁ číst jako „kdo si víc vymýšlí".** Vysoká
+  hodnota znamená buď vymýšlení, NEBO skutečné zjednodušení — protože
+  překlad latiny do češtiny slova ve zdroji z definice nemá. qwen má
+  nejnižší (0,221) přesně proto, že latinu opisuje; luna nejvyšší
+  (0,321) proto, že jako jediná překládá. **Tahle metrika sama nic
+  nerozhodne**, musí se číst spolu s regresí výš.
+- **Nano je i přes nejlepší oporu nejhorší volba na výchozím
+  nastavení:** 1 150 s proti 173 s lokálního qwenu. Cloud by tu byl
+  6× POMALEJŠÍ než lokál, kvůli kterému se do cloudu šlo.
+
+### ROZHODNUTO: gpt-6-luna, `reasoning_effort="none"`, Batch API
+
+Cena za zjednodušení + klíče celého korpusu (6 618 SPC) **~2,7 $**.
+
+Proč právě tahle kombinace:
+
+- **luna, ne nano** — jako jediná ze tří skutečně překládá latinu do
+  laické češtiny; nano i qwen ji opisují. Cena to nerozhoduje, rozdíl
+  je 9 centů.
+- **`gpt-6-luna`, ne `gpt-5.6-luna`** — novější A levnější
+  (0,10/0,50 $ proti 0,20/1,20 $).
+- **`none` povinně** — a pozor, **každý model bere jiné klíčové slovo**:
+  luna `none`, nano `minimal`, to druhé vrací 400.
+
+### Zamítnuto: modely řady sol
+
+Zvažovalo se `gpt-5.6-sol`. Ověřeno na téže dávce — `none` funguje
+i tam a reasoning spadne na 0, takže technicky by to šlo. **Ale cena
+to vylučuje:**
+
+| model | vstup | výstup | poměr k luně |
+|---|---|---|---|
+| gpt-6-luna | 0,10 $ | 0,50 $ | 1× |
+| gpt-5.6-luna | 0,20 $ | 1,20 $ | 2,4× |
+| gpt-6-sol | 2,00 $ | 10,00 $ | 20× |
+| **gpt-5.6-sol** | **4,00 $** | **20,00 $** | **40×** |
+
+Pozor na intuici „vyšší číslo = novější = lepší": **`gpt-5.6-sol` je
+dražší než `gpt-6-sol`.** U řady sol navíc platí zvlášť sazba pro
+dlouhý kontext (až 8/30 $).
+
+Korpus by na 5.6-sol vyšel řádově na 100 $ místo 2,7 $ — proti
+rozpočtu 10 $. A **není důvod se domnívat, že by to bylo lepší**:
+úkol je zkrátit a přeložit jednu větu, ne uvažovat. Luna na něm
+v regresi obstála.
+
+### Batch API: v čem se liší
+
+Stejný model a stejná kvalita, mění se jen latence — nahraje se JSONL,
+do 24 h se stáhne výsledek, za to je **−50 %**.
+
+| | synchronně | batch |
+|---|---|---|
+| odpověď | sekundy | až 24 h |
+| pořadí výsledků | zachované | **může se lišit — párovat přes `custom_id`** |
+| běžné rate limity | spotřebovává | **nespotřebovává, má vlastní frontu** |
+
+Pro jednorázový extrakt, kde nikdo nečeká, je to učebnicové použití.
+19 854 požadavků se vejde do jednoho batche (limit 50 000), JSONL má
+~52 MB (limit 200 MB). Když batch nestihne okno, přejde do `expired`,
+ale **hotové výsledky zůstanou** a platí se jen za ně; chybné položky
+jdou do zvláštního souboru.
+
+**Cachování vstupu neřešit** — u téhle úlohy je 83 % účtu výstup
+a jen 17 % vstup, takže cache s cenou skoro nehne (2,43 $ vs 2,72 $).
+Jediné, co u ceny opravdu rozhoduje, je vypnutý reasoning: 46 $ vs 5 $.
+
+### Korpus obchodovaných léčiv není 8 000, ale 6 618
+
+Z `data/pool_leciv.json`:
+
+| jednotka | počet |
+|---|---|
+| záznamů (balení) | 69 355 |
+| obchodovaná + registrovaná, kód SÚKL | 8 803 |
+| **unikátních registračních čísel = SPC** | **6 618** |
+| unikátních názvů | 4 116 |
+
+**SPC je jedno na registrační číslo, ne na kód SÚKL.** Deduplikací se
+ušetří 25 % práce dřív, než se cokoli pustí.
+
+### Cena cloudu pro 6 618 SPC
+
+Ceník ověřen 23.9.2026 na `developers.openai.com/api/docs/pricing`.
+Objemy spočítané tiktokenem přes celý korpus: celá extrakce
+5 355 vstup / 3 601 výstup tokenů na lék, samotné zjednodušení
+422 / 549.
+
+| varianta | gpt-5-nano | gpt-6-luna |
+|---|---|---|
+| jen zjednodušení + klíč | 2,21 $ | 2,89 $ |
+| totéž přes Batch API (−50 %) | **1,10 $** | 1,44 $ |
+| celá extrakce 4 sekcí | 10,42 $ | 13,68 $ |
+| celá extrakce přes Batch | 5,21 $ | 6,84 $ |
+| **jen zjednodušení, nano s REÁLNÝM reasoningem** | **46,56 $** | — |
+| **celá extrakce, nano s reálným reasoningem** | **218,22 $** | — |
+
+Rozpočet 10 $ tedy není limit ceny za tokeny, ale **limit na
+`reasoning_effort`**.
+
+### Cloud zrychlí jen 78 % práce, zbytek je Docling
+
+Extrapolace z naměřených 32 léčiv (`cas_s` v `_stav.json`, konverze
+33,2 s/dokument z `konverze.log`):
+
+| krok | h pro 6 618 | pomůže cloud? |
+|---|---|---|
+| 1 konverze PDF→MD (Docling + RapidOCR) | 61,0 | **ne** |
+| 3 extrakce 4 sekcí (qwen3.5) | 196,7 | ano |
+| 4b kontrola jiným modelem (gemma4) | 73,5 | ano |
+| 2 + 4a + 5 embeddingy | 16,0 | ne |
+| **celkem sériově** | **347 h = 14,5 dne** | |
+
+Zbylých 77 h je Docling a embeddingy a poběží lokálně tak jako tak.
+Konverze navíc podle logu jede `Using CPU device` na OCR — **než platit
+cloud za generování, je levnější pustit konverzi paralelně.**
+
+Řádků v DB by bylo ~278 000 (dnes 1 340), takže prahy i váhy se budou
+přeměřovat — a nejdřív je potřeba dodělat zmrazený vzorek, jinak nebude
+vidět, jestli si člověk pohoršil.
+
+### Poznámka k nástroji
+
+`bench_zjednoduseni.py` (nový) izoluje právě krok „laický tvar + klíč":
+vstupem je hotové `doslovne` z korpusu, takže se modely liší jen
+výstupem. Metriky jsou deterministické, žádný model nesoudí model.
+
+**První běh se zapisoval až na konci a pád IDE ve 3/4 shodil výsledky
+dvou modelů včetně zaplacených tokenů.** Opraveno na průběžný zápis
+syrových odpovědí po každé dávce do `bench_zjednoduseni.syrove.json`;
+běh na ně umí navázat a metriky jdou z nich přepočítat bez dalšího
+volání API.
+
+---
+
+## 2026-09-22 — K PROJITÍ: klíč není ztráta ani výhra, je to výměna. A oklikou vede zpátky k tomu, že model generuje nesmysly
+
+**Tohle si projdi, než se bude sahat na klíče.** Zápis vznikl na konci
+dne z řetězce měření, který začal u fulltextu a skončil u kvality
+generování.
+
+### Co klíč doopravdy dělá
+
+Klíč sdílené slovo NEPŘIDÁVÁ. „Bolest" byla v laickém textu vždycky.
+Klíč **odstraní okolní kontext, takže váha toho sdíleného slova vyskočí**:
+
+    laicky  "zmírnění středně silné až silné bolesti s různou příčinou
+             (odstranění bolesti u dospělých a dospívajících od 12 let)"
+             -> "bolest" je jedno z mnoha slov
+
+    klic    "náhlá bolest"
+             -> "bolest" je POLOVINA řetězce
+
+Je to tedy tatáž vlastnost, která klíč dělá užitečným (krátká fráze
+neředí význam — HIDRASEC 0,515 → 0,807) i škodlivým.
+
+### Změřeno: 26 z 90 klíčů (28,9 %) vytáhne řádek nad práh
+
+Na sadě 10 běžných dotazů, sekce indikace, práh 0,60. **Ale část z toho
+je přesně to, k čemu klíč je** — rozdíl není v mechanismu, ale v tom,
+jestli zkoncentrovaný význam NĚCO ROZLIŠUJE:
+
+| klíč | dotaz | text → klíč | verdikt |
+|---|---|---|---|
+| ENDITRIL `náhlý průjem` | „průjem" | 0,591 → **0,836** | **správně, to je účel** |
+| ACC `zánět průdušek s dušností` | „průjem" | 0,499 → 0,617 | špatně |
+| OLYNTH `přetížení nosu` | „průjem" | 0,438 → 0,620 | špatně |
+| TALVOSILEN `náhlá bolest` | „bolest zubů" | 0,436 → 0,651 | sporné |
+| **ENDITRIL `onemocnění`** | **cokoliv** | **0,491 → 0,795** | **nejhorší** |
+
+`Náhlý průjem` rozlišuje. `Onemocnění` nerozlišuje nic — trefí každý
+zdravotní dotaz. Je to týž ENDITRIL, který při prahu 0,55 propadl na
+„malárii", „schizofrenii" i „dnu". **Teď je jasné proč.**
+
+### Nejhorší případ celý, se zdrojem
+
+    AMOKSIKLAV, dotaz „rýma" (rozšíření: „zánět sliznice nosu")
+
+    ZDROJ (SPC)  "infekce kostí a kloubů, zejména osteomyelitida"
+    LAICKY       "infekce kostí a kloubů, zejména zánět kosti"
+    KLIC         "zánět kosti"
+
+    proti textu  0,513   POD prahem, neviditelné
+    proti KLÍČI  0,692   NAD prahem, DRUHÉ MÍSTO
+
+Antibiotikum na kosti jako druhý výsledek na dotaz o rýmě. Na celém
+pořadí: klíče zvedly počet výsledků nad prahem **z 3 na 8**, tři z nich
+s rýmou nesouvisí.
+
+### Kde klíč NEŠKODÍ
+
+Krátké řádky (pod 6 slov) klíč vůbec nedostávají. Proto „bolest zubů"
+dál vrací ACIFEIN s 1,000 z textu a **správná odpověď zůstává první**.
+Poškozená je PŘESNOST, ne úplnost — místa 2 až 6 obsadí jiné bolesti
+místo jiných léků na zuby.
+
+### Proč to vede zpátky ke kvalitě generování
+
+Klíč `onemocnění` je vada **generování**, ne vyhledávání. Stejně jako:
+
+    OMEPRAZOL  "kyselé řinčení do krku"     (má být říhání)
+    ACIDUM AS. "ZAMEZOVÁNÍ LÉČBĚ stavů..."  (má být prevence a léčba)
+    ULTRACOD   "při ALENZII na paracetamol" (má být alergii)
+    BISACODYL  "bolestí VE TŘASU"           (má být v řiti)
+    ACC        klíč "HNIL dýchacích cest"   (ve zdroji je hlen)
+    ZYRTEC     "OBECNÍ skupina 10 mg"       (má být obecná)
+
+Ladit prahy a váhy nad takovými daty je ladění nad šumem.
+**Otázka tedy není „jak nastavit klíč", ale „proč model vyrábí
+nepoužitelné výstupy a čím to změřit".** Viz úkol na vyzkoušení
+jiného modelu v `todo.md`.
+
+### Co z toho NEPLYNE
+
+Neplyne z toho „klíče zrušit". Plyne z toho, že **klíč musí obsahovat
+rozlišující pojem** (část těla, konkrétní stav) a musí být **v souladu
+s dotazem**. Pravidlo „aspoň dvě slova, z toho jedno konkrétní"
+NESTAČÍ — `zánět kosti` ho splňuje a přesto trefí rýmu.
+
+---
+
+## 2026-09-22 — Poměr 0,5 u pojistky klíče není rozmar. Kompenzuje hrubé porovnávání slov
+
+Plán chtěl nahradit poměrové pravidlo `klic_ma_oporu()` přísnějším
+„žádné významové slovo bez opory". Před nasazením změřeno — **a ukázalo
+se, že nasadit nejde.**
+
+| pravidlo | zahodí ze 164 klíčů |
+|---|---|
+| dnešní poměr ≥ 0,5 | 0 |
+| „žádné slovo bez opory" | **14 (8,5 %)** |
+
+Jenže z těch 14 je většina **falešně obviněná**, a příčina není
+v klíčích, ale v tom, jak se slova porovnávají:
+
+| klíč | „bez opory" | ve zdroji je | proč to spadlo |
+|---|---|---|---|
+| AFRIN „ucpaný **nos**" | `nos` | „nos**u**" | slovo pod 4 znaky vyžaduje PŘESNOU shodu |
+| AMEDO „vysoký **tuk** v krvi" | `tuk` | „tuk**u**" | totéž |
+| ACECOR „sinusový **uzel**" | `uzel` | „uz**l**u" | čeština vyhazuje `-e-`, prefix 4 znaků neprojde |
+| TALVOSILEN „střeva **nefungují**" | `nefungují` | „fungovat" | předpona `ne-` |
+
+**Poměr 0,5 tedy něco drží.** Je to vycpávka za to, že se slova
+porovnávají přes „první čtyři znaky", což na češtinu nestačí. Zpřísnit
+pravidlo bez opravy porovnávání by zahodilo správné klíče.
+
+**Pořadí je tedy obrácené, než plán předpokládal:** nejdřív opravit
+porovnávání slov (lemmatizace — hunspell už v Postgresu máme a umí
+`uzlu` → `uzel`), teprve potom se dá poměr zpřísnit.
+
+### Vedlejší nález: chyba bývá ve ZDROJI, ne v klíči
+
+Ze 14 nálezů byly čtyři skutečné, a u dvou z nich je zkomolený
+**zdrojový text**, kdežto klíč je správně:
+
+    ULTRACOD   zdroj „při ALENZII na paracetamol"   klíč „alergie na paracetamol"
+    BISACODYL  zdroj „bolestí VE TŘASU"             klíč „bolest v řiti"
+
+SPC u BISACODYLU má „zácpa spojená s bolestí v řiti, fisurami nebo
+hemoroidy". Model z toho udělal „ve třasu" a **obě kontroly to pustily**,
+protože obě ověřují `doslovne` proti zdroji, ne laický tvar.
+
+Kontrola opory klíče tím mimoděk funguje jako **detektor zkomolené
+češtiny ve zdrojovém textu** — na to nebyla stavěná. Stojí za to ji
+takhle použít schválně (viz TODO „nesmyslná laická zjednodušení").
+
+---
+
 ## 2026-09-22 — Auto-recall se NEDÁ porovnávat mezi běhy. Vzorek se přelosuje při každém `--znovu`
 
 Evaluace dnes dala jiná čísla než `aktualnistav.md`:

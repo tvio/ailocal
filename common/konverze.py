@@ -8,6 +8,7 @@ a tabulky jako markdown tabulky, takže se dá řezat podle skutečné struktury
 """
 
 import os
+import functools
 import re
 import logging
 from pathlib import Path
@@ -112,6 +113,33 @@ def orizni_eu_dokument(md: str) -> tuple[str, int | None]:
     return md[: m.start()].rstrip(), m.start()
 
 
+@functools.lru_cache(maxsize=1)
+def _prevodnik():
+    """Jeden DocumentConverter na cely beh (pripominka Codexu 24.9.2026).
+
+    Docling drzi inicializovanou pipeline v instanci prevodniku. Nova
+    instance pro kazde PDF ji zahodi. Zmereno na 3 PDF po sobe v jednom
+    procesu - viz poznatky.md 24.9.
+    """
+    from docling.document_converter import DocumentConverter, PdfFormatOption
+    from docling.datamodel.base_models import InputFormat
+    from docling.datamodel.pipeline_options import PdfPipelineOptions
+    from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
+
+    # OCR se VYPINA. SPC jsou digitalni PDF; zmereno na 32 lecivech
+    # (bench_konverze.py, 24.9.2026): 31/32 vystupu znak po znaku shodnych,
+    # jediny rozdil (ABLYMICO) je text z legendy grafu v bode 5.1
+    # ("日Liraglutid Placebo■▲ LOCF") - smeti, ne obsah. Uspora jen 8 %
+    # (701 s -> 642 s), drivejsich 15 % bylo namereno i s nacitanim modelu.
+    volby = PdfPipelineOptions()
+    volby.do_ocr = False
+    # Textovy backend NE vychozi docling_parse_v4 - viz konvertuj_pdf().
+    return DocumentConverter(
+        format_options={InputFormat.PDF: PdfFormatOption(
+            pipeline_options=volby, backend=PyPdfiumDocumentBackend)}
+    )
+
+
 def konvertuj_pdf(cesta_pdf: Path, *, orezat_eu: bool = True) -> VysledekKonverze:
     """PDF -> Markdown přes Docling.
 
@@ -119,10 +147,6 @@ def konvertuj_pdf(cesta_pdf: Path, *, orezat_eu: bool = True) -> VysledekKonverz
     (PyMuPDF, řádově milisekundy) a teprve ořezané jde do Doclingu.
     Ořez PŘED konverzí, ne po ní – Docling je nejdražší krok pipeline.
     """
-    from docling.document_converter import DocumentConverter, PdfFormatOption
-    from docling.datamodel.base_models import InputFormat
-    from docling.backend.pypdfium2_backend import PyPdfiumDocumentBackend
-
     ke_konverzi = cesta_pdf
     strana_prilohy = None
     stran_konvertovanych = 0
@@ -149,10 +173,8 @@ def konvertuj_pdf(cesta_pdf: Path, *, orezat_eu: bool = True) -> VysledekKonverz
     #
     # Oprava u ZDROJE je lepsi nez slepovat slova zpetne - slepovani nikdy
     # nemuze byt uplne a nese riziko, ze slepi neco spatne ("ze na" -> "zena").
-    prevodnik = DocumentConverter(
-        format_options={InputFormat.PDF: PdfFormatOption(backend=PyPdfiumDocumentBackend)}
-    )
-    vysledek = prevodnik.convert(str(ke_konverzi))
+    # Nastaveni prevodniku (backend, vypnute OCR) je v _prevodnik().
+    vysledek = _prevodnik().convert(str(ke_konverzi))
     dokument = vysledek.document
 
     md = dokument.export_to_markdown()

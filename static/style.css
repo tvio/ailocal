@@ -113,6 +113,24 @@ tbody tr.detail:hover { background: #fbfcfd; }
   border-radius: 3px; font-size: .78rem; color: var(--tise);
 }
 
+/* --- frekvence NU: cervena = casto, seda = nevi se --- */
+.frek {
+  display: inline-block; margin-left: .35rem; padding: .05rem .4rem;
+  border-radius: 3px; font-size: .78rem; font-weight: 600;
+  border: 1px solid transparent; white-space: nowrap;
+}
+.frek.f1 { background: #fde2e1; color: #9b1c1c; border-color: #f3a6a4; }
+.frek.f2 { background: #feecdc; color: #9a4a0c; border-color: #f6c08e; }
+.frek.f3 { background: #fdf6d8; color: #7a5b00; border-color: #e9d27a; }
+.frek.f4 { background: #e3eefc; color: #1e4f91; border-color: #a9c6ef; }
+.frek.f5 { background: #eef0fb; color: #444c8f; border-color: #c3c8ee; }
+.frek.f6 { background: var(--pozadi-hlavicka); color: var(--tise); border-color: var(--ram); }
+.frek-filtr { margin: .2rem 0 .5rem; display: flex; flex-wrap: wrap; gap: .3rem; align-items: center; }
+.frek-filtr button.frek { margin-left: 0; padding: .15rem .5rem; cursor: pointer; opacity: .9; }
+/* Kdyz je neco vybrane, nevybrane zeslabnou - at je videt, co filtruje. */
+.frek-filtr.aktivni button.frek { opacity: .35; }
+.frek-filtr.aktivni button.frek.vybrano { opacity: 1; box-shadow: 0 0 0 2px currentColor inset; }
+
 /* --- rozbalovaci radek --- */
 .sipka {
   background: none; border: none; color: var(--tise); cursor: pointer;
@@ -136,3 +154,33 @@ tbody tr.detail:hover { background: #fbfcfd; }
 .strankovani button { padding: .3rem .65rem; font-size: .85rem; background: #fff; color: var(--zvyraz); }
 .strankovani button.aktivni { background: var(--zvyraz); color: #fff; }
 .strankovani .tise { margin-left: .5rem; }
+
+/* --- cteni sekce (1. 10. 2026): souhrn v radku, sekce v rozbaleni --- */
+.nalez .znacka.shoda { margin-left: 0; margin-right: .2rem; background: #eef6ee; color: #2f6b2f; border-color: #b9dab9; }
+.detail h5.skupina-frek { margin: .6rem 0 .2rem; font-size: .82rem; font-weight: 600; }
+.detail h5.skupina-frek .frek { margin-left: 0; }
+.detail table.davkovani { border-collapse: collapse; margin: .3rem 0 .6rem; font-size: .85rem; }
+.detail table.davkovani th, .detail table.davkovani td {
+  border: 1px solid var(--ram); padding: .25rem .5rem; text-align: left; vertical-align: top;
+}
+.detail table.davkovani th { background: var(--pozadi-hlavicka); font-weight: 600; }
+.detail details { margin-top: .6rem; }
+.detail details summary { cursor: pointer; color: var(--tise); font-size: .85rem; }
+
+/* Ucinne latky: jedna latka + „+ N dalsi" (cely seznam v tooltipu a detailu) */
+td.latky { max-width: 22rem; }
+
+/* --- bunka Nalezeno (1. 10. 2026): sekce prvni, text a doplnky zarovnane --- */
+.nalez-box { display: flex; gap: .5rem; align-items: flex-start; }
+.nalez-obsah { flex: 1; min-width: 0; }
+.nalez-meta { margin-top: .15rem; font-size: .78rem; color: var(--tise); }
+.sekce-tag {
+  flex: 0 0 6.8rem; text-align: center; padding: .05rem .3rem; border-radius: 3px;
+  font-size: .74rem; font-weight: 600; border: 1px solid var(--ram);
+  background: var(--pozadi-hlavicka); color: var(--tise); white-space: nowrap;
+  overflow: hidden; text-overflow: ellipsis;
+}
+.sekce-tag.s-indikace        { background: #e7f3ea; color: #24623a; border-color: #b6d9c0; }
+.sekce-tag.s-kontraindikace  { background: #fbe9e7; color: #8a2a1f; border-color: #efb7ae; }
+.sekce-tag.s-davkovani       { background: #e6eefb; color: #23498a; border-color: #b3c8ee; }
+.sekce-tag.s-nezadouci_ucinky{ background: #fdf3df; color: #7a5200; border-color: #ecd29a; }

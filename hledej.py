@@ -55,7 +55,22 @@ def priprav_modely(*, tichy: bool = False) -> None:
         print(flush=True)
 
 
+_MAPA_SPC: dict[str, str] | None = None
+
+
 def _adresar(kod: str) -> str:
+    """Slozka dokumentu: korpus data/spc/<spc> (mapa kod -> SPC), jinak
+    puvodnich 32 leciv v data/leciva. Popisek je soucast odpovedi -
+    nesmi ukazovat na neexistujici cestu."""
+    global _MAPA_SPC
+    if _MAPA_SPC is None:
+        try:
+            from naplni_db import mapa_kod_spc
+            _MAPA_SPC = mapa_kod_spc()
+        except Exception:
+            _MAPA_SPC = {}
+    if kod in _MAPA_SPC:
+        return f"data/spc/{_MAPA_SPC[kod]}"
     for p in Path("data/leciva").glob(f"{kod}_*"):
         return str(p).replace("\\", "/")
     return f"data/leciva/{kod}"
@@ -140,7 +155,14 @@ def vypis_router(dotaz: str, filtr: Filtr, jistota: str, syrove: dict) -> None:
     print()
 
 
+def _razeni(abecedne, zpusob: str) -> str:
+    if isinstance(abecedne, dict):
+        return "podle podobnosti nazvu (dotaz je jen vzor nazvu)"
+    return "abecedne (dotaz je jen vzor nazvu)" if abecedne else "podle " + zpusob
+
+
 def vypis_vysledky(o, leciva, *, pasaze: bool, zpusob: str = "rrf") -> None:
+    from common.hledani import je_abecedne
     if o.prazdna_kvuli_filtru:
         # Zadani: prazdny vysledek z filtru se MUSI rict natvrdo,
         # vcetne pouziteho filtru - uzivatel jinak nepozna, proc.
@@ -159,7 +181,8 @@ def vypis_vysledky(o, leciva, *, pasaze: bool, zpusob: str = "rrf") -> None:
         return
 
     print(f"VYSLEDKY  ({len(leciva)} leciv z {o.kandidatu_pred_prahem} "
-          f"zaznamu po filtru, razeno podle {zpusob})")
+          f"zaznamu po filtru, razeno "
+          f"{_razeni(je_abecedne(o.filtr), zpusob)})")
     print("-" * 78)
 
     # Surove RRF skore je kolem 0,016 a rozdily jsou v patem desetinnem
@@ -171,7 +194,8 @@ def vypis_vysledky(o, leciva, *, pasaze: bool, zpusob: str = "rrf") -> None:
     for i, l in enumerate(leciva, 1):
         v = l.nejlepsi
         rel = 100.0 * l.skore / nejlepsi_skore
-        print(f"{i:2}. {l.nazev} {l.sila or ''}".rstrip())
+        forma = l.nejlepsi.lekova_forma or ""
+        print(f"{i:2}. {l.nazev} {l.sila or ''} {f'({forma})' if forma else ''}".rstrip())
         # Zakladni udaje o lecivu z API SUKL. Vsechno na dvou radcich,
         # at to nezere zbytecne misto - vydej a hrazeni jsou DVE ruzne
         # veci a plete se to, proto jsou vedle sebe.
@@ -274,7 +298,8 @@ def main() -> int:
     o = hledej(syrove.get("dotaz_text") or dotaz, filtr=filtr,
                puvodni_dotaz=dotaz,
                limit=REZERVA, prah=a.prah, **kw)
-    leciva = seskup(o.vysledky, leciv=a.leciv)
+    from common.hledani import je_abecedne
+    leciva = seskup(o.vysledky, leciv=a.leciv, abecedne=je_abecedne(filtr))
 
     if a.json:
         print(json.dumps({
