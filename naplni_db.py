@@ -216,6 +216,62 @@ def strana_sekce(adr: Path, sekce: str) -> int | None:
     return None
 
 
+# --- Sjednoceni klice (2. 10. 2026) ---------------------------------------
+# Klic vyrabi model u kazdeho leku zvlast a nedeterministicky: tentyz laicky
+# tvar „zapal plic" mel klic „pneumonie" 34x, „zapal plic" 5x, zadny 1x.
+# Klic shodny s dotazem da cosine 1,0, odborny 0,80 -> KLACID 11. misto.
+# PRAVIDLO (bez modelu, po radcich): laicky tvar 1-4 slova -> klic = laicky
+# tvar; delsi laicky (cela veta) -> klic od modelu zustava (tam je to zkratka).
+# Rozhoduje se pri plneni DB, JSON z extrakce zustava netknuty.
+KLIC_MAX_SLOV = 4
+# VYPNUTO 2. 10. 2026 – zmereno HORSI: parafraze 20/20 -> 19/20, presnost
+# 66 -> 63 %. Laicky klic zrovnopravnil prave indikace s VYTRZENYMI kusky
+# („diabetem mellitem" u SIMVASTATINU -> klic „cukrovka" -> cosine 1,0).
+# Odborny klic chybu jen nahodou skryval. Koren je v extrakci (poznatky 2. 10.).
+SEKCE_SJEDNOCENY_KLIC: tuple[str, ...] = ()
+
+
+def klic_hledani(sekce: str, p) -> str | None:
+    """Klic pro hledani (vlastni vektor + fulltext). U davkovani skupina pacientu."""
+    if not isinstance(p, dict):
+        return None
+    if sekce == "davkovani":
+        return p.get("klic") or p.get("pacient")
+    if sekce in SEKCE_SJEDNOCENY_KLIC:
+        laicky = " ".join(str(p.get("laicky") or "").split()).rstrip(".")
+        if laicky and len(laicky.split()) <= KLIC_MAX_SLOV:
+            return laicky
+    return p.get("klic")
+
+
+def sjednot_klice() -> int:
+    """Pravidlo klic_hledani() na STAVAJICI DB, bez preplneni.
+
+    Zmenenym radkum se smaze embedding_klic; vytvor_embeddingy.py ho
+    dopocita (rezim pro chybejici klice). search_fts je generovany sloupec,
+    prepocita se sam.
+    """
+    with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
+        cur.execute(rf"""
+            WITH n AS (
+                SELECT id, regexp_replace(trim(sekce_atributy->>'laicky'), '[.]+$', '') AS laicky
+                FROM leciva_search
+                WHERE sekce IN ('indikace', 'kontraindikace')
+                  AND sekce_atributy->>'laicky' IS NOT NULL)
+            UPDATE leciva_search s
+               SET klic = n.laicky, embedding_klic = NULL
+              FROM n
+             WHERE s.id = n.id
+               AND n.laicky <> ''
+               AND array_length(regexp_split_to_array(n.laicky, '\s+'), 1) <= {KLIC_MAX_SLOV}
+               AND coalesce(s.klic, '') IS DISTINCT FROM n.laicky""")
+        n = cur.rowcount
+        conn.commit()
+    print(f"Sjednoceno {n} klicu (klic = laicky tvar 1-{KLIC_MAX_SLOV} slova). "
+          f"Ted vytvor_embeddingy.py (dopocita vektory klicu).")
+    return 0
+
+
 def text_polozky(sekce: str, p) -> tuple[str, dict | None]:
     """Z polozky udela (obsah_text, sekce_atributy).
 
@@ -389,7 +445,7 @@ def nahraj_sekce(cur, kod: str, adr: Path, json_adr: Path, api: dict, poc: Count
                           p.get("organovy_system") if je_nu else None,
                           json.dumps(atr, ensure_ascii=False) if atr else None,
                           kontext(api), obsah,
-                          (p.get("klic") if isinstance(p, dict) else None)
+                          klic_hledani(sekce, p)
                           or (p.get("pacient") if sekce == "davkovani"
                               and isinstance(p, dict) else None),
                           strana))
@@ -555,9 +611,13 @@ def main() -> int:
     ap.add_argument("--limit-spc", type=int, help="s --korpus: jen prvnich N SPC (zkouska)")
     ap.add_argument("--obnov-sekci", choices=sorted(SEKCE_SPC),
                     help="korpus: znovu nahrat JEN tuto sekci, ostatni nechat (bez TRUNCATE)")
+    ap.add_argument("--sjednot-klice", action="store_true",
+                    help="korpus: klic = laicky tvar (1-4 slova) na stavajici DB, nic nemazat")
     ap.add_argument("--jen-vek", action="store_true",
                     help="korpus: jen prepocitat vek pouziti (common/vek.py), nic nemazat")
     a = ap.parse_args()
+    if a.sjednot_klice:
+        return sjednot_klice()
     if a.jen_vek:
         with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
             aktualizuj_vek(cur)
@@ -718,7 +778,7 @@ def main() -> int:
                           # ale pouzitelny uz mame: skupina pacientu. Cisla
                           # a davky jsou ve fulltextu jen sum - clovek hleda
                           # "deti", ne "250 mg".
-                          (p.get("klic") if isinstance(p, dict) else None)
+                          klic_hledani(sekce, p)
                           or (p.get("pacient") if sekce == "davkovani"
                               and isinstance(p, dict) else None),
                           strana))

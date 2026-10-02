@@ -34,6 +34,30 @@ from common.ollama_client import embed
 DAVKA = 64
 
 
+def dopocitej_klice(conn, model: str, davka: int, log) -> int:
+    """Vektor klice u radku, ktere maji vektor obsahu, ale klic bez vektoru."""
+    with conn.cursor() as cur:
+        cur.execute("SELECT id, klic FROM leciva_search WHERE klic IS NOT NULL "
+                    "AND embedding_klic IS NULL AND embedding IS NOT NULL ORDER BY id")
+        radky = cur.fetchall()
+    if not radky:
+        return 0
+    print(f"Vektory klicu: {len(radky)} radku", flush=True)
+    t0 = time.perf_counter()
+    for zac in range(0, len(radky), davka):
+        d = radky[zac:zac + davka]
+        vk = embed([r[1] for r in d], model=model)
+        with conn.cursor() as cur:
+            cur.executemany("UPDATE leciva_search SET embedding_klic = %s WHERE id = %s",
+                            [(str(v), r[0]) for v, r in zip(vk, d)])
+        conn.commit()
+        if (zac // davka) % 50 == 0:
+            print(f"  ... {zac + len(d)}/{len(radky)}", flush=True)
+    log.zaznam(None, None, "embedding_klic", stav="ok", hotovo=len(radky),
+               celkem=len(radky), trvani_s=time.perf_counter() - t0)
+    return len(radky)
+
+
 def main() -> int:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     ap = argparse.ArgumentParser(description="Embeddingy pro leciva_search")
@@ -52,12 +76,15 @@ def main() -> int:
                 cur.execute(f"SELECT count(*) FROM leciva_search {kde}")
                 celkem = cur.fetchone()[0]
 
+            # Radky, ktere vektor obsahu MAJI, ale chybi jim vektor KLICE
+            # (klic se zmenil - naplni_db.py --sjednot-klice, 2. 10. 2026).
+            celkem_vlozeno += dopocitej_klice(conn, a.model, a.davka, log)
+
             if not celkem:
                 log.zaznam(None, None, "embedding", stav="prazdna",
                            hotovo=0, celkem=0,
                            poznamka="neni co pocitat, vse uz ma embedding")
-                log.zaviri()
-                return 0
+                return 0            # log zavre `finally` (driv se zaviral 2x a padal)
 
             print(f"Model {a.model}, {EMBED_DIMENSION} dim, "
                   f"{celkem} radku po {a.davka}\n")

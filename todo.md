@@ -96,6 +96,17 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       krátkých) a 14 122 kontraindikací. Model dává do klíče odborný termín
       („zápal plic" → pneumonie 34×, „pálení žáhy" → pyróza 3×).
       Evaluace PŘED a PO; u kontraindikací zvážit vynechat (obecné klíče, N3).
+      **VYZKOUŠENO A VRÁCENO 2. 10.** – horší (laický klíč zrovnoprávnil vytržené
+      kusy indikací, simvastatin → „cukrovka" 1,0). Poznatky 2. 10.
+- [ ] **Přeextrahovat INDIKACE s opraveným promptem** (~0,7 $). Měřeno 2. 10.:
+      ~4 % položek chybných, ~1–2 % „skupina pacientů jako indikace".
+      Do promptu: (1) „u pacientů s X / u nemocných s X / po výkonu X" NENÍ
+      indikace, X → pole `skupina`; (2) položka = samostatný název stavu
+      v 1. pádě, ne kus věty. Ověřit NEJDŘÍV na vzorku 218 položek
+      (`benchmarky/indikace_fragmenty/soudce.py`, starý vs. nový prompt),
+      pak celý korpus přes `extrahuj_json_cloud.py --znovu-seznam`, DB
+      `--obnov-sekci indikace`, evaluace.
+- [ ] **RRF: shodné hodnoty = stejné pořadí** (KLACID mezi 40× cosine 1,0).
 - [ ] **Alternativa: samostatné vektory laický / odborný** místo „laický
       (odborný)" v jednom textu (`naplni_db.py: _spoj`). Závorka vzniká jen když
       se odborný liší od laického a má ≤ 60 znaků → stejný pojem má podle SPC

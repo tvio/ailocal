@@ -5,6 +5,57 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-02 — Sjednocení klíče zhoršilo hledání; skutečná chyba je v rozdělení indikací (~4 % položek)
+
+### Sjednocení klíče (klíč = laický tvar) – vráceno
+
+Podnět: „zápal plic hrazený" – KLACID 11., přestože text indikace má stejný
+jako lepší léky. Klíč (krátké heslo od modelu, vlastní vektor) byl u téhož
+laického „zápal plic" 34× odborná „pneumonie", 5× „zápal plic".
+
+Pravidlo „laický tvar 1–4 slova → klíč" změnilo 22 284 klíčů. Výsledek:
+parafráze 20/20 → 19/20, přesnost 66 → 63 % (v šumu – router nedeterministický,
+přesnost kolísá ±4 b.), KLACID 11. → 10., odborné dotazy horší
+(„pyróza" 1,0 → 0,68). **Věcný důvod vrácení:** laický klíč zrovnoprávnil
+pravé indikace s VYTRŽENÝMI kusy – SIMVASTATIN měl položku „diabetem
+mellitem" → laicky „cukrovka" → klíč „cukrovka" → cosine 1,0 na „mám
+cukrovku". Odborný klíč chybu jen náhodou skrýval. Vráceno, pravidlo
+v kódu vypnuto (`naplni_db.py: SEKCE_SJEDNOCENY_KLIC = ()`).
+
+Proč KLACID nepomohlo ani tak: 40 řádků „zápal plic" s cosine 1,0 a RRF
+mezi nimi řadí podle NÁHODNÉHO pořadí z DB (shodné hodnoty → různé pořadí).
+
+### Kořen: rozdělení indikace na položky
+
+SPC simvastatinu: „snížení … u pacientů s … onemocněním NEBO S DIABETEM
+MELLITEM" → položky „manifestním … onemocněním", „diabetem mellitem"
+(7. pád = kus věty). Prompt indikací říká „KAŽDOU indikaci uveď zvlášť,
+NESLUČUJ" (z 32 léků – model slučoval), ale neříká, že „u pacientů s X"
+je SKUPINA, ne indikace.
+
+Měření (`benchmarky/indikace_fragmenty/`: detektory + soudce gemma4:26b
+nad celým textem 4.1, vzorek 218):
+
+| vzorek | v korpusu | chybných (skupina / kus) |
+|---|---|---|
+| první slovo v 7./2. pádě | 2 531 | 17 % |
+| začíná předložkou | 547 | 17 % |
+| krátká položka vedle věty | 3 317 | 0 % |
+| nesoulad s ATC skupinou | 53 | 4 % |
+| kontrola (nepodezřelé) | ~17 900 | 3 % |
+
+**Odhad ~1 000 chybných z 24 321 položek (~4 %), z toho „skupina pacientů
+jako indikace" (škodlivé, falešné shody) ~1–2 %.** Příklady: ELIQUIS
+„hypertenze" (rizikový faktor), TORVACARD „vysokým rizikem KV příhody",
+SITAGLIPTIN „diabetes není kompenzován", CELASKON „u sportovců". „Kus"
+(„urtikarií", „hltanu") většinou pořád jmenuje nemoc → hledání škodí málo.
+
+- Detektory k OPRAVĚ nestačí (ATC nízká přesnost, tvar 17 %), jako MĚŘÍTKO
+  pro nový prompt ano: tentýž vzorek a soudce, starý vs. nový.
+- Spojení s Ollamou (10.6.38.10) během běhu 35× spadlo – dopočteno.
+
+---
+
 ## 2026-10-01 — Hledání podle části názvu: pevné formulace, ne sémantika
 
 Laik si pamatuje část názvu („oxy něco"). **Embedding to neumí** – zachycuje
