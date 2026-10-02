@@ -163,6 +163,41 @@ PROMPTY = {
     ),
 }
 
+# --- Indikace v2 (2. 10. 2026) – ZATIM JEN K MERENI -----------------------
+# Na korpusu ~4 % polozek indikaci chybnych, ~1-2 % je SKUPINA PACIENTU
+# vydavana za indikaci: SIMVASTATIN „snizeni ... u pacientu s ... nebo
+# s diabetem mellitem" -> polozka „diabetem mellitem" -> „cukrovka" ->
+# falesna shoda na „mam cukrovku" (poznatky 2. 10.). Puvodni pravidlo
+# „NESLUCUJ" (z 32 leku) bez vyjimky pro skupinu pacientu vede k rozsekani.
+# Do produkce az po mereni (benchmarky/indikace_fragmenty/test_promptu.py).
+_PRAVIDLA_V2 = (
+    "\nCO JE A CO NENÍ POLOŽKA:\n"
+    "- Položka je TO, CO LÉK LÉČÍ NEBO ČEMU PŘEDCHÁZÍ (nemoc, příznak, "
+    "stav, cíl léčby).\n"
+    "- Část věty „u pacientů s X\", „u nemocných s X\", „u osob s X\", "
+    "„u pacientů po X\", „při současném užívání X\" NENÍ samostatná "
+    "indikace – je to SKUPINA nebo PODMÍNKA. Zapiš ji do 'skupina' k té "
+    "indikaci, které se týká, a samostatnou položku z ní NEDĚLEJ.\n"
+    "  Příklad: „Snížení kardiovaskulární úmrtnosti u pacientů s ischemickou "
+    "chorobou srdeční nebo s diabetem mellitem\" -> JEDNA položka: "
+    "doslovne „Snížení kardiovaskulární úmrtnosti\", laicky „snížení rizika "
+    "úmrtí na infarkt a mrtvici\", skupina „pacienti s ischemickou chorobou "
+    "srdeční nebo s cukrovkou\". NE položka „diabetem mellitem\".\n"
+    "- Každá položka musí dávat smysl SAMA O SOBĚ jako název stavu. Žádné "
+    "vytržené kousky („hltanu\", „neklidem\", „V nebulizační terapii\"). "
+    "Když výčet sdílí podstatné jméno („zánět hltanu, hrtanu\"), doplň ho do "
+    "každé položky („zánět hrtanu\"). 'laicky' a 'klic' piš v 1. pádě.\n"
+)
+PROMPT_INDIKACE_V2 = PROMPTY["indikace"].replace(
+    "\nINDIKACE JE NEMOC NEBO PŘÍZNAK, na který se lék používá. ",
+    _PRAVIDLA_V2 + "\nINDIKACE JE NEMOC NEBO PŘÍZNAK, na který se lék používá. ")
+assert PROMPT_INDIKACE_V2 != PROMPTY["indikace"], "vlozeni pravidel v2 selhalo"
+# NASAZENO 2. 10. 2026 po mereni na 56 sekcich (stejny soudce, stary vs. novy):
+# „skupina pacientu jako indikace" 21 -> 2, chybnych v nahodne kontrole
+# 6 % -> 1 %, pocet polozek beze zmeny. SIMVASTATIN: „Redukce KV mortality"
+# se skupinou „pacienti s ... diabetem", polozka „cukrovka" uz nevznika.
+PROMPTY["indikace"] = PROMPT_INDIKACE_V2
+
 # Sekce, ktere maji dvojici odborny termin + laicky tvar, a tedy podlehaji
 # ciselniku pojmu. Davkovani tu NENI - to jsou cisla, ne terminy.
 SEKCE_S_LAICKYM_TVAREM = {"nezadouci_ucinky", "indikace", "kontraindikace"}

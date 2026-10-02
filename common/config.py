@@ -109,7 +109,7 @@ OPENAI_BATCH_SLEVA = 0.5
 # se dalsi davka NEODESLE. Na uctu 10 $ (29.9.2026, platform.openai.com),
 # odhad celeho korpusu 5,5 $, pesimisticky 6,4 $ (poznatky 29.9.). Strop
 # nechava rezervu na opakovani a nepresnost odhadu vystupu.
-CLOUD_STROP_USD = 10.5  # 30.9.: +preextrahovani davkovani bez orezu (~1,4 $), ucet dobit
+CLOUD_STROP_USD = 11.5  # 2.10.: +preextrahovani indikaci promptem v2 (~0,7-0,9 $)
 # LIMIT FRONTY Batch API: pro gpt-6-luna smi byt v rozjetych davkach
 # organizace nejvys 2 000 000 vstupnich tokenu (zmereno 29.9.2026 na ostrem
 # behu: "Enqueued token limit reached ... Limit: 2,000,000"). Nad limitem
