@@ -65,6 +65,25 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       DALACIN. Možnosti: OTC dopředu, injekce/infuze dozadu nebo skrýt,
       pokud dotaz výslovně nechce nemocniční léčbu.
 
+- [ ] **Váhy a řazení – „zápal plic hrazený" (2. 10.):** KLACID se shodným
+      textem „zápal plic (pneumonie)" až na 11. místě (odstup 68), CIPROFLOXACIN
+      2. (92). Tři příčiny, žádná věcná:
+      1. **Klíč:** CIPRO má klíč „zápal plic" → vektor klíče = vektor dotazu,
+         cosine 1,000; KLACID „pneumonie" → 0,801. Ze 36 shodných řádků má
+         „zápal plic" jen 2, „pneumonie" 33 (model, nedeterminismus; kontroly
+         klíče vypnuté – N3). Klíč je i ve fulltextu → 6,0 proti 3,0.
+         → sjednotit klíč u stejného textu (jako `ocisti_json.py`), preferovat
+         laické slovo.
+      2. **RRF počítá pořadí, ne hodnotu:** shodné cosine 1,000 dostanou
+         100 / 92 / 90 / 88 jen podle náhodného pořadí z DB → shodné hodnoty
+         hodnotit stejně (sdílené pořadí).
+      3. **Fulltext jen top 100 kandidátů (`KANDIDATU`):** shod je přes 100,
+         KLACID (3,0) se nevešel → z fulltextu nic. → zvýšit strop / sdílené
+         pořadí pro shodné hodnoty.
+- [ ] **GUI popisek „Fulltext: nenašel" je zavádějící** – fulltext řádek
+      našel (3,0), jen se nevešel mezi top 100. Psát „shoda 3,0, mimo
+      prvních 100" (popisek je součást odpovědi).
+
 ### 4d. Víc uživatelů najednou
 - [ ] **Paralelismus na Ollamě pro víc uživatelů.** Router (gemma4:26b)
       je 92 % času dotazu a Ollama dnes zpracuje dotazy postupně – druhý
