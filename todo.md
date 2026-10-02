@@ -88,6 +88,14 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       tvar** (1–4 slova), jinak nejčastější. NE „nejčastější" jako
       `ocisti_json.py` u 32 léků – tady by vyhrála odborná „pneumonie" (33 z 36)
       a všechny by měly 0,80. Přepočet jen vektorů klíčů změněných řádků.
+      Jak: PRAVIDLEM po řádcích, ne kopírováním „správného" řádku – laický
+      tvar 1–4 slova → klíč = laický, delší → klíč od modelu zůstane.
+      V `naplni_db.py` (JSON netknutý), změněným řádkům smazat
+      `embedding_klic` a `vytvor_embeddingy.py` doplnit o dopočet jen klíče.
+      **Změřeno 2. 10.:** změnilo by se 7 833 klíčů indikací (z 10 226
+      krátkých) a 14 122 kontraindikací. Model dává do klíče odborný termín
+      („zápal plic" → pneumonie 34×, „pálení žáhy" → pyróza 3×).
+      Evaluace PŘED a PO; u kontraindikací zvážit vynechat (obecné klíče, N3).
 - [ ] **Alternativa: samostatné vektory laický / odborný** místo „laický
       (odborný)" v jednom textu (`naplni_db.py: _spoj`). Závorka vzniká jen když
       se odborný liší od laického a má ≤ 60 znaků → stejný pojem má podle SPC
