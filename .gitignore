@@ -18,6 +18,11 @@ audit_hledani.json
 benchmarky/pdfextrakce/pdf/
 benchmarky/pdfextrakce/vystupy/
 benchmarky/pdfextrakce/report/
-/benchmarky/
+# benchmarky: SKRIPTY do gitu ano, vygenerovane vystupy ne (2. 10. 2026 –
+# drive bylo ignorovane cele benchmarky/ a skripty v gitu chybely)
+benchmarky/**/*.json
+benchmarky/**/*.jsonl
+benchmarky/**/vystupy/
+benchmarky/**/__pycache__/
 /benchmark/
 /benchmark/*
