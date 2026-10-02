@@ -40,6 +40,11 @@ RRF_K = 60
 # Kolik kandidatu vzit z kazdeho zebricku pred spojenim. Vic nez vysledny
 # limit, aby melo RRF co michat.
 KANDIDATU = 100
+# Fulltext zvlast a vic (2. 10. 2026): na korpusu ma „zapal plic" pres 100
+# shod, radky s hodnotou 3,0 se do top 100 nevesly (KLACID) a z fulltextu
+# nedostaly NIC, prestoze shoda byla. SQL vraci vsechny radky po filtru,
+# takze vetsi strop nic nestoji - jen se oreze delsi seznam v Pythonu.
+KANDIDATU_FTS = 1000
 
 
 @dataclass
@@ -421,7 +426,7 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
 
     # Poradi v obou zebricich
     dle_sem = sorted(radky, key=lambda r: -r["cosine"])[:KANDIDATU]
-    dle_fts = [r for r in sorted(radky, key=lambda r: -r["fts"]) if r["fts"] > 0][:KANDIDATU]
+    dle_fts = [r for r in sorted(radky, key=lambda r: -r["fts"]) if r["fts"] > 0][:KANDIDATU_FTS]
 
     poradi_sem = {r["id"]: i + 1 for i, r in enumerate(dle_sem)}
     poradi_fts = {r["id"]: i + 1 for i, r in enumerate(dle_fts)}

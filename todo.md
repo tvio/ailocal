@@ -80,6 +80,20 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       3. **Fulltext jen top 100 kandidátů (`KANDIDATU`):** shod je přes 100,
          KLACID (3,0) se nevešel → z fulltextu nic. → zvýšit strop / sdílené
          pořadí pro shodné hodnoty.
+      **Hotovo 2. 10.:** `KANDIDATU_FTS = 1000` (fulltext zvlášť) – KLACID
+      dostal fulltext pořadí #194, odstup 68 → 73, pořád 11. místo (hlavní je
+      cosine). Evaluace: parafráze 20/20, přesnost 67 → 66 %, negativní 5/6.
+- [ ] **Sjednocení klíče (doporučeno jako první):** všechny řádky se stejným
+      textem dostanou stejný klíč, deterministicky. Pravidlo: **klíč = laický
+      tvar** (1–4 slova), jinak nejčastější. NE „nejčastější" jako
+      `ocisti_json.py` u 32 léků – tady by vyhrála odborná „pneumonie" (33 z 36)
+      a všechny by měly 0,80. Přepočet jen vektorů klíčů změněných řádků.
+- [ ] **Alternativa: samostatné vektory laický / odborný** místo „laický
+      (odborný)" v jednom textu (`naplni_db.py: _spoj`). Závorka vzniká jen když
+      se odborný liší od laického a má ≤ 60 znaků → stejný pojem má podle SPC
+      jednou 1,0 („zápal plic"), jednou 0,80 („zápal plic (pneumonie)").
+      Řeší i odborné dotazy, ale přepočet všech vektorů (~2 h). Až když bude
+      vidět, že trpí odborné dotazy.
 - [ ] **GUI popisek „Fulltext: nenašel" je zavádějící** – fulltext řádek
       našel (3,0), jen se nevešel mezi top 100. Psát „shoda 3,0, mimo
       prvních 100" (popisek je součást odpovědi).
