@@ -1,9 +1,15 @@
 #!/usr/bin/env python3
-"""Krok 3 pro CELY KORPUS: extrakce sekci do JSON v cloudu pres OpenAI Batch API.
+"""Krok 3 pipeline: extrakce sekci do JSON. Dve cesty, STEJNY prompt i vystup:
 
-Nahrazuje extrahuj_json.py pro korpus v data/spc/ (5 880 SPC). Prompt,
-orez i zpracovani odpovedi jsou PRESNE tytez jako u sync extrakce
-(common/extrakce.py: uzivatelsky_prompt, telo_cloud, zpracuj_odpoved).
+  --beh     CLOUD, OpenAI Batch API (gpt-6-luna). Vychozi cesta pro korpus.
+  --local   LOKALNE, Ollama, jedna sekce po druhe. Pro jeden kod SUKL nebo
+            malou davku: cloud neni dostupny, rychla oprava jednoho leku,
+            zkouska noveho lokalniho modelu (--model). Na cely korpus NE -
+            25 M vystupnich tokenu je pri 30 tok/s ~10 dni.
+
+Prompt, orez i zpracovani odpovedi jsou u obou PRESNE tytez
+(common/extrakce.py: uzivatelsky_prompt, zpracuj_odpoved); lisi se jen
+doprava pozadavku. Ktery model sekci vytezil, je v json/_stav.json.
 
 JAK FUNGUJE BATCH API (OpenAI)
     1. JSONL soubor, jeden radek = jeden pozadavek s VLASTNIM celym promptem:
@@ -30,7 +36,7 @@ STAV - data/spc/_extrakce/stav.sqlite (prezije pad, Ctrl+C i restart PC)
     custom_id = "<slozka>|<sekce>|p<pokus>" - pokus odlisi opakovani.
 
 VYSTUPY
-    data/spc/<slozka>/json/<sekce>.json, json/_stav.json  (jako extrahuj_json.py)
+    data/spc/<slozka>/json/<sekce>.json, json/_stav.json
     data/spc/_extrakce/davky/davka_NNNN.jsonl (+ .out.jsonl, .err.jsonl)
     data/spc/_extrakce/log/beh_<cas>.log      prubezny log (flush po radku)
     data/spc/_extrakce/report.md               souhrn + VSECHNY chyby podle ID
@@ -41,6 +47,14 @@ Pouziti:
   uv run python extrahuj_json_cloud.py --znovu-chybne   # chyby zpet do fronty
   uv run python extrahuj_json_cloud.py --znovu-seznam vadne.txt   # vybrane ID
   uv run python extrahuj_json_cloud.py --beh --test --limit-spc 5 --test-chyby
+
+  # lokalne (Ollama) - maly rozsah
+  uv run python extrahuj_json_cloud.py --local --kody 0260480            # jeden lek, vsechny sekce
+  uv run python extrahuj_json_cloud.py --local --kody 0260480 --sekce indikace
+  uv run python extrahuj_json_cloud.py --local --kody 0260480 --model gemma4:26b
+  uv run python extrahuj_json_cloud.py --local --limit 20                # 20 cekajicich z fronty
+  uv run python extrahuj_json_cloud.py --local --test --limit-spc 5 --model novy:model
+                                # zkouska modelu - vystup do _extrakce_test, korpus beze zmeny
 """
 
 import io
@@ -458,14 +472,23 @@ def zpracuj_radek(beh: Beh, davka: int, radek: dict) -> None:
     obsah = body["choices"][0]["message"]["content"] or ""
     v = zpracuj_odpoved(sekce, obsah, model=OPENAI_MODEL,
                         vstup_tok=vstup, vystup_tok=vystup)
+    uloz_vysledek(beh, pid, v, model=OPENAI_MODEL, cena_usd=c, oznaceni=cid,
+                  navic={"batch_id": davka_batch_id(beh, davka), "custom_id": cid})
+
+
+def uloz_vysledek(beh: Beh, pid: str, v, *, model: str, cena_usd: float,
+                  oznaceni: str, navic: dict | None = None) -> bool:
+    """Zapise vysledek jedne sekce: json/<sekce>.json, _stav.json a stav
+    pozadavku. Spolecne pro cloud i lokalni extrakci. Vraci True = hotovo."""
+    slozka, _, sekce = pid.partition("|")
     d = beh.json_dir(slozka)
     d.mkdir(parents=True, exist_ok=True)
     if v.polozky:
         (d / f"{sekce}.json").write_text(
             json.dumps(v.polozky, ensure_ascii=False, indent=1), encoding="utf-8")
     zaznam = {"stav": v.stav, "duvod": v.duvod, "polozek": len(v.polozky),
-              "model": OPENAI_MODEL, "batch_id": davka_batch_id(beh, davka),
-              "custom_id": cid, "vstup_tok": vstup, "vystup_tok": vystup}
+              "model": model, **(navic or {}),
+              "vstup_tok": v.vstup_tokenu, "vystup_tok": v.vystup_tokenu}
     if v.surova_odpoved:
         zaznam["surova_odpoved"] = v.surova_odpoved
     zapis_stav(beh, slozka, sekce, zaznam)
@@ -477,12 +500,107 @@ def zpracuj_radek(beh: Beh, davka: int, radek: dict) -> None:
     ok = v.stav in ("neovereno", "castecna", "prazdna")
     beh.db.execute("UPDATE pozadavky SET stav=?, vysledek=?, polozek=?, vstup_tok=?, "
                    "vystup_tok=?, cena_usd=cena_usd+?, chyba=?, zmeneno=? WHERE id=?",
-                   ("hotovo" if ok else "chyba", v.stav, len(v.polozky), vstup, vystup,
-                    c, None if ok else f"{v.stav}: {v.duvod}"[:500], ted(), pid))
+                   ("hotovo" if ok else "chyba", v.stav, len(v.polozky),
+                    v.vstup_tokenu, v.vystup_tokenu, cena_usd,
+                    None if ok else f"{v.stav}: {v.duvod}"[:500], ted(), pid))
     if ok:
-        log.debug("  ok %s: %d polozek, %s", cid, len(v.polozky), v.stav)
+        log.debug("  ok %s: %d polozek, %s", oznaceni, len(v.polozky), v.stav)
     else:
-        log.error("  CHYBA %s: %s: %s", cid, v.stav, v.duvod[:200])
+        log.error("  CHYBA %s: %s: %s", oznaceni, v.stav, v.duvod[:200])
+    return ok
+
+
+# --------------------------------------------------------------------------
+# 3b) lokalni extrakce (Ollama) - maly rozsah, bez Batch API
+# --------------------------------------------------------------------------
+
+def slozky_kodu(kody: list[str]) -> dict[str, str]:
+    """kod SUKL -> slozka SPC (inventar data/spc/_stav.sqlite)."""
+    import re
+    c = sqlite3.connect(SPC_DIR / "_stav.sqlite")
+    ven = {}
+    for k in kody:
+        r = c.execute("SELECT identita FROM kody WHERE kod=? AND identita IS NOT NULL",
+                      (k.strip(),)).fetchone()
+        if r:
+            ven[k.strip()] = re.sub(r"[^\w.-]+", "_", r[0])[:80]
+    return ven
+
+
+def beh_local(beh: Beh, *, model: str, kody: list[str] | None, sekce: list[str] | None,
+              limit: int | None) -> int:
+    """Lokalni extrakce pres Ollamu. Vraci navratovy kod.
+
+    --kody: vyjmenovana SPC se extrahuji ZNOVU (i kdyz uz jsou hotova z cloudu).
+    bez --kody: zpracuje, co CEKA ve fronte (typicky nova SPC, kdyz cloud
+    neni dostupny) - nejvys `limit` pozadavku.
+    """
+    from common.extrakce import extrahuj_sekci
+    from common.ollama_client import priprav_modely, get_ollama_url
+
+    sekce = sekce or list(SEKCE_SPC)
+    if kody:
+        mapa = slozky_kodu(kody)
+        nezname = [k for k in kody if k.strip() not in mapa]
+        if nezname:
+            log.error("CHYBA: kod SUKL neni v inventari (data/spc/_stav.sqlite): %s",
+                      ", ".join(nezname))
+            return 2
+        ids = [f"{s}|{x}" for s in dict.fromkeys(mapa.values()) for x in sekce]
+        znam = {r["id"]: r["stav"] for r in beh.db.execute(
+            f"SELECT id, stav FROM pozadavky WHERE id IN ({','.join('?' * len(ids))})", ids)}
+        chybi = [i for i in ids if i not in znam]
+        if chybi:
+            log.error("CHYBA: pozadavek neni v inventari extrakce (SPC nema vytazene "
+                      "sekce? pust extrahuj_sekce.py): %s", ", ".join(chybi[:5]))
+            return 2
+        ids = [i for i in ids if znam[i] != "bez_sekce"]
+    else:
+        ids = [r["id"] for r in beh.db.execute(
+            f"SELECT id FROM pozadavky WHERE stav='cekajici' AND sekce IN "
+            f"({','.join('?' * len(sekce))}) ORDER BY poradi, id", sekce)]
+        if limit:
+            ids = ids[:limit]
+    if not ids:
+        log.info("LOCAL: neni co extrahovat (fronta je prazdna; konkretni lek: --kody KOD)")
+        return 0
+
+    # Model se overi a nahraje PREDEM a hlasite - jinak by kazda sekce
+    # skoncila jako 'selhala_extrakce' a duvod by byl schovany v reportu.
+    try:
+        url = get_ollama_url()
+        st = list(priprav_modely((model,)))[0]
+    except Exception as e:
+        log.error("CHYBA: Ollama neni dostupna: %s: %s", type(e).__name__, e)
+        return 2
+    if not st.ok:
+        log.error("CHYBA: model %s na %s nejde nacist: %s", model, url, st.chyba)
+        return 2
+    log.info("LOCAL: model %s na %s, %d pozadavku%s", model, url, len(ids),
+             " (TEST - vystup mimo korpus)" if beh.test else "")
+
+    hotovo = chyb = 0
+    t_start = time.perf_counter()
+    try:
+        for n, pid in enumerate(ids, 1):
+            slozka, _, sek = pid.partition("|")
+            text = text_sekce(slozka, sek)
+            if text is None:
+                log.warning("  %s: sekce na disku neni, preskakuji", pid)
+                continue
+            v = extrahuj_sekci(sek, text, model=model)
+            ok = uloz_vysledek(beh, pid, v, model=model, cena_usd=0.0, oznaceni=pid,
+                               navic={"zpusob": "local", "cas_s": round(v.cas_s, 1)})
+            beh.db.commit()
+            hotovo += ok
+            chyb += not ok
+            log.info("  %d/%d %s: %s, %d polozek, %.0f s", n, len(ids), pid, v.stav,
+                     len(v.polozky), v.cas_s)
+    except KeyboardInterrupt:
+        log.warning("PRERUSENO (Ctrl+C). Hotove sekce jsou zapsane, zbytek zustal jak byl.")
+    log.info("LOCAL hotovo %d, chyb %d, %.1f min", hotovo, chyb,
+             (time.perf_counter() - t_start) / 60)
+    return 1 if chyb else 0
 
 
 def davka_batch_id(beh: Beh, davka: int) -> str:
@@ -692,6 +810,15 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__,
                                  formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--beh", action="store_true", help="inventar -> odeslani -> sledovani, v popredi")
+    ap.add_argument("--local", action="store_true",
+                    help="LOKALNE pres Ollamu misto Batch API - jeden lek / mala davka")
+    ap.add_argument("--model", help="s --local: model v Ollame (vychozi config.MODEL_HLAVNI)")
+    ap.add_argument("--kody", nargs="+", metavar="KOD",
+                    help="s --local: kody SUKL, jejichz SPC se extrahuji ZNOVU")
+    ap.add_argument("--sekce", nargs="+", choices=sorted(SEKCE_SPC),
+                    help="s --local: jen tyto sekce (vychozi vsechny)")
+    ap.add_argument("--limit", type=int,
+                    help="s --local bez --kody: nejvys N cekajicich pozadavku z fronty")
     ap.add_argument("--stav", action="store_true", help="souhrn + report.md")
     ap.add_argument("--znovu-chybne", action="store_true")
     ap.add_argument("--znovu-seznam", type=Path, help="soubor s ID pozadavku po radcich")
@@ -708,13 +835,17 @@ def main() -> int:
     a = ap.parse_args()
     if a.test_chyby and not a.test:
         ap.error("--test-chyby jen spolu s --test")
-    if a.test and a.beh and not a.limit_spc:
+    if a.local and a.beh:
+        ap.error("--local a --beh nejdou dohromady (lokalne NEBO cloud)")
+    if (a.model or a.kody or a.sekce or a.limit) and not a.local:
+        ap.error("--model, --kody, --sekce a --limit plati jen s --local")
+    if a.test and (a.beh or a.local) and not a.limit_spc:
         # 29.9.: test bez limitu naplnil testovaci DB celym korpusem a zacal
         # posilat davky po 1000 pozadavcich.
-        ap.error("--test --beh vyzaduje --limit-spc N")
+        ap.error("--test s --beh / --local vyzaduje --limit-spc N")
 
     beh = Beh(a.test)
-    if (a.beh or a.znovu_chybne or a.znovu_seznam) and not zamkni(beh):
+    if (a.beh or a.local or a.znovu_chybne or a.znovu_seznam) and not zamkni(beh):
         # Uz bezi jina instance (typicky z Planovace uloh kazdych 15 min).
         # Bez logu - jinak by kazde tiche ukonceni zalozilo novy soubor.
         print(f"{ted()} uz bezi jiny beh ({beh.prac / 'beh.lock'}), koncim")
@@ -728,6 +859,14 @@ def main() -> int:
         ids = [x.strip() for x in a.znovu_seznam.read_text(encoding="utf-8").splitlines()
                if x.strip() and not x.startswith("#")]
         do_fronty(beh, ids)
+
+    kod_local = 0
+    if a.local:
+        from common.config import MODEL_HLAVNI
+        inventar(beh, a.limit_spc)
+        log.info("SOUHRN %s", souhrn(beh))
+        kod_local = beh_local(beh, model=a.model or MODEL_HLAVNI, kody=a.kody,
+                              sekce=a.sekce, limit=a.limit)
 
     if a.beh:
         # Klic se overuje HNED a hlasite: bez nej nebo s nefunkcnim klicem
@@ -770,7 +909,7 @@ def main() -> int:
     if pocet(beh, "chyba"):
         log.warning("%d chybnych pozadavku - seznam v reportu, znovu: --znovu-chybne",
                     pocet(beh, "chyba"))
-    return 1 if pocet(beh, "chyba") else 0
+    return kod_local or (1 if pocet(beh, "chyba") else 0)
 
 
 if __name__ == "__main__":

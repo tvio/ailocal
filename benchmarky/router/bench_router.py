@@ -11,18 +11,18 @@ Dve casti:
      sekce, filtry, zapor, diakritika, "nedomyslet si". Vystup se bere
      az PO zpracovani v `rozhodni()` (vcetne obnov_diakritiku), tedy
      presne to, co jde do hledani.
-  B) END-TO-END - parafraze z evaluate.py pres router + hledani s prahem
-     0,60, jako v hledej.py. Test 4 v evaluate.py ma filtr natvrdo
-     a router vubec nevola; tady se meri, jestli se uzivatel k leku
-     skutecne dostane.
+  B) END-TO-END - parafraze podle ATC z evaluate.py (PARAFRAZE_KORPUS)
+     pres router + hledani s prahem 0,60, jako v hledej.py. evaluate.py
+     ma u parafrazi filtr natvrdo a router nevola; tady se meri, jestli
+     se uzivatel k leku ze spravne skupiny skutecne dostane.
 
 Casy: `cas` je cele volani routeru (to ceka uzivatel), `tok/s` je
 generovani vystupu z metrik Ollamy. U MoE rozhoduje aktivni cast
 parametru, ne celkova velikost - odhadovat se to nesmi.
 
-Pouziti:
-  uv run python bench_router.py
-  uv run python bench_router.py --modely gemma4:26b,gemma4:31b --opakovani 3
+Pouziti (z korene projektu):
+  uv run python benchmarky/router/bench_router.py
+  uv run python benchmarky/router/bench_router.py --modely gemma4:26b,gemma4:31b --opakovani 3
 """
 
 import io
@@ -35,10 +35,13 @@ import unicodedata
 from pathlib import Path
 from collections import Counter
 
-import common.ollama_client as oc
-from common.config import MODEL_ROUTER
-from common.router import rozhodni
-from common.hledani import hledej, seskup
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
+import common.ollama_client as oc                 # noqa: E402
+from common.config import MODEL_ROUTER         # noqa: E402
+from common.router import rozhodni              # noqa: E402
+from common.hledani import hledej, seskup       # noqa: E402
+
+TADY = Path(__file__).parent
 
 PRAH = 0.60
 REZERVA = 60      # jako hledej.py
@@ -243,8 +246,11 @@ def zmer_model(model: str, opak: int, parafraze: list) -> dict:
                 tok_s.append(m.tok_za_s)
             o = hledej(d.get("dotaz_text") or dotaz, filtr=f, puvodni_dotaz=dotaz,
                        limit=REZERVA, prah=PRAH)
-            nalez = [l.nazev for l in seskup(o.vysledky, leciv=5)]
-            if any(e in nalez for e in ocekavane):
+            leky = seskup(o.vysledky, leciv=5)
+            nalez = [l.nazev for l in leky]
+            # ocekavane = ATC prefixy (evaluate.PARAFRAZE_KORPUS), ne nazvy:
+            # na celem trhu muze spravne vyjit jiny lek tehoz druhu.
+            if any((l.nejlepsi.atc or "").startswith(e) for l in leky for e in ocekavane):
                 e2e_ok += 1
             else:
                 e2e_det.append(f"{dotaz!r} [{d.get('dotaz_text')!r}, "
@@ -283,10 +289,10 @@ def main() -> int:
         description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--modely", default=f"{MODEL_ROUTER},gemma4:31b,gemma4:26b")
     ap.add_argument("--opakovani", type=int, default=3)
-    ap.add_argument("--json", type=Path, default=Path("bench_router.json"))
+    ap.add_argument("--json", type=Path, default=TADY / "bench_router.json")
     a = ap.parse_args()
 
-    from evaluate import PARAFRAZE
+    from evaluate import PARAFRAZE_KORPUS as PARAFRAZE
     oc.chat = _chat_s_metrikou
 
     modely = [m.strip() for m in a.modely.split(",") if m.strip()]

@@ -3,37 +3,7 @@
 from pathlib import Path
 
 # --- Datové adresáře ---
-DATA_DIR = Path("data")
-LECIVA_DIR = DATA_DIR / "leciva"          # per-lék podadresář: <kod>_<NAZEV>
-
-
-def adresar_leciva(kod_sukl: str, nazev: str | None = None) -> Path:
-    """Cesta k adresáři léčiva ve tvaru data/leciva/0254048_PARALEN.
-
-    Název je v cestě záměrně – samotný kód SÚKL si nikdo nepamatuje
-    a při procházení dat by se muselo pokaždé otevírat api.json.
-    Když se adresář s daným kódem už na disku najde, vrátí se ten
-    existující (ať se nevytvoří duplicita při jiném tvaru názvu).
-    """
-    if LECIVA_DIR.exists():
-        for p in LECIVA_DIR.iterdir():
-            if p.is_dir() and p.name.split("_")[0] == kod_sukl:
-                return p
-    if not nazev:
-        return LECIVA_DIR / kod_sukl
-    return LECIVA_DIR / f"{kod_sukl}_{_bezpecny_nazev(nazev)}"
-
-
-def _bezpecny_nazev(nazev: str) -> str:
-    """Název léku do podoby použitelné v cestě (bez diakritiky a mezer)."""
-    import re
-    import unicodedata
-
-    bez_diakritiky = "".join(
-        z for z in unicodedata.normalize("NFKD", nazev) if not unicodedata.combining(z)
-    )
-    ocisteny = re.sub(r"[^A-Za-z0-9]+", "_", bez_diakritiky).strip("_").upper()
-    return ocisteny[:40] or "BEZ_NAZVU"
+DATA_DIR = Path("data")                  # korpus je v data/spc/<identita SPC>/
 
 # --- SÚKL API ---
 # A) veřejné dokumentované API – stabilní kontrakt, detail léku + PDF
@@ -60,7 +30,6 @@ MODEL_EMBED = "bge-m3"               # embedding NEDĚLÁ generativní model!
 
 # Menší modely zůstávají pro srovnání v benchmarku, v pipeline se nepoužívají.
 MODEL_EXTRAKCE = MODEL_HLAVNI
-MODEL_LAIK = MODEL_HLAVNI
 # gemma4:26b je MoE (128 expertu, aktivnich 8). Jako router zmereno
 # 24.9.2026 (bench_router.py, poznatky.md): median 1,51 s proti 4,56 s
 # u qwen3.5:122b, 103 tok/s proti 30, spravne 24/26 proti 21/26,
@@ -76,16 +45,6 @@ MODEL_ROUTER = "gemma4:26b"
 # ("akutni alergicke stavy" ve zdroji proti "tezke alergicke reakce"),
 # 1 nalez z 65 polozek.
 MODEL_KONTROLY = "gemma4:26b"
-
-# Který model dělá kterou sekci. Dělit úlohy mezi modely se ukázalo jako
-# zbytečné – 122b vyhrává na struktuře i na češtině. Mechanismus tu zůstává,
-# kdyby bylo potřeba se od toho někde odchýlit.
-MODEL_SEKCE = {
-    "indikace": MODEL_HLAVNI,
-    "kontraindikace": MODEL_HLAVNI,
-    "davkovani": MODEL_HLAVNI,
-    "nezadouci_ucinky": MODEL_HLAVNI,
-}
 
 # --- OpenAI: JEDINÁ cloudová volba pro extrakci ---
 # POZOR NA PENÍZE: na účtu je jen pár dolarů. gpt-6-luna jako jediná ze

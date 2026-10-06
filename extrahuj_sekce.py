@@ -1,25 +1,22 @@
 #!/usr/bin/env python3
 """Krok 2 pipeline: vytažení sekcí SPC do samostatných souborů.
 
-Výstup: data/leciva/<kod>_<NAZEV>/sekce/<nazev_sekce>.md          úplná sekce
-        data/leciva/<kod>_<NAZEV>/sekce/<nazev_sekce>_orez.md     ořez na jádro
+Vstup:  data/spc/<identita>/spc.md (+ PDF) – jen SPC, která nějaký kód
+        v inventáři SKUTEČNĚ používá (data/spc/_stav.sqlite); staré verze
+        a SPC zaniklých kódů se vynechají.
+Výstup: data/spc/<identita>/sekce/<nazev_sekce>.md          úplná sekce
+        data/spc/<identita>/sekce/<nazev_sekce>_orez.md     ořez na jádro
+        data/spc/<identita>/sekce/_prehled.json             zdroj, délky, nalezeno
+        data/spc/_report/sekce.html + sekce.csv             přehled korpusu
 
-Do modelu jde ořezaná verze, původní zůstává k porovnání – ať je vidět,
-co ořez zahodil, a dá se ověřit, že neuřízl něco podstatného.
-
-Mezistav zůstává na disku (viz zadani.md) – při ladění promptu pro
-extrakci do JSONB se pak nemusí znovu konvertovat PDF.
-
-Použití:
-  uv run python extrahuj_sekce.py --vse              # původních 32 léčiv (data/leciva)
-  uv run python extrahuj_sekce.py --kody 0254048
-  uv run python extrahuj_sekce.py --korpus           # celý korpus (data/spc, konvertuj_serve.py)
-
---korpus bere jen SPC, která nějaký kód v inventáři SKUTEČNĚ používá
-(data/spc/_stav.sqlite) – staré verze a SPC zaniklých kódů vynechá.
 Do _prehled.json přidá "_konverze": verdikt kontroly převodu
 (kontrola.json) – ať extrakce a DB vědí, že sekce 4.8 může být neúplná
 (např. MENOPUR: Docling vynechal poznámky pod tabulkou NÚ).
+
+Bez modelu, ~10 min na celý korpus. Přepočítá vždy všechno.
+
+Použití:
+  uv run python extrahuj_sekce.py
 """
 
 import io
@@ -28,17 +25,14 @@ import json
 import argparse
 from collections import Counter
 
-from common.config import LECIVA_DIR, adresar_leciva
 from common.sekce import vytahni_vsechny, orizni_na_jadro, SEKCE_SPC
 
 
 def parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(description="Vytažení sekcí SPC z markdownu/PDF")
-    g = p.add_mutually_exclusive_group(required=True)
-    g.add_argument("--vse", action="store_true")
-    g.add_argument("--kody", nargs="+", metavar="KOD")
-    g.add_argument("--korpus", action="store_true",
-                   help="data/spc – SPC používaná kódy z inventáře konvertuj_serve.py")
+    p = argparse.ArgumentParser(description="Vytažení sekcí SPC z markdownu/PDF (data/spc)")
+    p.add_argument("--korpus", action="store_true",
+                   help="nic nedělá – korpus je od 6. 10. 2026 jediný režim "
+                        "(ponecháno kvůli starým návodům)")
     return p.parse_args()
 
 
@@ -55,13 +49,8 @@ def adresare_korpusu() -> list:
 
 def main() -> None:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-    args = parse_args()
-    if args.kody:
-        adresare = [adresar_leciva(k) for k in args.kody]
-    elif args.korpus:
-        adresare = adresare_korpusu()
-    else:
-        adresare = sorted(p for p in LECIVA_DIR.iterdir() if p.is_dir())
+    parse_args()
+    adresare = adresare_korpusu()
 
     print("=" * 78)
     print("KROK 2 – vytažení sekcí SPC")
@@ -131,7 +120,7 @@ def main() -> None:
         )
         zpracovano += 1
         # U celého korpusu (tisíce SPC) jen průběh a problémy, ne řádek na SPC.
-        if not args.korpus or "CHYBÍ" in " ".join(bunky):
+        if "CHYBÍ" in " ".join(bunky):
             print(f"{adr.name[:31]:32} " + " ".join(f"{b:>11}" for b in bunky))
         elif zpracovano % 500 == 0:
             print(f"  ... {zpracovano}/{len(adresare)}", flush=True)
@@ -152,12 +141,11 @@ def main() -> None:
         print("  – musí být odlišené od 'selhala_extrakce', viz zadani.md.")
     else:
         print("Všechny sledované sekce nalezeny u všech léčiv.")
-    if args.korpus:
-        # Přehled celého korpusu na jednom místě – tisíce složek ručně
-        # neprojdeš (data/spc/_report/sekce.html + sekce.csv).
-        from common.report_sekce import vytvor_report_sekci
-        vytvor_report_sekci()
-        print("Přehled sekcí: data/spc/_report/sekce.html + sekce.csv")
+    # Přehled celého korpusu na jednom místě – tisíce složek ručně
+    # neprojdeš (data/spc/_report/sekce.html + sekce.csv).
+    from common.report_sekce import vytvor_report_sekci
+    vytvor_report_sekci()
+    print("Přehled sekcí: data/spc/_report/sekce.html + sekce.csv")
 
 
 if __name__ == "__main__":

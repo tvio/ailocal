@@ -59,9 +59,8 @@ _MAPA_SPC: dict[str, str] | None = None
 
 
 def _adresar(kod: str) -> str:
-    """Slozka dokumentu: korpus data/spc/<spc> (mapa kod -> SPC), jinak
-    puvodnich 32 leciv v data/leciva. Popisek je soucast odpovedi -
-    nesmi ukazovat na neexistujici cestu."""
+    """Slozka dokumentu: data/spc/<spc> (mapa kod -> SPC). Popisek je
+    soucast odpovedi - nesmi ukazovat na neexistujici cestu."""
     global _MAPA_SPC
     if _MAPA_SPC is None:
         try:
@@ -71,9 +70,7 @@ def _adresar(kod: str) -> str:
             _MAPA_SPC = {}
     if kod in _MAPA_SPC:
         return f"data/spc/{_MAPA_SPC[kod]}"
-    for p in Path("data/leciva").glob(f"{kod}_*"):
-        return str(p).replace("\\", "/")
-    return f"data/leciva/{kod}"
+    return f"data/spc/(SPC ke kódu {kod} není v inventáři)"
 
 
 def vypis_atc_zachranu(dotaz: str, filtr=None) -> None:

@@ -25,6 +25,8 @@ smaže. Inventura: 31 skriptů `.py` v kořeni, 19 modulů v `common/`, 25 `.md`
 
 ### 1a. Stará pipeline (32 léčiv, `data/leciva/`, lokální qwen)
 
+**HOTOVO 6. 10.** – smazáno vše z tabulky včetně obou souborů `.old` (R3).
+
 | soubor | proč pryč |
 |---|---|
 | `pipeline.py` | řetězí jen starou cestu (7 kroků nad `data/leciva`); **po přesunu kontrol už nefunguje**; nahradí ho nový seznam kroků (bod 2) |
@@ -48,6 +50,9 @@ a `slovnik_rucni.json` (ruční číselník se při extrakci uplatňuje pořád)
 
 ### 1b. Zastaralé benchmarky a jejich výstupy v kořeni
 
+**HOTOVO 6. 10.** – smazáno vše včetně auditu hledání (R5); zbývá jen
+`data/bench_embed_cloud.json` (data mimo git, bod 5).
+
 | soubor | proč pryč |
 |---|---|
 | `bench_extrakce.py` | rychlost lokální extrakce (qwen, `num_ctx`); extrakce je v cloudu |
@@ -60,10 +65,11 @@ a `slovnik_rucni.json` (ruční číselník se při extrakci uplatňuje pořád)
 
 ### 1c. Stará evaluace
 
-- [ ] `[R6]` `evaluate.py`: testy 1–4 a `vzorek_eval.json` stojí na 32
-      lécích a nad korpusem dávají nesmysly (test 0 hlásí samé CHYBA).
-      Návrh: nechat jen test 0 (přepsaný na SPC) + testy 5–6 (`--korpus`
-      jako výchozí), testy 1–4 a `vzorek_eval.json` smazat.
+**HOTOVO 6. 10. (R6).** `evaluate.py` má jen test 0 (pokrytí počítané po
+SPC: 96 %, dřív zavádějících 64 % po kódech), parafráze podle ATC
+a negativní dotazy; `--prahy` a `--vahy` měří nad korpusem. Testy 1–4
+a `vzorek_eval.json` smazány. Po úklidu: 18/20, přesnost 69 %, negativní
+5/6 – stejné jako před ním.
 
 ---
 
@@ -83,34 +89,41 @@ Cíl: jediný vstupní skript se seznamem `KROKY` (CLAUDE.md mu říká
 | 6 | rejstřík pro člověka | `postav_rejstrik.py` | – |
 | 7 | evaluace | `evaluate.py --korpus` | Ollama (router) |
 
-- [ ] Napsat nový seznam kroků (nahradí `pipeline.py`): `--vse`, `--od`,
-      `--jen`, `--stav` přes všech 7 kroků; krok 3 je asynchronní (dávka až
-      24 h) – seznam musí umět „čekám / navázat".
+- [x] **`extrakce_all.py`** (6. 10.): `--seznam`, `--stav`, `--vse`, `--od`,
+      `--jen`; zámek, log, návratové kódy; po kroku 3 ověří, že extrakce
+      doběhla. Vyzkoušeno `--seznam`, `--stav` a krok `rejstrik`; celé
+      `--vse` puštěné nebylo (stálo by peníze a hodiny).
 - [ ] `[R7]` Krok 1 dělá čtyři věci v jednom skriptu (42 kB). Pro přehled
       v seznamu stačí jeden krok; rozdělení na „seznam / stažení / převod"
       je samostatná práce – teď ne?
-- [ ] Vyházet starou cestu ze živých skriptů:
+- [x] Vyházet starou cestu ze živých skriptů (6. 10.):
       `naplni_db.py` (režim bez `--korpus`, `--kody`, `--znovu`, generovaný slovník pojmů),
       `extrahuj_sekce.py` (`--vse`, `--kody` nad `data/leciva`),
       `api.py`, `hledej.py`, `common/hledani.py` (záložní cesta k PDF v `data/leciva`),
       `common/config.py` (`LECIVA_DIR`, `adresar_leciva`, `MODEL_SEKCE`, `MODEL_EXTRAKCE`…),
       `common/sukl_api.py` (`postav_pool`).
-- [ ] Zapsat do `skripty.md`, co seznam znamená pro měsíční job (služby,
-      stav po dokumentu, co je asynchronní).
+- [x] `skripty.md`: co seznam znamená pro měsíční job (služby, návratové
+      kódy, asynchronní krok 3).
+- [x] Lokální extrakce zůstává a je zapojená jako volba kroku 3
+      (`--local`, `--model`, `--kody`, `--sekce`, `--limit`) v runneru
+      i v `extrakce_all.py`. Vyzkoušeno na 1 sekci v testovací složce
+      (gemma4:26b, 10 s, 12 položek) a chybové stavy (neznámý kód, model).
 
 ---
 
 ## 3. Platné benchmarky → `benchmarky/<téma>/`
 
-| odkud | kam | poznámka |
-|---|---|---|
-| `bench_router.py` + `bench_router.json` | `benchmarky/router/` | volba modelu routeru; přeměří se při změně modelu |
-| `benchmark/docling_serve/` (celé, dnes ignorované gitem) | `benchmarky/docling_serve/` | Docling Serve na DGX vs. notebook; skript a README do gitu, `vysledky/` ignorovat |
-| `benchmarky/extrakce_cloud/`, `indikace_fragmenty/`, `pdfextrakce/` | zůstávají | – |
+**HOTOVO 6. 10.** Pravidlo od uživatele: co neměří dnešní pipeline, smazat.
 
-- [ ] Přesunout, opravit cesty/importy ve skriptech, pustit `--help` každého.
-- [ ] `.gitignore`: zrušit `/benchmark/`, výstupy benchmarků řeší pravidla
-      `benchmarky/**`.
+- `bench_router.py` → `benchmarky/router/` (cesty opraveny, výstup `.json`
+  už není v gitu).
+- Smazáno: `benchmark/docling_serve/` (Codex, nebyl v gitu),
+  `benchmarky/pdfextrakce/` (lokální Docling vs. pymupdf4llm, ~70 MB výstupů),
+  audit hledání.
+- Zůstává: `router/`, `extrakce_cloud/`, `indikace_fragmenty/`.
+- Seznam s popisem: `benchmarky/README.md` + oddíl „Benchmarky" v `CLAUDE.md`
+  (načítá se s projektem).
+- [x] `bench_router.py` část B přepsána na parafráze podle ATC (nepuštěno).
 
 ---
 
@@ -151,28 +164,24 @@ V kořeni pak zůstane: 11 skriptů, `CLAUDE.md`, `pyproject.toml`, `uv.lock`,
 
 ## 5. Stará data pryč
 
-| co | velikost | poznámka |
-|---|---|---|
-| `data/leciva/` | 16 MB, 32 léčiv | až po bodu 2 (živé skripty na ni dnes odkazují) a bodu 1c |
-| `data/_zaloha_dlouhe_leky/` | 5,6 MB | záloha ze srpna |
-| `data/bench_embed_cloud.json` | 13 MB | s bodem 1b |
-| `legacy/data/pdf/` | – | s bodem 6 |
-| `logs/` (srpen–září) | – | `[R9]` smazat staré, nechat od 30. 9.? |
-| `benchmarky/pdfextrakce/{pdf,vystupy,report}` | ~70 MB | mimo git, skript si je vyrobí; smazat? |
+**HOTOVO 6. 10.** Smazáno (mimo git, nevratně, s potvrzením): `data/leciva/`
+(32 léčiv), `data/_zaloha_dlouhe_leky/`, `data/bench_embed_cloud.json`.
+V DB stará data nebyla (TRUNCATE 30. 9.).
 
-V DB stará data nejsou (`naplni_db.py --korpus` udělal TRUNCATE 30. 9.).
-`data/` není v gitu → **smazání nejde vrátit**, před každým mazáním potvrdit.
+- [ ] `[R9]` `logs/` (3,8 MB, 40 souborů od srpna) – smazat staré?
 
 ---
 
 ## 6. Smazat `legacy/`
 
-- [ ] Až po bodu 0 (klíč). 42 souborů v gitu (dema 01–12, vlastní
-      `common/`, compose) + `key.yaml`, `dalibor.py`, `data/` mimo git.
-- [ ] Opravit odkazy: `CLAUDE.md` (odstavec o `legacy/`, „Peníze"),
-      `pristupy.md`, `batchOpenAI.md`, komentář v `docker-compose.yml`,
-      `.gitignore` (`dalibor.py`).
-- [ ] `[R10]` Docker volumes `legacy_pgdata`, `legacy_pgadmin_data` – smazat taky?
+**HOTOVO 6. 10.** Smazáno celé: 42 souborů z gitu + `dalibor.py`, `pgpass`,
+`data/pdf/` mimo git. Klíč k OpenAI je v kořeni. Odkazy v `CLAUDE.md`
+a `.gitignore` opraveny; zmínky „z legacy fáze" v komentářích `common/`
+jsou historie a zůstávají.
+
+- [ ] `[R10]` Docker volumes z dřívějška ještě existují: `legacy_pgdata`,
+      `legacy_pgadmin_data`, `ailocal_pgdata`, `ailocal_pgadmin_data`.
+      Aplikace používá jen `localsemantic_*`. Smazat?
 
 ---
 

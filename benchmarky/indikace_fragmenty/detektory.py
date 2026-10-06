@@ -100,6 +100,9 @@ def detektor_tvar(polozky: list[dict]) -> dict[int, str]:
 
 def main() -> int:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+    import argparse
+    argparse.ArgumentParser(
+        description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter).parse_args()
     pol = nacti()
     d1, d2 = detektor_atc(pol), detektor_tvar(pol)
     oba = set(d1) & set(d2)
@@ -123,7 +126,16 @@ def main() -> int:
             print(f"  {p['nazev'][:22]:22} {p['atc'] or '':8} „{(p['doslovne'] or '')[:45]}\" "
                   f"→ „{(p['laicky'] or '')[:30]}\"  [{slovnik[i][:60]}]")
 
-    with (TADY / "podezrele.jsonl").open("w", encoding="utf-8") as f:
+    # Stary vystup se NEPREPISUJE, ale odlozi s datem - je to stav „pred"
+    # pro srovnani po preextrahovani. 6. 10. 2026 ho prepsalo pouhe
+    # `--help` (skript nemel argumenty) a stav z 2. 10. byl pryc.
+    cil = TADY / "podezrele.jsonl"
+    if cil.exists():
+        from datetime import datetime
+        kdy = datetime.fromtimestamp(cil.stat().st_mtime).strftime("%Y%m%d_%H%M")
+        cil.rename(TADY / f"podezrele_{kdy}.jsonl")
+        print(f"Predchozi vystup odlozen: podezrele_{kdy}.jsonl")
+    with cil.open("w", encoding="utf-8") as f:
         for i in sorted(set(d1) | set(d2)):
             p = dict(podle_id[i])
             p["duvod"] = "; ".join(x for x in (d1.get(i), d2.get(i)) if x)

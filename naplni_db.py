@@ -1,13 +1,15 @@
 #!/usr/bin/env python3
-"""Krok 11: naplneni databaze z data/leciva/ a ze slovniku pojmu.
+"""Krok 4 pipeline: naplneni databaze z korpusu data/spc/.
 
 Co kam jde:
 
-    api.json                 ->  leciva            (relacni data, zadny model)
-    json/<sekce>.json        ->  extrakty          (cely vysledek extrakce)
-    json/_stav.json          ->  extrakce_stav     (co se povedlo a co ne)
-    json/<sekce>.json        ->  leciva_search     (1 radek = 1 hledatelna polozka)
-    slovnik_pojmu.json       ->  slovnik_pojmu
+    data/detaily_leciv/<kod>.json     ->  leciva        (vsechny kody, zadny model)
+    data/spc/<spc>/json/<sekce>.json  ->  extrakty      (cely vysledek extrakce)
+    data/spc/<spc>/json/_stav.json    ->  extrakce_stav (co se povedlo a co ne)
+    data/spc/<spc>/json/<sekce>.json  ->  leciva_search (1 radek = 1 hledatelna polozka)
+
+Extrakty a hledaci radky se nahravaji JEDNOU ZA SPC, u zastupce (nejmensi
+kod SUKL); ostatni kody tehoz SPC maji jen radek v `leciva`.
 
 DULEZITE - co NEJDE do hledaneho textu:
     sekce, frekvence, organovy_system jsou FILTRY. Kdyby byly v obsah_text,
@@ -16,18 +18,21 @@ DULEZITE - co NEJDE do hledaneho textu:
     obsah_text.
 
 Radek sekce='atributy':
-    Jeden na lek, nepochazi z PDF ale z tabulky leciva. Slouzi k tomu, aby
-    slo lek najit podle jmena, sily nebo kodu SUKL. Ma extrakt_id = NULL
+    Jeden na SPC, nepochazi z PDF ale z registru. Slouzi k tomu, aby slo
+    lek najit podle jmena, sily nebo kodu SUKL. Ma extrakt_id = NULL
     a kontext_text = NULL (identita uz je v obsah_text, bylo by to dvakrat).
 
-Embeddingy tenhle skript NEPOCITA - to dela vytvor_embeddingy.py (krok 12).
+Embeddingy tenhle skript NEPOCITA - to dela vytvor_embeddingy.py (krok 5).
+Hledaci slovnik (tabulka slovnik_dotazu) se NEMAZE - viz vyprazdni_korpus().
+
+Do 6. 10. 2026 umel skript i puvodni korpus 32 leciv (data/leciva, prepinace
+--znovu a --kody); ta cesta je smazana.
 
 Pouziti:
-  uv run python naplni_db.py              # naplni, co jeste neni
-  uv run python naplni_db.py --znovu      # smaze a naplni od nuly
-  uv run python naplni_db.py --jen-ok     # jen sekce ve stavu 'ok'
-  uv run python naplni_db.py --korpus     # CELY korpus data/spc (od nuly)
-  uv run python naplni_db.py --obnov-sekci davkovani   # jen jedna sekce korpusu
+  uv run python naplni_db.py --korpus                  # cely korpus od nuly (~40 min)
+  uv run python naplni_db.py --korpus --limit-spc 50   # zkouska na 50 SPC
+  uv run python naplni_db.py --obnov-sekci davkovani   # jen jedna sekce, ostatni nechat
+  uv run python naplni_db.py --jen-vek                 # jen prepocitat vek pouziti
 """
 
 import io
@@ -39,11 +44,8 @@ from collections import Counter
 
 import psycopg
 
-from common.config import LECIVA_DIR, PG_DSN, adresar_leciva
+from common.config import PG_DSN
 from common.sekce import SEKCE_SPC
-
-SLOVNIK = Path("slovnik_pojmu.json")
-SLOVNIK_RUCNI = Path("slovnik_rucni.json")
 
 # Kody zpusobu vydeje, ktere znamenaji "na predpis". Pozor: hodnota
 # NEUVEDENO neznamena volny prodej, znamena ze to z dat nejde urcit -
@@ -130,43 +132,6 @@ def _latky(api: dict) -> list[str]:
         except (TypeError, ValueError):
             ven.append(str(x))
     return ven
-
-
-def vloz_lecivo(cur, adr: Path) -> str | None:
-    f = adr / "api.json"
-    if not f.exists():
-        return None
-    a = json.loads(f.read_text(encoding="utf-8"))
-    kod = str(a.get("kodSUKL") or "").strip()
-    if not kod:
-        return None
-
-    cur.execute("""
-        INSERT INTO leciva (kod_sukl, nazev, doplnek, sila, lekova_forma, cesta,
-                            atc, zpusob_vydeje, na_predpis, hrazeno,
-                            registracni_cislo,
-                            stav_registrace, je_dodavka, baleni, obal,
-                            indikacni_skupina, ucinne_latky, api_json)
-        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-        ON CONFLICT (kod_sukl) DO UPDATE SET
-            nazev = EXCLUDED.nazev, api_json = EXCLUDED.api_json,
-            hrazeno = EXCLUDED.hrazeno
-    """, (kod, a.get("nazev"), a.get("doplnek"), a.get("sila"),
-          a.get("lekovaFormaKod"), a.get("cestaKod"), a.get("ATCkod"),
-          a.get("zpusobVydejeKod"), _na_predpis(a.get("zpusobVydejeKod")),
-          kod in nacti_hrazene(),
-          a.get("registracniCislo"), a.get("stavRegistraceKod"),
-          a.get("jeDodavka"), a.get("baleni"), a.get("obalKod"),
-          a.get("indikacniSkupinaKod"), _latky(a), json.dumps(a, ensure_ascii=False)))
-    return kod
-
-
-def radek_atributy(a: dict) -> str:
-    """Identita leku jako hledatelny text: nazev, sila, forma, latky, kod."""
-    casti = [a.get("nazev"), a.get("sila"), a.get("lekovaFormaKod")]
-    casti += _latky(a)
-    casti.append(a.get("kodSUKL"))
-    return ", ".join(str(c) for c in casti if c)
 
 
 def kontext(a: dict) -> str:
@@ -637,13 +602,11 @@ def main_korpus(jen_ok: bool, limit_spc: int | None) -> int:
 
 def main() -> int:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
-    ap = argparse.ArgumentParser(description="Naplneni DB z data/leciva/")
-    ap.add_argument("--kody", nargs="+", metavar="KOD")
-    ap.add_argument("--znovu", action="store_true", help="smazat a naplnit od nuly")
+    ap = argparse.ArgumentParser(description="Naplneni DB z korpusu data/spc/")
     ap.add_argument("--jen-ok", action="store_true",
                     help="jen sekce ve stavu 'ok' (bez zamitnutych)")
     ap.add_argument("--korpus", action="store_true",
-                    help="cely korpus z data/spc (vzdy od nuly, maze i 32 puvodnich leciv)")
+                    help="cely korpus z data/spc, VZDY od nuly (hledaci slovnik zustava)")
     ap.add_argument("--limit-spc", type=int, help="s --korpus: jen prvnich N SPC (zkouska)")
     ap.add_argument("--obnov-sekci", choices=sorted(SEKCE_SPC),
                     help="korpus: znovu nahrat JEN tuto sekci, ostatni nechat (bez TRUNCATE)")
@@ -664,180 +627,8 @@ def main() -> int:
     if a.korpus:
         return main_korpus(a.jen_ok, a.limit_spc)
 
-    adresare = ([adresar_leciva(k) for k in a.kody] if a.kody
-                else sorted(x for x in LECIVA_DIR.iterdir() if x.is_dir()))
-
-    poc: Counter = Counter()
-    with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
-        if a.znovu:
-            # leciva staci - ostatni visi na ON DELETE CASCADE
-            vyprazdni_korpus(cur)
-            print("Tabulky vyprazdneny.")
-        else:
-            # POJISTKA: radky v leciva_search NEMAJI unikatni klic pres
-            # obsah, takze druhy beh bez --znovu je proste PRISYPE a data
-            # se tise zdvoji. Stalo se to 24.8. - evaluace pak hlasila
-            # 1308 polozek misto 654 a vypadalo to jako chyba v datech.
-            # Radsi skoncit, nez potichu rozbit korpus.
-            uz_tam = cur.execute("SELECT count(*) FROM leciva_search").fetchone()[0]
-            if uz_tam and not a.kody:
-                print("CHYBA: leciva_search uz ma "
-                      f"{uz_tam} radku. Bez --znovu by se data ZDVOJILA. "
-                      "Pouzij:  uv run python naplni_db.py --znovu",
-                      file=sys.stderr)
-                return 1
-
-        # --- slovnik pojmu -------------------------------------------------
-        if SLOVNIK.exists():
-            slovnik = json.loads(SLOVNIK.read_text(encoding="utf-8"))
-            rucni = {}
-            if SLOVNIK_RUCNI.exists():
-                rucni = {k.lower(): v for k, v in
-                         json.loads(SLOVNIK_RUCNI.read_text(encoding="utf-8")).items()
-                         if not k.startswith("_")}
-            for termin, laicky in slovnik.items():
-                cur.execute("""
-                    INSERT INTO slovnik_pojmu (termin, laicky, rucne_overeno)
-                    VALUES (%s,%s,%s)
-                    ON CONFLICT (termin) DO UPDATE SET
-                        laicky = EXCLUDED.laicky,
-                        rucne_overeno = EXCLUDED.rucne_overeno
-                """, (termin.lower(), rucni.get(termin.lower(), laicky),
-                      termin.lower() in rucni))
-                poc["slovnik"] += 1
-
-        # --- leciva a jejich sekce -----------------------------------------
-        for adr in adresare:
-            kod = vloz_lecivo(cur, adr)
-            if not kod:
-                continue
-            poc["leciva"] += 1
-            api = json.loads((adr / "api.json").read_text(encoding="utf-8"))
-
-            # radek 'atributy' - identita leku, aby sel najit podle jmena
-            cur.execute("""
-                INSERT INTO leciva_search (kod_sukl, sekce, obsah_text)
-                VALUES (%s,'atributy',%s)
-            """, (kod, radek_atributy(api)))
-            poc["radky_atributy"] += 1
-
-            stav_f = adr / "json" / "_stav.json"
-            stavy = json.loads(stav_f.read_text(encoding="utf-8")) if stav_f.exists() else {}
-
-            for sekce in SEKCE_SPC:
-                js = adr / "json" / f"{sekce}.json"
-                st = stavy.get(sekce, {})
-                stav = st.get("stav", "neovereno")
-
-                if not js.exists():
-                    cur.execute("""
-                        INSERT INTO extrakce_stav (kod_sukl, sekce, stav, duvod)
-                        VALUES (%s,%s,%s,%s)
-                        ON CONFLICT (kod_sukl, sekce, extrakt_id) DO NOTHING
-                    """, (kod, sekce, stav if stav != "neovereno" else "prazdna",
-                          st.get("duvod")))
-                    poc[f"stav_{stav}"] += 1
-                    continue
-
-                polozky = json.loads(js.read_text(encoding="utf-8"))
-                sekce_md = adr / "sekce" / f"{sekce}.md"
-                orez_md = adr / "sekce" / f"{sekce}_orez.md"
-
-                cur.execute("""
-                    INSERT INTO extrakty (kod_sukl, sekce, sekce_cislo, zdrojovy_text,
-                                          zdrojovy_text_orez, polozky, model_extrakce,
-                                          metadata)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s)
-                    ON CONFLICT (kod_sukl, sekce, model_extrakce) DO UPDATE SET
-                        polozky = EXCLUDED.polozky
-                    RETURNING id
-                """, (kod, sekce, SEKCE_SPC[sekce],
-                      sekce_md.read_text(encoding="utf-8") if sekce_md.exists() else None,
-                      orez_md.read_text(encoding="utf-8") if orez_md.exists() else None,
-                      json.dumps(polozky, ensure_ascii=False),
-                      st.get("model") or "neznamy",
-                      json.dumps(st, ensure_ascii=False)))
-                extrakt_id = cur.fetchone()[0]
-                poc["extrakty"] += 1
-
-                cur.execute("""
-                    INSERT INTO extrakce_stav (kod_sukl, extrakt_id, sekce, stav,
-                                               pocet_polozek, model_extrakce,
-                                               model_kontroly, duvod, cas_extrakce_s)
-                    VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    ON CONFLICT (kod_sukl, sekce, extrakt_id) DO UPDATE SET
-                        stav = EXCLUDED.stav
-                """, (kod, extrakt_id, sekce, stav, len(polozky),
-                      st.get("model"),
-                      (st.get("kontrola_modelem") or {}).get("model"),
-                      st.get("duvod"), st.get("cas_s")))
-                poc[f"stav_{stav}"] += 1
-
-                # Ze zamitnute sekce se vyradi jen OZNACENE POLOZKY, ne cela
-                # sekce. Kontrola oznacuje jednotlivosti - ACYLCOFFIN mel
-                # 1 vadnou polozku ze 46 a driv se kvuli ni zahodilo vsech 46.
-                # Pri --jen-ok jde do hledani vylucne stav 'ok'.
-                vadne = set()
-                if stav == "zamitnuto_kontrolou":
-                    vadne = set((st.get("kontrola_modelem") or {}).get(
-                        "chybne_indexy") or [])
-                    if not vadne:
-                        # Stary zaznam bez indexu - nezbyva nez vyradit celou.
-                        poc["preskoceno_cela_sekce"] += 1
-                        continue
-                if a.jen_ok and stav != "ok":
-                    poc["preskoceno_cela_sekce"] += 1
-                    continue
-
-                strana = strana_sekce(adr, sekce)
-                for i, p in enumerate(polozky):
-                    if i in vadne:
-                        poc["preskocena_polozka"] += 1
-                        continue
-                    obsah, atr = text_polozky(sekce, p)
-                    if not obsah:
-                        continue
-                    je_nu = sekce == "nezadouci_ucinky"
-                    cur.execute("""
-                        INSERT INTO leciva_search
-                            (kod_sukl, extrakt_id, sekce, frekvence, frekvence_rank,
-                             organovy_system, sekce_atributy, kontext_text,
-                             obsah_text, klic, strana_pdf)
-                        VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s,%s,%s)
-                    """, (kod, extrakt_id, sekce,
-                          p.get("frekvence") if je_nu and isinstance(p, dict) else None,
-                          p.get("frekvence_rank") if je_nu and isinstance(p, dict) else None,
-                          p.get("organovy_system") if je_nu and isinstance(p, dict) else None,
-                          json.dumps(atr, ensure_ascii=False) if atr else None,
-                          kontext(api), obsah,
-                          # Klic pro hledani. U davkovani neni z extrakce,
-                          # ale pouzitelny uz mame: skupina pacientu. Cisla
-                          # a davky jsou ve fulltextu jen sum - clovek hleda
-                          # "deti", ne "250 mg".
-                          klic_hledani(sekce, p)
-                          or (p.get("pacient") if sekce == "davkovani"
-                              and isinstance(p, dict) else None),
-                          strana))
-                    poc["radky_sekci"] += 1
-                    if strana:
-                        poc["se_stranou"] += 1
-
-        conn.commit()
-
-    print(f"{'leciv':24} {poc['leciva']}")
-    print(f"{'extraktu':24} {poc['extrakty']}")
-    print(f"{'radku atributy':24} {poc['radky_atributy']}")
-    print(f"{'radku ze sekci':24} {poc['radky_sekci']} "
-          f"(z toho {poc['se_stranou']} s cislem strany)")
-    print(f"{'preskocene cele sekce':24} {poc['preskoceno_cela_sekce']}")
-    print(f"{'preskocene polozky':24} {poc['preskocena_polozka']} (oznacene kontrolou)")
-    print(f"{'slovnik pojmu':24} {poc['slovnik']}")
-    print("\nStavy:")
-    for k, v in sorted(poc.items()):
-        if k.startswith("stav_"):
-            print(f"    {k[5:]:24} {v}")
-    print("\nEmbeddingy zatim NEJSOU - spust vytvor_embeddingy.py")
-    return 0
+    ap.error("chybi rezim: --korpus, --obnov-sekci SEKCE, --jen-vek nebo --sjednot-klice")
+    return 2
 
 
 if __name__ == "__main__":

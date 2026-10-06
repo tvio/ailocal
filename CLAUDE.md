@@ -32,19 +32,22 @@ natvrdo zadaných adres.
 Z kódu musí být vždy jasné, co se v pipeline dělá a v jakém pořadí,
 **bez zpětného dohledávání.**
 
-- **Seznam kroků = `pipeline.py` (`KROKY`)**, později `extrakce_all.py`.
+- **Seznam kroků = `extrakce_all.py` (`KROKY`)** – 7 kroků od API SÚKL
+  po evaluaci (`--seznam`, `--stav`, `--vse`, `--od`, `--jen`).
   Mapa všech skriptů s popisem = **`skripty.md`**.
 - **Nový produkční krok** se ve STEJNÉ změně zapíše do obou. Když
   nahrazuje starý krok, starý se tam označí jako nahrazený (nebo smaže).
 - **Benchmarky a jednorázové analýzy patří do `benchmarky/<téma>/`**,
   ne do kořene projektu. Nové `bench_*.py` do kořene nezakládat.
+  Nový benchmark zapiš do `benchmarky/README.md` i do oddílu
+  „Benchmarky" níž; zastaralý smaž (závěr s čísly zůstává v `poznatky.md`).
 - Diagnostické pomocníky zapsat do `skripty.md` (sekce F) s tím, kdy
   se pouštějí.
 
 ### Vždy mít přehled o CELÉ pipeline — hlavně při její optimalizaci
 
 Než začneš měnit nebo zrychlovat kterýkoli krok, **ujasni si celou
-řadu kroků od stažení po hotovou DB** (`skripty.md`, `pipeline.py`)
+řadu kroků od stažení po hotovou DB** (`skripty.md`)
 a to, co tvoje změna znamená pro kroky před a za ní (formát výstupu,
 úložiště, stav po dokumentu, závislost na službě).
 
@@ -80,10 +83,9 @@ změna pořadí, co musí být v konfiguraci).
 **Než začneš něco měnit v hledání nebo extrakci, projdi `poznatky.md`.**
 Většina „dobrých nápadů" už tam je změřená — někdy jako zamítnutá.
 
-**`legacy/` je mrtvá složka** — záloha demo fáze do srpna 2026. Kód,
-modely, tabulky ani skripty odtud **neplatí**; první verze aplikace je
-hotová a nahradila je. Nic se z ní nepoužívá (klíč k OpenAI je od
-6. 10. v kořeni) a je určená ke smazání (`uklid.md`). Nečerpej odtud.
+**Složka `legacy/` (demo fáze do srpna 2026) i původní korpus 32 léčiv
+(`data/leciva/`) jsou od 6. 10. 2026 smazané.** Kód je v gitu do commitu
+`71c761c`; data se nedají vrátit. Platí jen korpus `data/spc/`.
 
 ---
 
@@ -109,13 +111,13 @@ Hesla k Postgresu, pgAdminu a Ollamě jsou v **`pristupy.md`**.
 
 | model | k čemu |
 |---|---|
-| `qwen3.5:122b` (`MODEL_HLAVNI`) | extrakce a zjednodušení lokálně |
+| `qwen3.5:122b` (`MODEL_HLAVNI`) | lokální extrakce – jen volba `--local` pro jeden lék / malou dávku (výchozí cesta je cloud) |
 | `gemma4:26b` (`MODEL_ROUTER`, `MODEL_KONTROLY`) | router + kontrola. MoE, 128 expertů / 8 aktivních. Kontrola je **záměrně JINÝ** model než ten, co data vyrobil |
 | `gpt-6-luna` (`OPENAI_MODEL`) | **jediná cloudová volba pro extrakci** — nejlevnější, nejlepší a jediná překládá latinu do laické češtiny |
 | `bge-m3` (`MODEL_EMBED`) | embedding, 1024 dim |
 
 Router na gemma4:26b: medián **1,51 s** proti 4,56 s u qwenu, správně
-24/26 proti 21/26 (`bench_router.py`, poznatky 24. 9.). Router je 92 %
+24/26 proti 21/26 (`benchmarky/router/bench_router.py`, poznatky 24. 9.). Router je 92 %
 času dotazu. Za provozu (API) jsou potřeba jen router a bge-m3.
 
 **Generativní model embedding neumí** — vrátí 501 lokálně, 403 na OpenAI.
@@ -129,6 +131,27 @@ Modely běží na DGX Sparku. Ollama je odloží po ~5 min nečinnosti, proto
 
 ---
 
+## Benchmarky — co je k dispozici
+
+Než začneš měřit něco „od nuly", podívej se sem. Podrobnosti (co
+potřebují, kolik stojí) jsou v **`benchmarky/README.md`**. Pouští se
+z kořene projektu.
+
+| benchmark | odpovídá na | kdy pustit |
+|---|---|---|
+| `benchmarky/router/bench_router.py` | který lokální model má dělat router (rychlost, správnost, stabilita) | změna modelu nebo promptu routeru |
+| `benchmarky/extrakce_cloud/bench_extrakce_luna.py` | kolik stojí extrakce korpusu v cloudu, ukázka na 3 SPC | před každým hromadným cloudovým během, po změně promptu |
+| `benchmarky/indikace_fragmenty/detektory.py` | kolik položek indikací je podezřelých (bez modelu) | po přeextrahování indikací |
+| `benchmarky/indikace_fragmenty/soudce.py` | kolik z podezřelých je opravdu chyba (soudí gemma) | když je potřeba skutečný podíl chyb |
+| `benchmarky/indikace_fragmenty/test_promptu.py` | starý vs. nový prompt indikací | před změnou promptu indikací |
+
+Regresní test hledání je `evaluate.py` (není to benchmark, pouští
+se po každé změně). Starší benchmarky (qwen, nano, cloudové embeddingy,
+lokální Docling, pymupdf4llm) jsou smazané; závěry jsou v tabulce slepých
+uliček níž a v `poznatky.md`.
+
+---
+
 ## Příkazy
 
 ```bash
@@ -136,8 +159,8 @@ docker compose up -d
 uv run uvicorn api:app --port 8000     # GUI + Swagger na /docs
 uv run python hledej.py "mám reflux"   # CLI
 uv run python log_hledani.py "..."     # podrobný log jednoho hledání
-uv run python pipeline.py --stav
-uv run python evaluate.py
+uv run python evaluate.py              # test dat + parafráze ATC + negativní
+uv run python extrakce_all.py --stav   # kde který krok pipeline je
 
 # konverze celého korpusu (Docling Serve přes tunel na localhost:5001)
 uv run python konvertuj_serve.py --obchodovana      # navazuje sám
@@ -150,10 +173,11 @@ druhém s rozestupem (`--ema-rozestup`), limity nikdy neobcházet.
 ### Po ZMĚNĚ DAT vždy v tomhle pořadí
 
 ```bash
-uv run python ocisti_json.py --zapis
-uv run python naplni_db.py --znovu          # --znovu POVINNĚ
-uv run python vytvor_embeddingy.py
+uv run python naplni_db.py --korpus               # vše od nuly (~40 min)
+# nebo jen jedna sekce:  naplni_db.py --obnov-sekci indikace
+uv run python vytvor_embeddingy.py                # jen řádky bez vektoru
 uv run python evaluate.py
+# + restart API
 ```
 
 ---

@@ -7,22 +7,9 @@ key.yaml
 *.key
 pgpass
 logs/
-daliborTech.old
-dalibor.py
-zadaniVitek.old
-
-# generovany vystup auditu (3,4 MB), skript si ho vyrobi znovu
-audit_hledani.json
-
-# benchmark PDF extrakce: vstupy a generovane vystupy (skript si je vyrobi znovu)
-benchmarky/pdfextrakce/pdf/
-benchmarky/pdfextrakce/vystupy/
-benchmarky/pdfextrakce/report/
 # benchmarky: SKRIPTY do gitu ano, vygenerovane vystupy ne (2. 10. 2026 –
 # drive bylo ignorovane cele benchmarky/ a skripty v gitu chybely)
 benchmarky/**/*.json
 benchmarky/**/*.jsonl
 benchmarky/**/vystupy/
 benchmarky/**/__pycache__/
-/benchmark/
-/benchmark/*

@@ -575,12 +575,16 @@ def _jeden_pokus(
         if model.startswith("gpt-"):
             odpoved, vstup_tok, vystup_tok = _zavolej_cloud(prompt, model)
         else:
+            # Lokalni model (Ollama): stejne nastaveni jako cloud, kde to
+            # jde - teplota 0, pevny seed a strop vystupu proti zacykleni.
             odpoved = chat(
                 prompt,
                 system=SYSTEM_PROMPT,
                 model=model,
                 base_url=base_url,
                 json_mode=True,
+                options={"temperature": 0, "seed": SEED,
+                         "num_predict": MAX_VYSTUP_TOKENU},
             )
     except Exception as e:
         return VysledekExtrakce(

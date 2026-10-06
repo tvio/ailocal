@@ -27,8 +27,9 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       sloučil)?
 - [ ] Soudce (`benchmarky/indikace_fragmenty/soudce.py`) nad NOVOU DB –
       skutečný podíl chybných položek po promptu v2 (před: ~4 %).
-      Detektory: podezřelých 6 427 → 5 944. Pozor, `detektory.py`
-      přepíše `podezrele.jsonl` (starý stav) – nejdřív zazálohovat.
+      Detektory: podezřelých 6 427 → 5 944. `podezrele.jsonl` už je
+      stav NOVÉ DB (starý z 2. 10. se 6. 10. omylem přepsal, čísla jsou
+      v poznatcích); skript teď předchozí výstup odkládá s datem.
 - [ ] 274 textů s víc různými klíči → `ocisti_json.py --zapis`.
 - [ ] **COLDREX HORKÝ NÁPOJ 0260480 – tři chyby, neopraveno** (poznatky
       6. 10.): (1) holá „bolest" z „a s ním spojená bolest" – do promptu

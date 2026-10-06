@@ -31,7 +31,6 @@ from common.ollama_client import priprav_modely
 
 logger = logging.getLogger(__name__)
 
-LECIVA_DIR = Path("data/leciva")
 NA_STRANCE = 10
 
 # Sloupce, podle kterych jde radit. Whitelist, ne volny vstup - jde to
@@ -202,8 +201,7 @@ _MAPA_SPC: dict[str, str] | None = None
 
 
 def _pdf(kod: str) -> Path | None:
-    """PDF k libovolnemu kodu. Korpus (data/spc) pres mapu kod -> SPC,
-    puvodnich 32 leciv (data/leciva) jako zaloha."""
+    """PDF k libovolnemu kodu: data/spc/<spc>/spc.pdf pres mapu kod -> SPC."""
     global _MAPA_SPC
     if _MAPA_SPC is None:
         try:
@@ -216,8 +214,6 @@ def _pdf(kod: str) -> Path | None:
         p = Path("data/spc") / spc / "spc.pdf"
         if p.exists():
             return p
-    for p in LECIVA_DIR.glob(f"{kod}_*/spc.pdf"):
-        return p
     return None
 
 

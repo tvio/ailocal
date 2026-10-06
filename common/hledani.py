@@ -584,7 +584,7 @@ class LecivoVysledek:
         sekce = self.nejlepsi.sekce
         if sekce == "atributy":
             return f"API SÚKL, kód {self.kod_sukl}"
-        adr = adresar or f"data/leciva/{self.kod_sukl}_*"
+        adr = adresar or f"data/spc/<SPC kódu {self.kod_sukl}>"
         cislo = CISLO_SEKCE.get(sekce, "")
         return f"{adr}/spc.md § {cislo} {NAZEV_SEKCE.get(sekce, sekce)}"
 
