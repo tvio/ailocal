@@ -38,6 +38,16 @@ Výpis léčiv (`/api/leciva`) model nepotřebuje a jede hned.
 | GET | `/api/leciva` | výpis korpusu (jen zástupci SPC), stránkovaný (`strana`, `na_strance` 5–200, GUI nabízí 10/25/50/100) a řaditelný |
 | GET | `/api/hledat` | sémantické hledání |
 | GET | `/api/pdf/{kod_sukl}` | původní SPC v PDF |
+| GET | `/api/slovnik` | hledací slovník: výraz uživatele → formulace z indikací (tabulka `slovnik_dotazu`), naposledy upravený výraz první |
+| GET | `/api/slovnik/formulace?q=` | které zjednodušené indikace v datech obsahují text (nabídka v GUI), s počtem léků |
+| POST | `/api/slovnik` | přidat k výrazu jednu nebo víc formulací (`formulace` = text nebo pole; uloží se všechny, nebo žádná); každá MUSÍ být v indikacích některého léku (jinak 422), max 4 na výraz. Platí hned, bez restartu |
+| DELETE | `/api/slovnik?vyraz=&formulace=` | odebrat jednu formulaci |
+
+**Hledací slovník v GUI** (6. 10.): zabalený blok pod vyhledáváním s návodem
+a dvěma příklady. Zápis jde do tabulky `slovnik_dotazu` v Postgresu –
+společná všem instancím API, čte se při každém hledání (žádná cache, žádný
+restart). `slovnik_dotazu.json` je jen výchozí náplň při založení tabulky.
+Bez přihlášení může slovník měnit každý, kdo GUI vidí.
 
 ### Jeden tvar odpovědi pro obojí
 
@@ -98,6 +108,19 @@ nevypadalo, že posuvník nefunguje.
 Když dotaz jmenuje **konkrétní lék a jednu konkrétní sekci**
 („dávkování zyrtec"), vrátí se **celá sekce v pořadí dokumentu**
 a odpověď má `cely_usek: true`.
+
+**Shoda se neukazuje, kde nic neříká (6. 10.).** Sloupec Shoda je prázdný
+a skóre (RRF, cosine, fulltext) v detailu schované ve dvou případech:
+
+- `cely_usek` – čtení sekce („dávkování helicid"): řádky vybral filtr lék + sekce;
+- `vyber_filtrem` – dotaz jen z atributů („paracetamol", „helicid", „paralen 500mg",
+  kód SÚKL): léky vybral SQL filtr nad registrem (`nazev ILIKE`, účinná látka,
+  síla, kód, ATC). Cosine a fulltext se počítají nad řádkem identity léku,
+  určují jen POŘADÍ uvnitř výběru a „paracetamol" → PARALEN 0,65 vypadalo
+  jako slabá shoda. Záhlaví sloupce: „Nalezeno (podle názvu, látky nebo kódu)".
+
+Jakmile dotaz nese i příznak („paralen bolest hlavy"), shoda se ukazuje – tam
+měří podobnost příznaku s textem SPC.
 
 Důvod: výběr už udělal filtr a do vektoru jde jen název léku, který
 v textu sekce vůbec není. Podobnosti pak vyjdou 0,320 / 0,307 / 0,303 —

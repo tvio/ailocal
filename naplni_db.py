@@ -461,6 +461,39 @@ def nahraj_sekce(cur, kod: str, adr: Path, json_adr: Path, api: dict, poc: Count
             poc["se_stranou"] += len(radky)
 
 
+# Tabulky, ktere do korpusu NEPATRI a plneni je nesmi smazat.
+#   slovnik_dotazu  hledaci slovnik - zaznamy pridane uzivateli z GUI
+#                   (/api/slovnik, common/dotazy.py). Po smazani by se
+#                   nevratily, vychozi soubor obsahuje jen puvodni napln.
+TABULKY_NEMAZAT = ("slovnik_dotazu",)
+
+
+def vyprazdni_korpus(cur) -> None:
+    """Smaze data korpusu pred plnenim od nuly. Hledaci slovnik NECHA BYT.
+
+    `leciva CASCADE` vezme vse, co na leciva visi cizim klicem (extrakty,
+    leciva_search, extrakce_stav). Tabulky z TABULKY_NEMAZAT cizi klic
+    nemaji, takze se jich to netyka - a POJISTKA niz to overi: kdyby jim
+    po mazani ubyl jediny radek (nekdo prida cizi klic nebo tabulku do
+    TRUNCATE), skript skonci chybou a transakce se vrati.
+    """
+    def pocty() -> dict[str, int]:
+        ven = {}
+        for tab in TABULKY_NEMAZAT:
+            if cur.execute("SELECT to_regclass(%s)", (tab,)).fetchone()[0]:
+                ven[tab] = cur.execute(f"SELECT count(*) FROM {tab}").fetchone()[0]
+        return ven
+
+    pred = pocty()
+    cur.execute("TRUNCATE leciva CASCADE; TRUNCATE slovnik_pojmu;")
+    po = pocty()
+    if po != pred:
+        raise RuntimeError(f"Mazani korpusu zasahlo chranene tabulky: pred {pred}, po {po}. "
+                           "Nic se nezapsalo (transakce vracena).")
+    for tab, n in po.items():
+        print(f"Ponechano beze zmeny: {tab} ({n} zaznamu)", flush=True)
+
+
 def aktualizuj_vek(cur) -> Counter:
     """Vek pouziti leku (common/vek.py) do leciva - pro VSECHNY kody SPC.
 
@@ -472,24 +505,27 @@ def aktualizuj_vek(cur) -> Counter:
     cur.execute("ALTER TABLE leciva ADD COLUMN IF NOT EXISTS vek_od REAL; "
                 "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS pro_deti BOOLEAN; "
                 "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS vek_duvody JSONB; "
+                "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS jen_deti BOOLEAN; "
                 "CREATE INDEX IF NOT EXISTS leciva_vek_idx ON leciva (vek_od); "
                 "CREATE INDEX IF NOT EXISTS leciva_pro_deti_idx ON leciva (pro_deti);")
     # Forma zastupce: jedno SPC casto popisuje tablety i injekce (NOVALGIN)
-    spcs = cur.execute("SELECT spc, lekova_forma FROM leciva "
+    spcs = cur.execute("SELECT spc, lekova_forma, nazev FROM leciva "
                        "WHERE spc IS NOT NULL AND zastupce").fetchall()
     poc: Counter = Counter()
-    for spc, forma in spcs:
+    for spc, forma, nazev in spcs:
         adr = SPC_DIR / spc / "json"
 
         def nacti(s):
             f = adr / f"{s}.json"
             return json.loads(f.read_text(encoding="utf-8")) if f.exists() else []
 
-        r = vek_spc(nacti("davkovani"), nacti("indikace"), nacti("kontraindikace"), forma)
-        cur.execute("UPDATE leciva SET vek_od = %s, pro_deti = %s, vek_duvody = %s "
-                    "WHERE spc = %s",
-                    (r["vek_od"], r["pro_deti"], json.dumps(r["duvody"], ensure_ascii=False),
-                     spc))
+        r = vek_spc(nacti("davkovani"), nacti("indikace"), nacti("kontraindikace"), forma,
+                    nazev)
+        cur.execute("UPDATE leciva SET vek_od = %s, pro_deti = %s, jen_deti = %s, "
+                    "vek_duvody = %s WHERE spc = %s",
+                    (r["vek_od"], r["pro_deti"], r["jen_deti"],
+                     json.dumps(r["duvody"], ensure_ascii=False), spc))
+        poc["jen_deti"] += bool(r["jen_deti"])
         poc[f"pro_deti={r['pro_deti']}"] += 1
         poc["vek_znam" if r["vek_od"] is not None else "vek_nevim"] += 1
     print(f"Vek: {dict(poc)}", flush=True)
@@ -550,7 +586,7 @@ def main_korpus(jen_ok: bool, limit_spc: int | None) -> int:
         cur.execute("ALTER TABLE leciva ADD COLUMN IF NOT EXISTS spc TEXT; "
                     "ALTER TABLE leciva ADD COLUMN IF NOT EXISTS zastupce BOOLEAN DEFAULT TRUE; "
                     "CREATE INDEX IF NOT EXISTS leciva_spc_idx ON leciva (spc);")
-        cur.execute("TRUNCATE leciva CASCADE; TRUNCATE slovnik_pojmu;")
+        vyprazdni_korpus(cur)
         print(f"Tabulky vyprazdneny. SPC: {len(spcs)}, kodu: "
               f"{sum(len(po_spc[s]) for s in spcs)}", flush=True)
 
@@ -635,7 +671,7 @@ def main() -> int:
     with psycopg.connect(PG_DSN) as conn, conn.cursor() as cur:
         if a.znovu:
             # leciva staci - ostatni visi na ON DELETE CASCADE
-            cur.execute("TRUNCATE leciva CASCADE; TRUNCATE slovnik_pojmu;")
+            vyprazdni_korpus(cur)
             print("Tabulky vyprazdneny.")
         else:
             # POJISTKA: radky v leciva_search NEMAJI unikatni klic pres

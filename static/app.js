@@ -84,8 +84,10 @@ function vykresli(d) {
   // Co znamena sloupec Nalezeno - rika zahlavi, ne stitek v kazdem radku.
   const th = $("th-nalezeno");
   if (th) th.textContent = !d.dotaz ? "Nalezeno"
-    : d.cely_usek ? "Nalezeno (souhrn sekce)" : "Nalezeno (nejlepší shoda)";
-  $("telo").innerHTML = d.radky.map((r, i) => radek(r, i, d.cely_usek, d.usek_orezan)).join("");
+    : d.cely_usek ? "Nalezeno (souhrn sekce)"
+    : d.vyber_filtrem ? "Nalezeno (podle názvu, látky nebo kódu)" : "Nalezeno (nejlepší shoda)";
+  $("telo").innerHTML = d.radky.map((r, i) =>
+    radek(r, i, d.cely_usek, d.usek_orezan, d.vyber_filtrem)).join("");
   // Cteni sekce s 1-2 leky ("davkovani vibrocil"): rozbalit rovnou,
   // proklik je tam zbytecny - clovek chce sekci precist.
   if (d.cely_usek && d.radky.length <= 2) {
@@ -141,7 +143,7 @@ function vykresliRouter(r, d) {
   el.hidden = false;
 }
 
-function radek(r, i, celyUsek, orezan) {
+function radek(r, i, celyUsek, orezan, bezSkore) {
   const l = r.lecivo;
   const n = r.nejlepsi;
   const id = "d-" + l.kod_sukl + "-" + i;
@@ -197,7 +199,15 @@ function radek(r, i, celyUsek, orezan) {
   // Rozbaluje CELY radek, ne jen sipka - kliknuti kamkoliv do radku je to,
   // co clovek zkusi jako prvni. Sipka zustava jako vizualni voditko.
   // data-cosine drzi skore, aby slo prebarvit BEZ noveho hledani
-  const c = n && n.cosine !== null && n.cosine !== undefined ? n.cosine : "";
+  // U CTENI SEKCE ("dávkování helicid") vybral radky filtr lek + sekce,
+  // ne podobnost. Cosine je tam sum (do vektoru jde jen nazev leku) a jeho
+  // zobrazeni vypadalo jako vysledek pod prahem - shoda zustava prazdna
+  // a radek se podle jistoty nebarvi.
+  // Totez plati, kdyz dotaz byl jen nazev / latka / kod (bezSkore): leky
+  // vybral SQL filtr nad registrem, podobnost se meri proti radku identity
+  // leku a „paracetamol" vs. PARALEN 0,65 vypada jako slaba shoda.
+  const maSkore = !celyUsek && !bezSkore && n && n.cosine !== null && n.cosine !== undefined;
+  const c = maSkore ? n.cosine : "";
   return '<tr class="klikaci" data-cosine="' + c +
     '" onclick="prepniRadek(this, &#39;' + id + '&#39;, event)">' +
     '<td><button class="sipka" aria-expanded="false" aria-controls="' + id +
@@ -212,17 +222,16 @@ function radek(r, i, celyUsek, orezan) {
     "<td>" + anoNe(l.hrazeno, "hrazený", "nehrazený") + "</td>" +
     "<td>" + esc(l.atc) + "</td>" +
     "<td>" + esc(l.kod_sukl) + "</td>" +
-    '<td class="skore">' + (n && n.cosine !== null && n.cosine !== undefined
-                            ? n.cosine.toFixed(3) : "—") + "</td>" +
+    '<td class="skore">' + (maSkore ? n.cosine.toFixed(3) : (celyUsek || bezSkore) ? "" : "—") + "</td>" +
     "<td>" + nalez + "</td>" +
     "<td>" + pdf + "</td>" +
     "</tr>" +
-    '<tr class="detail" id="' + id + '" hidden><td colspan="11">' + detail(r, celyUsek, orezan) + "</td></tr>";
+    '<tr class="detail" id="' + id + '" hidden><td colspan="11">' + detail(r, celyUsek, orezan, bezSkore) + "</td></tr>";
 }
 
 // Metadata jsou schvalne ZABALENA - uvodni vypis a vysledek hledani se tim
 // nemusi lisit. U vypisu bez hledani jsou skore proste "NA".
-function detail(r, celyUsek, orezan) {
+function detail(r, celyUsek, orezan, bezSkore) {
   const n = r.nejlepsi;
   const l = r.lecivo;
   const cis = (v, des) => (v === null || v === undefined ? NA : v.toFixed(des));
@@ -235,12 +244,9 @@ function detail(r, celyUsek, orezan) {
          obsahSekce([n].concat(r.dalsi || []));
   }
 
-  h += (celyUsek ? "<details><summary>Údaje o léku a skóre</summary>" : "") + "<dl>" +
-    "<dt>Kód SÚKL</dt><dd>" + esc(l.kod_sukl) + "</dd>" +
-    "<dt>Léková forma</dt><dd>" + (l.lekova_forma ? esc(l.lekova_forma) : "—") + "</dd>" +
-    "<dt>Účinné látky</dt><dd>" + ((l.ucinne_latky || []).length ? esc(l.ucinne_latky.join(", ")) : "—") + "</dd>" +
-    "<dt>Věk použití</dt><dd>" + popisVeku(l) + "</dd>" +
-    "<dt>ATC</dt><dd>" + (l.atc ? esc(l.atc) : "—") + "</dd>" +
+  // Skore (RRF, cosine, fulltext) se u cteni sekce neukazuje - na vyber
+  // ani poradi nema vliv, radky vybral filtr a razeni je podle dokumentu.
+  const skore = (celyUsek || bezSkore) ? "" :
     "<dt>Skóre (RRF)</dt><dd>" + cis(r.skore, 6) + "</dd>" +
     "<dt>Odstup od nejlepšího</dt><dd>" +
       (r.odstup === null || r.odstup === undefined ? NA : r.odstup + " / 100") + "</dd>" +
@@ -248,7 +254,15 @@ function detail(r, celyUsek, orezan) {
       (n && n.poradi_sem ? " · pořadí #" + n.poradi_sem : "") + "</dd>" +
     "<dt>Fulltext (ts_rank)</dt><dd>" + cis(n ? n.fts : null, 4) +
       (n && n.poradi_fts ? " · pořadí #" + n.poradi_fts
-        : n ? ' · <span class="tise">nenašel</span>' : "") + "</dd>" +
+        : n ? ' · <span class="tise">nenašel</span>' : "") + "</dd>";
+
+  h += (celyUsek ? "<details><summary>Údaje o léku</summary>" : "") + "<dl>" +
+    "<dt>Kód SÚKL</dt><dd>" + esc(l.kod_sukl) + "</dd>" +
+    "<dt>Léková forma</dt><dd>" + (l.lekova_forma ? esc(l.lekova_forma) : "—") + "</dd>" +
+    "<dt>Účinné látky</dt><dd>" + ((l.ucinne_latky || []).length ? esc(l.ucinne_latky.join(", ")) : "—") + "</dd>" +
+    "<dt>Věk použití</dt><dd>" + popisVeku(l) + "</dd>" +
+    "<dt>ATC</dt><dd>" + (l.atc ? esc(l.atc) : "—") + "</dd>" +
+    skore +
     "<dt>Sekce</dt><dd>" + (n && n.sekce_nazev ? esc(n.sekce_nazev) : NA) + "</dd>" +
     "<dt>Strana v PDF</dt><dd>" + (n && n.strana_pdf ? n.strana_pdf : NA) + "</dd>" +
     "<dt>Orgánový systém</dt><dd>" +
@@ -599,6 +613,139 @@ $("btn-prah-vychozi").addEventListener("click", () => {
 $("sekce").addEventListener("change", () => {
   if (stav.dotaz) { stav.sekce = $("sekce").value; stav.strana = 1; nacti(); }
 });
+
+// --- hledaci slovnik ---------------------------------------------------------
+// Vyraz uzivatele -> formulace z indikaci (slovnik_dotazu.json pres API).
+// Formulaci overuje server proti datum; nabidka pod polem ukazuje, co
+// v datech opravdu je, aby clovek nemusel hadat presne zneni.
+function slHlaska(text, chyba) {
+  const el = $("sl-hlaska");
+  el.hidden = !text;
+  el.textContent = text || "";
+  el.classList.toggle("chyba", !!chyba);
+}
+
+function slKresli(polozky) {
+  $("sl-telo").innerHTML = polozky.map((p) =>
+    "<tr><td><code>" + esc(p.vyraz) + "</code></td><td>" +
+    p.formulace.map((f) =>
+      '<span class="sl-formulace">' + esc(f) +
+      ' <button type="button" class="druhotne" title="odebrat" data-vyraz="' + esc(p.vyraz) +
+      '" data-formulace="' + esc(f) + '">×</button></span>').join("") +
+    "</td></tr>").join("");
+}
+
+async function slVolej(url, opts) {
+  const r = await fetch(url, opts);
+  const d = await r.json().catch(() => null);
+  if (!r.ok) throw new Error(d && d.detail ? (typeof d.detail === "string" ? d.detail : "neplatný vstup") : "chyba " + r.status);
+  return d;
+}
+
+async function slNacti() {
+  try { slKresli(await slVolej("/api/slovnik", { cache: "no-store" })); }
+  catch (e) { slHlaska("Slovník se nepodařilo načíst: " + e.message, true); }
+}
+
+// K jednomu vyrazu jde naklikat VIC formulaci (ve slovniku je to pole).
+// Vyber drzi `slVybrane`; nabidka zustava otevrena, aby slo z jednoho
+// hledani vzit vic polozek, a pro dalsi staci prepsat hledane slovo.
+const SL_MAX = 4;             // stejne jako MAX_FORMULACI na serveru
+let slVybrane = [];
+let slNavrhy = [];
+
+function slMaVybrano(text) {
+  return slVybrane.some((v) => v.toLowerCase() === text.toLowerCase());
+}
+
+function slKresliVyber() {
+  $("sl-vybrane").innerHTML = slVybrane.length
+    ? '<span class="tise">Přidá se (' + slVybrane.length + " z nejvýš " + SL_MAX + "):</span> " +
+      slVybrane.map((f) =>
+        '<span class="sl-formulace">' + esc(f) +
+        ' <button type="button" class="druhotne" title="zrušit výběr" data-zrus="' +
+        esc(f) + '">×</button></span>').join("")
+    : "";
+  $("sl-navrhy").innerHTML = slNavrhy.map((x) =>
+    '<button type="button" class="druhotne' + (slMaVybrano(x.text) ? " vybrano" : "") +
+    '" data-text="' + esc(x.text) + '">' + esc(x.text) +
+    ' <span class="tise">(' + x.leciv + " léků)</span></button>").join("");
+}
+
+function slPrepni(text) {
+  if (slMaVybrano(text)) {
+    slVybrane = slVybrane.filter((v) => v.toLowerCase() !== text.toLowerCase());
+  } else if (slVybrane.length >= SL_MAX) {
+    slHlaska("K jednomu výrazu jdou nejvýš " + SL_MAX + " formulace – víc se při hledání nepoužije.", true);
+    return;
+  } else {
+    slVybrane.push(text);
+  }
+  slHlaska("", false);
+  slKresliVyber();
+}
+
+let slCasovac = null;
+$("sl-formulace").addEventListener("input", () => {
+  clearTimeout(slCasovac);
+  const q = $("sl-formulace").value.trim();
+  if (q.length < 3) { slNavrhy = []; slKresliVyber(); return; }
+  slCasovac = setTimeout(async () => {
+    try {
+      slNavrhy = await slVolej("/api/slovnik/formulace?q=" + encodeURIComponent(q));
+      slKresliVyber();
+      if (!slNavrhy.length) {
+        $("sl-navrhy").innerHTML =
+          '<span class="tise">v indikacích žádného léku to není – zkuste jiné slovo</span>';
+      }
+    } catch (e) { slNavrhy = []; slKresliVyber(); }
+  }, 300);
+});
+
+$("sl-navrhy").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-text]");
+  if (b) slPrepni(b.dataset.text);
+});
+
+$("sl-vybrane").addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-zrus]");
+  if (b) slPrepni(b.dataset.zrus);
+});
+
+$("sl-pridat").addEventListener("click", async () => {
+  const vyraz = $("sl-vyraz").value.trim();
+  if (!vyraz) { slHlaska("Napište svůj výraz.", true); return; }
+  if (!slVybrane.length) {
+    slHlaska("Vyberte kliknutím aspoň jednu formulaci z nabídky pod polem.", true);
+    return;
+  }
+  const formulace = slVybrane.slice();
+  try {
+    await slVolej("/api/slovnik", {
+      method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ vyraz: vyraz, formulace: formulace }) });
+    await slNacti();          // znovu ze serveru; novy vyraz je prvni v seznamu
+    slHlaska("Přidáno: „" + vyraz + "“ → " + formulace.map((f) => "„" + f + "“").join(", ") +
+             ". Platí hned.", false);
+    $("sl-vyraz").value = "";
+    $("sl-formulace").value = "";
+    slVybrane = [];
+    slNavrhy = [];
+    slKresliVyber();
+  } catch (e) { slHlaska(e.message, true); }
+});
+
+$("sl-telo").addEventListener("click", async (e) => {
+  const b = e.target.closest("button[data-vyraz]");
+  if (!b) return;
+  try {
+    slKresli(await slVolej("/api/slovnik?vyraz=" + encodeURIComponent(b.dataset.vyraz) +
+                           "&formulace=" + encodeURIComponent(b.dataset.formulace), { method: "DELETE" }));
+    slHlaska("Odebráno: „" + b.dataset.vyraz + "“ → „" + b.dataset.formulace + "“.", false);
+  } catch (err) { slHlaska(err.message, true); }
+});
+
+$("slovnik").addEventListener("toggle", () => { if ($("slovnik").open) slNacti(); });
 
 // --- start ------------------------------------------------------------------
 (async function () {

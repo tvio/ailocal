@@ -6,12 +6,49 @@ Pridat debug log do GUI pro hledani
 2. Udelat logovani komplet od A..Z
 2. Vylepsit vyhledavani, kdyz najde nejaky vysoky rank - tak pridat vsehcno z dane ATC skupiny a lecive latky. 
 4. Proc lek na kasel vraci ACIFEIN
+5. PODIVAT SE: evaluace po preextrahovani indikaci (4. 10.) 18/20 misto 20/20 –
+   „kašlu a nejde mi vykašlat hlen" 0/5, „pálí mě při močení" 0/5.
+   Detail nize v TOP („Evaluace po indikacich v2") a v `poznatky.md` 4. 10.
 
 ---
 
 # TOP – OD 2. 10. 2026: PIPELINE, ÚKLID, KONTEJNER, SERVER
 
 Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
+
+### 0. Evaluace po indikacích v2 (4. 10.) – podívat se
+- [ ] `evaluate.py --korpus` dal **18/20** (30. 9. 20/20), přesnost 69 %
+      (67 %), negativní 5/6. Pustit ještě 2× – je to regrese, nebo šum
+      routeru (±4 b.)?
+- [ ] „kašlu a nejde mi vykašlat hlen" 0/5 v R05 (PREVAC, BRUFEN,
+      BRONCHIPRET) a „pálí mě při močení" 0/5 v J01/G04 (čaje V11,
+      IBEROGAST): `log_hledani.py "…"` – vypadla z indikací položka,
+      která dotaz dřív chytala (prompt v2 ji přesunul do `skupina` nebo
+      sloučil)?
+- [ ] Soudce (`benchmarky/indikace_fragmenty/soudce.py`) nad NOVOU DB –
+      skutečný podíl chybných položek po promptu v2 (před: ~4 %).
+      Detektory: podezřelých 6 427 → 5 944. Pozor, `detektory.py`
+      přepíše `podezrele.jsonl` (starý stav) – nejdřív zazálohovat.
+- [ ] 274 textů s víc různými klíči → `ocisti_json.py --zapis`.
+- [ ] **COLDREX HORKÝ NÁPOJ 0260480 – tři chyby, neopraveno** (poznatky
+      6. 10.): (1) holá „bolest" z „a s ním spojená bolest" – do promptu
+      indikací pravidlo o ODKAZECH na předchozí část věty (37 léků má
+      holou „bolest/bolesti"); (2) skupina v samostatném odstavci
+      nepřiřazena (12 282 z 25 097 indikací bez skupiny – změřit, kolik
+      ji v textu má); (3) věk: zákaz podmíněný hmotností („15–18 let
+      pod 50 kg") posune hranici na 18 – úzká oprava opraví 3 SPC
+      a rozbije 6× VORICONAZOLE, potřeba přesnější pravidlo.
+
+### 0b. Hledací slovník z GUI (6. 10.) – co znamená pro server
+- [x] Úložiště v DB (tabulka `slovnik_dotazu`), ne v souboru: společné všem
+      instancím, čte se při každém hledání, nasazení ho nepřepíše.
+- [ ] Měsíční job / `naplni_db.py`: tabulku `slovnik_dotazu` NEMAZAT (dnes
+      ji `TRUNCATE leciva CASCADE` nezasáhne – nemá cizí klíč; hlídat při
+      přepisu na přírůstkové plnění). Zálohuje se s databází.
+- [ ] Zápis je bez přihlášení – před zveřejněním rozhodnout, kdo smí.
+- [ ] `reflux` → „vracení kyselého obsahu ze žaludku do úst" už v datech
+      NENÍ (0 léků po cloudové extrakci) – projít výchozí záznamy slovníku
+      proti novému korpusu (`/api/slovnik/formulace`).
 
 ### 1. Pipeline pro opakované spouštění
 - [ ] Jeden příkaz přes celý řetěz (konverze → sekce → extrakce cloud →
@@ -22,6 +59,8 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
 - [ ] Zámek, log běhu, souhrn JSON, návratový kód pro cron
 
 ### 2. Úklid projektu
+**Podrobný seznam s inventurou souborů a otevřenými rozhodnutími: `uklid.md`
+(6. 10.).** Body níž jsou jeho starší, hrubší verze.
 - [ ] Benchmarky z kořene do `benchmarky/<téma>/`
 - [ ] `.gitignore`: neignorovat celé `benchmarky/`, jen výstupy (skripty dnes nejsou v gitu)
 - [ ] `data/leciva/` (32 léčiv) a kód, který ho čte → korpus, nebo legacy
@@ -98,7 +137,9 @@ Plán s vysvětlením je v `tentoTyden.md`. Pořadí:
       Evaluace PŘED a PO; u kontraindikací zvážit vynechat (obecné klíče, N3).
       **VYZKOUŠENO A VRÁCENO 2. 10.** – horší (laický klíč zrovnoprávnil vytržené
       kusy indikací, simvastatin → „cukrovka" 1,0). Poznatky 2. 10.
-- [ ] **Přeextrahovat INDIKACE s opraveným promptem** (~0,7 $). Měřeno 2. 10.:
+- [x] **Přeextrahovat INDIKACE s opraveným promptem** – HOTOVO 4. 10.
+      (25 097 řádků, celkem utraceno 11,00 $). Zbývá vyhodnocení, viz
+      TOP „0. Evaluace po indikacích v2". Původní zadání: měřeno 2. 10.:
       ~4 % položek chybných, ~1–2 % „skupina pacientů jako indikace".
       Do promptu: (1) „u pacientů s X / u nemocných s X / po výkonu X" NENÍ
       indikace, X → pole `skupina`; (2) položka = samostatný název stavu

@@ -55,6 +55,7 @@ uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
 | **NÚ napříč léky** | po kterém léku… | `po kterém léku můžou vypadávat vlasy` | hledá v nežádoucích účincích |
 | **věk – děti** | pro děti / dětský | `lék na kašel pro děti` | jen léky s dávkováním pro děti |
 | **věk – konkrétní** | dítě X let / X-letý / X měsíců | `horečka dítě šest let` | jen léky od ≤ X let |
+| **věk – dospělí** | pro dospělé / u dospělých | `horečka pro dospělé` | léky od 12 let výš nebo bez údaje o věku; bez dětských přípravků |
 | **název začíná** | `lék začíná [na] XXX` (≥ 3 znaky) | `lék začíná oxy` | název začíná; řazeno abecedně |
 | **název obsahuje** | `lék obsahuje XXX` | `lék obsahuje pox` | část názvu |
 | **název končí** | `lék končí [na] XXX` | `lék končí na prazol` | konec slova v názvu |
@@ -127,6 +128,20 @@ uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
 | `kašel u tříletého dítěte` | ROBITUSSIN, ROBITUSSIN JUNIOR | „tříletého" → 3 roky |
 | `hrazený lék na reflux pro děti` | HELICID, OMEPRAZOLE OLIKLA | hrazení + děti |
 
+**Pro dospělé ★ (nové 6. 10.)** – opačný směr: zmizí léky pro menší děti.
+
+| dotaz | první výsledky | co ukazuje |
+|---|---|---|
+| ★ `horečka` | NUROFEN PRO DĚTI JAHODA (2×), VOLTAREN ACTIGO, NOVALGIN, PANADOL NOVUM | bez věku jsou nahoře dětské sirupy |
+| ★ `horečka pro dospělé` | VOLTAREN ACTIGO EXTRA, NOVALGIN, CETALGEN, IBOVAL RAPID, PARAPYREX COMBI, PARALEN GRIP | dětské sirupy pryč, zůstaly běžné léky z lékárny |
+| ★ `bolí mě v krku pro dospělé` | VOLTAREN ACTIGO EXTRA, STREPFEN, PARAPYREX COMBI, STREPSILS PLUS, CETALGEN | |
+| `něco na kocovinu pro dospělé` | IMIGRAN, IBALGIN RAPIDCAPS, CETALGEN, IBALGIN 400, NUROFEN 400 | funguje jen s výrazem `kocovin` v hledacím slovníku (slovník + věk dohromady) |
+
+Co k tomu říct: „pro dospělé" = léky, které SPC připouští **nejdřív od
+12 let**, a léky, u kterých SPC věk neuvádí; přípravky určené jen dětem
+vypadnou. Projde 4 256 z 5 880 SPC. Hranice 12 let je záměr: přísných
+18 let by vyhodilo i IBALGIN a zbyly by hlavně nemocniční léky.
+
 U výsledku je štítek **„věk: od X let"** – vidět, proč lék prošel. Věk se
 z SPC odvozuje bez modelu (`vek_pacienta.md`). Kontrolní příklad:
 VIBROCIL kapky od 1 roku, sprej od 6 let – rozdíl je v SPC.
@@ -172,6 +187,8 @@ Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLI
 | `velmi časté nežádoucí účinky xarelto` | nic | XARELTO velmi časté NÚ nemá (správně, ale vypadá to jako chyba) |
 | `lék končí na prazol` bez vysvětlení | i antipsychotika | koncovka ≠ skupina léků |
 | hledání podle věku u neobvyklé formulace | věk se nepozná | parser zná dítě X let, X-letý, X měsíců, kojenec, batole, miminko |
+| `… pro dospělé` a PARALEN 500, NUROFEN 200, PANADOL NOVUM | chybí, přestože jsou i pro dospělé | SPC je připouští už od 6 let → spodní hranice pod 12; filtr zná jen spodní hranici věku |
+| `pro seniory`, `pro člověka 70 let` | filtr na konkrétní věk dospělého není | umí jen „pro dospělé" |
 | neobchodovaný lék (např. ALLERGODIL FORTE) | nic | v korpusu jen obchodovaná léčiva |
 
 ---
@@ -184,3 +201,47 @@ Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLI
   u sémantického hledání; u filtrů a vzorů se neuplatní).
 - **GUI se chová postaru** → restart API + Ctrl+F5.
 - **Dlouho nic** → model se načítá (stavová hláška v GUI), počkat.
+
+---
+
+## 6. Ukázka chyb v datech ★ – COLDREX HORKÝ NÁPOJ CITRON S MEDEM
+
+**K čemu:** poctivě ukázat, že data z automatické extrakce obsahují
+chyby a jak vypadají. Jeden lék, jedna věta SPC, tři chyby. Stav 6. 10.,
+neopraveno (`poznatky.md` 6. 10.).
+
+**Dotaz:** `na co je coldrex horký nápoj citron s medem` → celá sekce
+indikací (10 položek), kód SÚKL 0260480. Odkaz na PDF otevře bod 4.1.
+
+**Co říká SPC (4.1):**
+
+> Krátkodobá léčba příznaků chřipky a akutního zánětu horních cest
+> dýchacích, jako je např. horečka, bolest hlavy, bolest v krku, bolest
+> kloubů a svalů, kongesce nosní sliznice, zánět vedlejších dutin nosních
+> **a s ním spojená bolest** a akutní katarální zánět nosní sliznice.
+>
+> Přípravek je určen pro dospělé a dospívající **od 15 let** s tělesnou
+> hmotností nad 50 kg.
+
+**Co je v aplikaci:**
+
+| | SPC říká | aplikace ukazuje | proč |
+|---|---|---|---|
+| 1 | bolest spojená se zánětem dutin | samostatná indikace **„bolest"** | model dělí větu na každém „a"; „s ním spojená" je dovětek, ne další nemoc |
+| 2 | pro dospělé a dospívající od 15 let | skupina pacientů **neuvedena** | věta je v jiném odstavci, model ji k indikacím nepřiřadil |
+| 3 | od 15 let | štítek **„věk: od 18 let"** | pravidlo pro věk přečte „15–18 let s hmotností pod 50 kg: není určen" jako zákaz do 18 pro všechny |
+
+**Co k tomu říct:**
+
+- 8 z 10 indikací je správně (chřipka, horečka, bolest hlavy, bolest
+  v krku, ucpaný nos…). Chyba není „všechno špatně", ale jednotlivé
+  položky – a ty se špatně hledají, protože vypadají věrohodně.
+- Holá „bolest" je nebezpečnější, než vypadá: lék pak vyjde vysoko
+  na každý dotaz o bolesti. V celém trhu ji má 37 léků.
+- Srovnání: sesterský `na co je coldrex maxgrip citron` má skoro stejnou
+  větu, ale v jednom odstavci – skupinu „od 15 let" i věk má správně.
+  Rozhoduje tedy drobnost v úpravě dokumentu.
+- Proto je u každého výsledku **odkaz na stranu PDF**: aplikace je
+  vyhledávač v oficiálních dokumentech, ne zdroj pravdy.
+- Automatické kontroly extrakce existují, ale nad novým korpusem zatím
+  neběží – je to další krok, ne hotová věc.

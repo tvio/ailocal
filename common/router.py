@@ -458,13 +458,19 @@ def _pridej_vek(filtr: Filtr, dotaz: str, d: dict) -> Filtr:
     ("pro deti"), proto se nesmi ztratit. Zmínka o veku se zaroven odstrani
     z textu pro vektor: "reflux pro deti" by jinak hledal i "deti".
     """
-    from common.vek import vek_z_dotazu, bez_veku
+    from common.vek import vek_z_dotazu, bez_veku, dospeli_z_dotazu
 
     pro_deti, vek = vek_z_dotazu(dotaz)
     if pro_deti:
         filtr.pro_deti = True
         filtr.vek = vek
         d["vek"] = {"pro_deti": True, "vek": vek}
+        if d.get("dotaz_text"):
+            d["dotaz_text"] = bez_veku(d["dotaz_text"]) or d["dotaz_text"]
+    elif dospeli_z_dotazu(dotaz):
+        # „pro dospělé": pryc s detskymi pripravky (NUROFEN PRO DĚTI...).
+        filtr.pro_dospele = True
+        d["vek"] = {"pro_dospele": True}
         if d.get("dotaz_text"):
             d["dotaz_text"] = bez_veku(d["dotaz_text"]) or d["dotaz_text"]
     return filtr

@@ -149,7 +149,7 @@ trefí, je to nález, i kdyby ostatní minuly.
 | `slovnik_dotazu.json` | 0–4 | formulace, jak to stojí v textech SPC |
 | **původní věta uživatele** | 1 | pojistka proti tomu, že router ořeže příliš |
 
-### 1. Číselník dotazů (`slovnik_dotazu.json`)
+### 1. Číselník dotazů (tabulka `slovnik_dotazu`)
 
 Mapuje **výraz laika → formulaci, která je v SPC**. Není to totéž co
 `slovnik_pojmu` — ten mapuje odborný termín na laický tvar pro
@@ -176,11 +176,18 @@ trefovat AMOKSIKLAV („rozlitého zánětu kůže" = celulitida, bakteriální
 infekce). Do číselníku patří jen formulace, které v datech opravdu
 znamenají totéž.
 
-Soubor **nemá tabulku v DB** — načte se do paměti a cachuje. Úprava se
-projeví po restartu API, bez přeplnění databáze a bez přegenerování
-embeddingů.
+**Od 6. 10. 2026 je číselník v DB** (tabulka `slovnik_dotazu`) a čte se
+při každém hledání — úprava platí hned a ve všech instancích API, bez
+restartu, bez přeplnění korpusu a bez přegenerování embeddingů. Soubor
+`slovnik_dotazu.json` je jen výchozí náplň: nahraje se jednou, když
+tabulka ještě neexistuje.
 
-### Jak přidat záznam do `slovnik_dotazu.json`
+### Jak přidat záznam do číselníku
+
+**V GUI:** blok „Hledací slovník" pod vyhledáváním (nebo `POST /api/slovnik`).
+Formulace se ověřuje proti zjednodušeným indikacím v DB — co v datech
+není, uložit nejde. Níže je zápis ve tvaru výchozího souboru; pravidla
+pro klíč a hodnoty platí stejně.
 
 Soubor se **nikdy negeneruje automaticky** — je ručně udržovaný a to je
 záměr. Každý záznam říká „když uživatel napíše tohle, hledej i tamto",

@@ -170,6 +170,53 @@ dětském dotazu **nezobrazí**.
 
 ---
 
+## 2b. „Pro dospělé" – léky od 12 let výš nebo bez údaje o věku (6. 10. 2026)
+
+Dotaz s „pro dospělé / u dospělých / dospělý" (i bez diakritiky,
+`vek.dospeli_z_dotazu()`) nastaví `Filtr.pro_dospele` → podmínka
+
+    l.jen_deti IS NOT TRUE
+    AND (l.vek_od >= 12 OR (l.vek_od IS NULL AND l.pro_deti IS NOT TRUE))
+
+Hranice je `vek.DOSPELI_VEK_OD = 12`. Zmínka se z textu pro vektor
+odstraní. Když dotaz jmenuje i dítě („pro děti i dospělé"), platí jen
+dětský filtr.
+
+**Proč 12 a ne 18.** `vek_od` je SPODNÍ hranice („od kolika let se smí"),
+ne „pro koho lék je". IBALGIN je lék pro dospělé a má `vek_od = 12`.
+Zkoušeno týž den, v tomto pořadí:
+
+| podmínka | projde SPC | co se stalo |
+|---|---|---|
+| jen bez dětských přípravků (`jen_deti`) | 5 805 | zůstaly léky se štítkem „od 6 let", vypadalo to jako nefunkční |
+| `vek_od >= 18` nebo neznámý | 3 601 | „horečka pro dospělé" → nemocniční infuze, IBALGIN i NOVALGIN pryč |
+| `vek_od >= 15` nebo neznámý | 3 714 | vypadne IBALGIN a BRUFEN (od 12 let) |
+| **`vek_od >= 12` nebo neznámý** | **4 256** | běžné OTC zůstanou, dětské sirupy pryč |
+
+**Co pořád vypadne, i když je to lék i pro dospělé:** tablety, které SPC
+připouští už dětem – PARALEN 500 (od 6), NUROFEN 200 (od 6), PANADOL
+NOVUM (od 6). Filtr zná jen spodní hranici; údaj „má dávku pro dospělé"
+v DB není.
+
+`leciva.jen_deti` počítá `vek.je_detsky_pripravek()` (v `vek_spc()`,
+do DB `naplni_db.aktualizuj_vek` – tedy i `--jen-vek` a každé plnění):
+
+1. **název**: PRO DĚTI, JUNIOR, BABY, DĚTSK-, PRO KOJENCE, PRO INFANTIBUS,
+   KIDS, PAED, PEDIATRIC → 31 SPC, přesné;
+2. **dávkování 4.2**: aspoň jedna dávka pro děti (skupina začíná pod 12 let,
+   končí do 18) a žádná dávka pro dospělé ani dávka bez věku → 44 SPC.
+
+Celkem **75 SPC / 89 kódů**. Ve filtru hraje `jen_deti` roli hlavně
+u léků s neznámým věkem a u názvů typu „JUNIOR" od 12 let.
+Pravidlo 2 ručně prošlé: ~36 ze 44 správně
+(KLACID a FROMILID sirup, MONTELUKAST 4/5 mg, SANORIN 0,5, PARALEN 100
+čípky, dětské infuze). **Chybně jen pro děti (~8):** FLUTIFORM, VIREAD
+245 MG, BEXSERO, GENOTROPIN, NORDITROPIN, JODID DRASELNÝ, CHLORID SODNÝ
+10%, GLUKÓZA 40% – model u nich dospělou dávku neoznačil věkem.
+
+Schválně se nepočítá samotné „dospívající" (ELLAONE, ACTAIR) ani skupina
+z indikací 4.1 (ADVANTAN) – zkoušeno, přidávalo to falešné.
+
 ## 3. GUI
 
 Detail léku má řádek **„Věk použití"** (`static/app.js: popisVeku`):

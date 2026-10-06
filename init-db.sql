@@ -103,6 +103,9 @@ CREATE TABLE leciva (
     -- vek_duvody = z cehoz to plyne (audit, popisek v GUI).
     vek_od              REAL,
     pro_deti            BOOLEAN,
+    -- jen_deti = pripravek urceny JEN detem (nazev „PRO DĚTI/JUNIOR/BABY"
+    -- nebo v 4.2 jen detske davky). Filtr „pro dospělé" je vyhazuje.
+    jen_deti            BOOLEAN,
     vek_duvody          JSONB,
     vytvoreno           TIMESTAMPTZ DEFAULT now()
 );
@@ -288,6 +291,24 @@ CREATE TABLE slovnik_pojmu (
     laicky          TEXT NOT NULL,
     rucne_overeno   BOOLEAN DEFAULT FALSE,  -- ze slovnik_rucni.json
     vytvoreno       TIMESTAMPTZ DEFAULT now()
+);
+
+
+-- ===========================================================================
+-- Slovnik dotazu: vyraz uzivatele -> formulace, ktera je v datech (HLEDANI).
+-- Upravuje se z GUI (/api/slovnik). NENI soucast korpusu: naplni_db.py ji
+-- mazat NESMI (zaznamy pridane uzivateli), proto nema cizi klic na leciva.
+-- DDL je i v common/dotazy.py - tam se tabulka zalozi na uz bezici databazi
+-- a naplni z slovnik_dotazu.json (vychozi napln, jen pri zalozeni).
+-- ===========================================================================
+CREATE TABLE slovnik_dotazu (
+    id          BIGSERIAL PRIMARY KEY,
+    vyraz       TEXT NOT NULL,          -- kmen toho, co pise uzivatel, malymi
+    formulace   TEXT NOT NULL,          -- formulace, ktera je v datech
+    poradi      INTEGER NOT NULL,       -- poradi formulaci u vyrazu (mensi = driv)
+    zdroj       TEXT NOT NULL DEFAULT 'gui',   -- 'vychozi' (ze souboru) | 'gui'
+    vytvoreno   TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (vyraz, formulace)
 );
 
 

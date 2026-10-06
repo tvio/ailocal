@@ -5,6 +5,189 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-06 — Filtr „pro dospělé": hranice 12 let; `vek_od` je spodní mez, ne „pro koho lék je"
+
+Podnět: „kocovina" → mezi léky na bolest hlavy NUROFEN PRO DĚTI JAHODA.
+
+- **`vek_od >= 18` nejde použít:** platí pro 2 907 z 5 880 SPC, vyhodilo by
+  NUROFEN 200 MG i IBALGIN (od 12 let). Filtr proto vyhazuje jen přípravky
+  určené JEN dětem (`leciva.jen_deti`).
+- **Dětský přípravek z dat se pozná hůř, než se zdá.** „Jen dětské dávky
+  v 4.2 a 4.1" označilo 61 SPC, z toho ručně ~67 % správně (chybně ACTAIR
+  „dospělí a dospívající 12–17 let", ELLAONE, ADVANTAN, ENTONOX). Po
+  zúžení (jen 4.2, skupina musí začínat pod 12 let, text nesmí zmiňovat
+  dospělé, žádná dávka bez věku) **44 SPC, ~36 správně**. Název
+  (PRO DĚTI / JUNIOR / BABY…) dá 31 SPC přesně, ale z 30 dětsky nazvaných
+  SPC pozná pravidlo z dávkování jen 19 – obojí je potřeba.
+- **Výsledek: 75 SPC / 89 kódů.** `horečka` → 1.–2. NUROFEN PRO DĚTI
+  JAHODA; `horečka pro dospělé` → VOLTAREN ACTIGO, NOVALGIN, PANADOL NOVUM
+  (zbytek pořadí stejný). Dětský filtr beze změny.
+- Známá falešná (~8 SPC, dospělá dávka bez označení věku): FLUTIFORM,
+  VIREAD 245, BEXSERO, GENOTROPIN, NORDITROPIN, JODID DRASELNÝ, CHLORID
+  SODNÝ 10%, GLUKÓZA 40%. `evaluate.py` jsem nepouštěl – žádný jeho dotaz
+  slovo „dospělý" neobsahuje, filtr se v něm neuplatní.
+
+**Změna týž den – filtr zpřísněn.** Mírná verze („jen bez dětských
+přípravků") nechala na první stránce „horečka pro dospělé" léky se
+štítkem „od 6 / 12 / 14 let" a pro uživatele vypadala jako nefunkční.
+Teď: `jen_deti IS NOT TRUE AND pro_deti IS NOT TRUE AND (vek_od IS NULL
+OR vek_od >= 18)` → projde 3 285 z 5 880 SPC (2 907 od 18 let + neznámý
+věk). Důsledek, se kterým se počítalo: „horečka pro dospělé" → CETALGEN,
+IMIPENEM/CILASTATIN (infuze), COMBOGESIC, CEFTAZIDIME (infuze), PANADOL
+DUO – běžná OTC antipyretika jsou od 12 let a vypadla. „bolí mě v krku
+pro dospělé" vychází dobře (CETALGEN, COMBOGESIC, PANADOL DUO, STREPFEN,
+TRACHISAN). Chybí upřednostnění OTC / formy podání (stejná díra jako
+u „rýma miminko").
+
+**Třetí verze téhož dne – hranice 12 let (platí).** Přísných 18 dalo
+u horečky nemocniční infuze. `vek_od` je SPODNÍ mez: IBALGIN (lék pro
+dospělé) má 12. Teď `jen_deti IS NOT TRUE AND (vek_od >= 12 OR (vek_od
+IS NULL AND pro_deti IS NOT TRUE))`:
+
+| hranice | projde SPC z 5 880 |
+|---|---|
+| 12 | 4 256 |
+| 15 | 3 714 |
+| 18 | 3 601 |
+
+„horečka pro dospělé" → VOLTAREN ACTIGO EXTRA, NOVALGIN, CETALGEN, IBOVAL
+RAPID, PARAPYREX COMBI, PARALEN GRIP (infuze až 9.). Pořád vypadnou
+PARALEN 500, NUROFEN 200 a PANADOL NOVUM (SPC je připouští od 6 let) –
+údaj „má dávku pro dospělé" v DB není, jen spodní mez.
+
+Popis: `vek_pacienta.md` kap. 2b.
+
+---
+
+## 2026-10-06 — COLDREX HORKÝ NÁPOJ: tři chyby na jednom léku (holá „bolest", chybí skupina, věk 18 místo 15)
+
+Lék 0260480 COLDREX HORKÝ NÁPOJ CITRON S MEDEM (`data/spc/cz_76672`). GUI
+ukazuje přesně to, co je v datech – chyby jsou v extrakci a ve výpočtu
+věku. **Nic z toho není opravené** (nasazení na server má přednost).
+
+Text 4.1: „Krátkodobá léčba příznaků chřipky a akutního zánětu horních
+cest dýchacích, jako je např. horečka, bolest hlavy, bolest v krku,
+bolest kloubů a svalů, kongesce nosní sliznice, zánět vedlejších dutin
+nosních **a s ním spojená bolest** a akutní katarální zánět nosní
+sliznice. / Přípravek je určen pro dospělé a dospívající od 15 let
+s tělesnou hmotností nad 50 kg."
+
+### 1. Holá „bolest" jako indikace (extrakce, prompt v2)
+
+Z 10 položek je 8 v pořádku. „a s ním spojená bolest" je DOVĚTEK
+k zánětu dutin, ne další indikace; model větu rozdělil na každém „a"
+a čárce a zbyla položka `doslovne: "bolest"`, klíč „bolest". Ta dá
+vysokou shodu na každý dotaz s bolestí a v GUI vyjde jako nejlepší
+nález – vypadá to, že lék je „na bolest".
+
+- Pravidlo v2 „položka musí dávat smysl sama o sobě" ji nechytí:
+  „bolest" je formálně platný název stavu.
+- Pravidlo o sdíleném podstatném jménu řeší výčty („zánět hltanu,
+  hrtanu"), ne ODKAZY („s ním spojená", „a jeho komplikace").
+- Stejná příčina, menší škoda: „příznaků chřipky a akutního zánětu HCD"
+  → druhá položka ztratila „příznaků" („akutní zánět horních cest
+  dýchacích", jako by lék léčil zánět).
+- **V korpusu: holá „bolest" 22 léků, „bolesti" 15, „horečka" 26.**
+  Kolik SPC má v 4.1 takový odkaz, změřeno není.
+
+### 2. Skupina pacientů „není uvedeno" (extrakce)
+
+Věta o věku stojí v SAMOSTATNÉM odstavci → všech 10 položek má
+`skupina: "není uvedeno"`. Sesterský COLDREX MAXGRIP CITRON
+(`cz_76674`) má tutéž větu ve stejném odstavci a skupinu
+„dospělí a dospívající od 15 let…" u všech 10 položek má.
+
+- Bez skupiny je **12 282 z 25 097** řádků indikací. Kolik z nich ji
+  v textu má a model ji minul, změřeno není.
+
+### 3. Věk 18 místo 15 (`common/vek.py`, bez modelu)
+
+Dávkování: „děti a dospívající do 15 let a dospívající ve věku 15–18 let
+s tělesnou hmotností nižší než 50 kg: není určen". `vek_z_textu` vezme
+rozsah 15–18 jako zákaz pro VŠECHNY a posune hranici z 15 na 18;
+podmínku hmotnosti nevidí.
+
+Zkoušená oprava (u zákazu nepočítat část podmíněnou hmotností, když
+zbytek nese vlastní věk), změřeno na 5 880 SPC – **změna u 9**:
+
+| lék | dnes | po opravě | správně |
+|---|---|---|---|
+| COLDREX HORKÝ NÁPOJ CITRON / S MEDEM (2 SPC) | 18 | 15 | 15 |
+| EBGLYSS | 17 | 12 | 12 |
+| VORICONAZOLE (6 SPC) | 2 | 12 | 2 |
+
+Opraví 3, rozbije 6 (u vorikonazolu je zákaz jen pro „perorální
+nasycovací dávku", ne pro lék) → **nenasazeno**. Stejný typ chyby jako
+24. 8.: opravit vybrané případy ≠ zlepšit systém.
+
+### Co z toho plyne
+
+- Jedna věta SPC = tři různé chyby ve třech vrstvách (dělení položek,
+  přiřazení skupiny, odvození věku). Kontroly extrakce jsou od 29. 9.
+  vypnuté, laický tvar ani dělení nikdo neověřuje.
+- Dobrý příklad do prezentace: `scenare.md` kap. 6.
+- Oprava 1 a 2 = další úprava promptu indikací + přeextrahování;
+  pod stropem 11,50 $ zbývá 0,50 $ (stačí jen na vzorek).
+
+---
+
+## 2026-10-04 — Indikace přeextrahované promptem v2: cílové případy opravené, evaluace hledání 18/20 (dřív 20/20)
+
+Celý korpus indikací přes Batch (luna, `PROMPT_INDIKACE_V2`: „u pacientů
+s X" je skupina, ne indikace; položka = název stavu, ne kus věty).
+23 495 požadavků hotovo, 0 chyb, utraceno celkem 11,00 $ (strop 11,50 $).
+DB `naplni_db.py --obnov-sekci indikace` → 25 097 řádků (dřív 24 321),
+vektory dopočtené (přepočet 200 náhodných řádků: cosine 1,0 u obsahu i klíče).
+
+### Rozdělení indikací (detektory z 2. 10., starý `podezrele.jsonl` vs. nová DB)
+
+| podezřelý tvar položky | před | po |
+|---|---|---|
+| začíná předložkou | 547 | 348 |
+| první slovo v 7./2. pádě | 2 531 | 2 062 |
+| krátká položka vedle dlouhé věty | 3 317 | 3 489 |
+| nesoulad s ATC skupinou | 53 | 69 |
+| podezřelých celkem | 6 427 | 5 944 |
+
+Případy, kvůli kterým se to dělalo, jsou pryč: SIMVASTATIN už nemá
+„diabetem mellitem" (místo toho „Redukce kardiovaskulární mortality
+a morbidity", pacienti v poli `skupina`), ELIQUIS nemá „hypertenze",
+TORVACARD má riziko KV příhody ve skupině.
+
+- Kusy vět zůstávají (TORVACARD „primární hypercholesterolemií", CELASKON
+  „infekcí"). Detektory jsou jen hrubé měřítko (2. 10.: skutečná chyba
+  u ~17 % zachycených). **Soudce (gemma) nad novou DB puštěn nebyl** –
+  skutečný podíl chybných položek po změně tedy změřený není.
+
+### Hledání (`evaluate.py --korpus`, jeden běh)
+
+| | 30. 9. | 4. 10. |
+|---|---|---|
+| parafráze ATC, trefa v top 5 | 20/20 | 18/20 |
+| průměrná přesnost top 5 | 67 % | 69 % |
+| negativní mimo medicínu | 5/6 | 5/6 |
+
+Bez jediného léku ze správné skupiny v top 5:
+
+- „kašlu a nejde mi vykašlat hlen" 0/5 v R05 – vrací PREVAC (V12),
+  BRUFEN (M01AE01), BRONCHIPRET TYMIÁN A BŘEČŤAN (V11). Dřív procházel.
+- „pálí mě při močení" 0/5 v J01/G04 (30. 9. bylo 1/5) – URCYSTON PLANTA,
+  UROLOGICKÁ ČAJOVÁ SMĚS (V11), IBEROGAST NEO (A03).
+
+Další slabé: „mám zácpu" 1/5 (OXYKODON/NALOXON, 2× HYLAK FORTE), „mám
+alergii" 2/5, „bolí mě v krku" 2/5. Negativní beze změny („jak vyměnit
+pneumatiku" → LIDOCAINE EGIS 0,652).
+
+**Nerozhodnuto, jestli 18/20 je regrese, nebo šum:** jeden běh, router
+není deterministický (přesnost ±4 b., 2. 10.). Příčina u kašle
+a močení nedohledaná – úkol v `todo.md`.
+
+Test 0 na korpus dál nesedí (pokrytí 64 % po kódech, „podezřelé sekce"
+99 %). Skutečné z něj: 274 textů má víc různých klíčů, 10 385 řádků je
+úplná duplicita.
+
+---
+
 ## 2026-10-02 — Sjednocení klíče zhoršilo hledání; skutečná chyba je v rozdělení indikací (~4 % položek)
 
 ### Sjednocení klíče (klíč = laický tvar) – vráceno

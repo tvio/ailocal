@@ -1,3 +1,16 @@
+# STAV K 4.10.2026 — INDIKACE PŘEEXTRAHOVANÉ (PROMPT V2), V DB I S VEKTORY
+
+- Cloud doběhl: 23 495 hotovo, 0 chyb, utraceno 11,00 $ (strop 11,50 $).
+  Nic neběží, ve frontě nic není.
+- DB: `--obnov-sekci indikace` → 25 097 řádků, všechny s vektorem.
+- `evaluate.py --korpus`: parafráze **18/20** (dřív 20/20), přesnost
+  69 %, negativní 5/6. Cílové případy (SIMVASTATIN „diabetem mellitem")
+  opravené. Čísla v `poznatky.md` 4. 10.
+- **Další krok:** `todo.md` TOP „0. Evaluace po indikacích v2" – zjistit,
+  proč „kašlu…" a „pálí mě při močení" dávají 0/5. API restartovat.
+
+---
+
 # STAV K 30.9.2026 večer — VĚK POUŽITÍ + DÁVKOVÁNÍ BEZ OŘEZU
 
 - **Ořez 4.2 vypnut** (zahazoval dávky u 56 % SPC, např. VIBROCIL).

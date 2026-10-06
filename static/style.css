@@ -39,6 +39,23 @@ button {
 }
 button.druhotne { background: #fff; color: var(--zvyraz); }
 button:disabled { opacity: .5; cursor: default; }
+/* Sekce, prah a zvyrazneni jsou ladici ovladani - vychozi stav zabaleny. */
+.nastaveni { margin-top: .6rem; }
+.nastaveni > summary { cursor: pointer; color: var(--tise); font-size: .85rem; }
+/* --- hledaci slovnik --- */
+.slovnik-obsah { margin-top: .5rem; padding: .75rem 1rem; border: 1px solid var(--ram);
+                 border-radius: 6px; background: var(--pozadi-hlavicka); }
+.slovnik-obsah p, .slovnik-obsah ol { margin: 0 0 .5rem; }
+.slovnik-obsah input[type="text"] { padding: .35rem .5rem; border: 1px solid var(--ram);
+                                    border-radius: 6px; min-width: 16rem; }
+.sl-navrhy { display: flex; gap: .4rem; flex-wrap: wrap; margin-top: .5rem; }
+.sl-navrhy button, .sl-tabulka button { padding: .15rem .5rem; font-size: .85rem; }
+.sl-navrhy button.vybrano { background: var(--zvyraz); color: #fff; }
+.sl-navrhy button.vybrano .tise { color: #fff; }
+.sl-vybrane { margin-top: .5rem; }
+.sl-tabulka { width: auto; margin-top: .25rem; }
+.sl-tabulka td, .sl-tabulka th { padding: .25rem .6rem; }
+.sl-formulace { display: inline-block; margin: 0 .5rem .2rem 0; white-space: nowrap; }
 .radek-filtr { display: flex; gap: .6rem; align-items: center; margin-top: .6rem; flex-wrap: wrap; }
 select { padding: .35rem .5rem; border: 1px solid var(--ram); border-radius: 6px; }
 input[type="range"] { width: 190px; accent-color: var(--zvyraz); }

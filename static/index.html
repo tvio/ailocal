@@ -18,7 +18,7 @@
 
 <header>
   <h1>Hledání v souhrnech údajů o přípravku</h1>
-  <p class="tise">26 léčiv ze SÚKL · sémantické hledání běžnou češtinou · vše lokálně</p>
+  <p class="tise">sémantické a fulltextové vyhledávání běžnou češtinou v obchodovaných léčivech za září</p>
 </header>
 
 <main>
@@ -29,6 +29,8 @@
       <button type="submit" id="btn-hledat">Hledat</button>
       <button type="button" id="btn-reset" class="druhotne">Reset</button>
     </div>
+    <details class="nastaveni">
+      <summary>Nastavení hledání (sekce, práh podobnosti, zvýraznění)</summary>
     <div class="radek-filtr">
       <label for="sekce">Omezit na sekci:</label>
       <select id="sekce">
@@ -57,7 +59,51 @@
       <span class="tise">jen zvýraznění, nic nefiltruje — při 0,60 je zvýrazněno
         8 z 10 správných odpovědí a 1 z 8 šumu</span>
     </div>
+    </details>
   </form>
+
+  <details class="nastaveni" id="slovnik">
+    <summary>Hledací slovník (naučit hledání vlastní výraz)</summary>
+    <div class="slovnik-obsah">
+      <p>Když hledání vašemu slovu nerozumí, můžete ho to naučit. Hledá se
+        v indikacích tak, jak jsou u léků zapsané zjednodušeně (sloupec
+        <b>Nalezeno</b>). Slovník říká: <i>když někdo napíše můj výraz, hledej
+        i tuhle formulaci.</i></p>
+      <ol>
+        <li><b>Váš výraz</b> – jak to řeknete vy. Stačí základ slova bez
+          koncovky, malými písmeny: <code>nafoukl</code> chytí „nafouklé"
+          i „nafouklý".</li>
+        <li><b>Formulace z indikací</b> – přesná část indikace tak, jak ji
+          aplikace u některého léku ukazuje. Při psaní se nabízejí formulace,
+          které v datech opravdu jsou – klikáním jich vyberte jednu nebo víc
+          (nejvýš 4 na výraz); pro další stačí přepsat hledané slovo.
+          Formulaci, která v datech není, uložit nejde, nic by nenašla.</li>
+        <li>Stiskněte <b>Přidat</b>. Platí hned, pro všechny.</li>
+      </ol>
+      <p class="tise">Příklady: <code>nafoukl</code> → <code>nadýmání</code>
+        (dotaz „mám nafouklé břicho" pak najde léky na nadýmání) ·
+        <code>nemůžu usnout</code> → <code>potíže s usínáním</code> +
+        <code>nespavost</code></p>
+
+      <div class="radek-filtr">
+        <input id="sl-vyraz" type="text" placeholder="váš výraz, např. nafoukl"
+               aria-label="Váš výraz" maxlength="60">
+        <span>→</span>
+        <input id="sl-formulace" type="text" placeholder="hledat formulaci v indikacích, např. nadým"
+               aria-label="Formulace z indikací" maxlength="100">
+        <button type="button" id="sl-pridat">Přidat</button>
+      </div>
+      <div id="sl-navrhy" class="sl-navrhy"></div>
+      <div id="sl-vybrane" class="sl-vybrane"></div>
+      <div id="sl-hlaska" class="hlaska" hidden></div>
+
+      <h4>Co už ve slovníku je</h4>
+      <table class="sl-tabulka">
+        <thead><tr><th>Výraz</th><th>Hledá se i</th></tr></thead>
+        <tbody id="sl-telo"></tbody>
+      </table>
+    </div>
+  </details>
 
   <div id="router" class="router" hidden></div>
   <div id="hlaska" class="hlaska" hidden></div>

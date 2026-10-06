@@ -23,6 +23,7 @@ from fastapi.responses import FileResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
+from common import dotazy
 from common.config import PG_DSN, MODEL_ROUTER, MODEL_EMBED
 from common.hledani import hledej, seskup, Filtr
 from common.router import rozhodni, VSECHNY_SEKCE
@@ -182,6 +183,13 @@ class Odpoved(BaseModel):
         description=("true = uzivatel jmenoval konkretni lek A konkretni sekci, "
                      "takze se vraci CELA sekce v poradi dokumentu, ne serazeny "
                      "vyber. Razeni podle podobnosti tam nema co merit."))
+    vyber_filtrem: bool = Field(
+        False,
+        description=("true = dotaz obsahoval jen atributy leku (nazev, ucinna latka, "
+                     "kod, sila, ATC) a zadny priznak. Leky vybral SQL filtr nad "
+                     "registrem; cosine a fulltext se pocitaji nad radkem identity "
+                     "leku, urcuji jen poradi a o kvalite nalezu nic nerikaji - GUI "
+                     "je neukazuje."))
     atc_navrh: list[Lecivo] = Field(
         default_factory=list,
         description="Zachranna sit podle ATC skupiny - NENI to nalez v SPC")
@@ -361,6 +369,8 @@ def hledat(
         radky=vsechny[od:od + na_strance],
         prah=o.prah, kandidatu_pred_prahem=o.kandidatu_pred_prahem,
         cely_usek=o.cely_usek, usek_orezan=o.usek_orezan,
+        vyber_filtrem=bool(filtr.je_presny() and not o.cely_usek and o.vysledky
+                           and all(v.sekce == "atributy" for v in o.vysledky)),
         atc_navrh=_atc_navrh(syrove.get("dotaz_text") or q, filtr) if not vsechny else [])
 
 
@@ -436,6 +446,89 @@ def pdf(kod_sukl: str, strana: int | None = None):
         raise HTTPException(404, f"PDF pro {kod_sukl} není k dispozici")
     return FileResponse(p, media_type="application/pdf",
                         headers={"Content-Disposition": f'inline; filename="{p.name}"'})
+
+
+# ---------------------------------------------------------------------------
+# Hledaci slovnik (slovnik_dotazu.json) - prohlizeni a uprava z GUI
+# ---------------------------------------------------------------------------
+# Slovnik rozsiruje DOTAZ (common/dotazy.py): vyraz uzivatele -> formulace,
+# ktera v datech opravdu je. Vymyslena formulace nenajde nic, proto se pri
+# pridani overuje proti zjednodusenym indikacim v DB a bez shody se neulozi.
+#
+# Uloziste je tabulka slovnik_dotazu (ne soubor): spolecna vsem instancim
+# API a cte se pri kazdem hledani, takze zmena plati hned a vsude.
+_HTTP_SLOVNIK = {"neplatne": 422, "duplicita": 409, "plno": 409, "neni": 404}
+
+
+class PolozkaSlovniku(BaseModel):
+    vyraz: str = Field(description="Co píše uživatel (kmen slova)")
+    formulace: list[str] = Field(description="Formulace z indikací, které se přihledají")
+
+
+class NavrhFormulace(BaseModel):
+    text: str = Field(description="Zjednodušená indikace tak, jak je v datech")
+    leciv: int = Field(description="U kolika léků se vyskytuje")
+
+
+class NovaPolozkaSlovniku(BaseModel):
+    vyraz: str
+    formulace: list[str] | str = Field(
+        description="Jedna nebo víc formulací (nejvýš 4 na výraz); uloží se všechny, nebo žádná")
+
+
+def _slovnik_vypis() -> list[PolozkaSlovniku]:
+    return [PolozkaSlovniku(vyraz=v, formulace=f) for v, f in dotazy.vypis()]
+
+
+def _formulace_v_datech(text: str, limit: int = 10) -> list[NavrhFormulace]:
+    """Zjednodusene indikace, ktere `text` obsahuji, nejcastejsi napred."""
+    vzor = "%" + text.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_") + "%"
+    with psycopg.connect(PG_DSN) as c, c.cursor() as cur:
+        cur.execute("""SELECT lower(sekce_atributy->>'laicky') AS t,
+                              count(DISTINCT kod_sukl) AS n
+                       FROM leciva_search
+                       WHERE sekce = 'indikace' AND sekce_atributy->>'laicky' ILIKE %s
+                       GROUP BY 1 ORDER BY n DESC, length(lower(sekce_atributy->>'laicky'))
+                       LIMIT %s""", (vzor, limit))
+        return [NavrhFormulace(text=t, leciv=n) for t, n in cur.fetchall()]
+
+
+@app.get("/api/slovnik", response_model=list[PolozkaSlovniku], tags=["slovník"],
+         summary="Hledací slovník: výraz uživatele → formulace v indikacích")
+def slovnik() -> list[PolozkaSlovniku]:
+    """Naposledy upravený výraz je první."""
+    return _slovnik_vypis()
+
+
+@app.get("/api/slovnik/formulace", response_model=list[NavrhFormulace], tags=["slovník"],
+         summary="Které zjednodušené indikace v datech obsahují daný text")
+def slovnik_formulace(q: str = Query(min_length=3, max_length=100)) -> list[NavrhFormulace]:
+    return _formulace_v_datech(q.strip())
+
+
+@app.post("/api/slovnik", response_model=list[PolozkaSlovniku], tags=["slovník"],
+          summary="Přidat výraz a jednu či víc formulací (každá musí být v datech)")
+def slovnik_pridej(p: NovaPolozkaSlovniku) -> list[PolozkaSlovniku]:
+    formulace = dotazy.cisti_formulace(p.formulace)
+    for f in formulace:
+        if len(f) >= 3 and not _formulace_v_datech(f, limit=1):
+            raise HTTPException(422, f"Formulace „{f}“ se v indikacích žádného léku "
+                                     "nevyskytuje, hledání by nic nenašlo. Vyberte z nabídky.")
+    try:
+        dotazy.pridej(p.vyraz, formulace)
+    except dotazy.ChybaSlovniku as e:
+        raise HTTPException(_HTTP_SLOVNIK[e.kod], str(e))
+    return _slovnik_vypis()
+
+
+@app.delete("/api/slovnik", response_model=list[PolozkaSlovniku], tags=["slovník"],
+            summary="Odebrat jednu formulaci u výrazu")
+def slovnik_odeber(vyraz: str, formulace: str) -> list[PolozkaSlovniku]:
+    try:
+        dotazy.odeber(vyraz, formulace)
+    except dotazy.ChybaSlovniku as e:
+        raise HTTPException(_HTTP_SLOVNIK[e.kod], str(e))
+    return _slovnik_vypis()
 
 
 @app.get("/", include_in_schema=False)

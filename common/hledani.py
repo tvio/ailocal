@@ -74,6 +74,11 @@ class Filtr:
     # ZASADA: jen leky, kde SPC dite VYSLOVNE pripousti; "nevim" se nezobrazi.
     pro_deti: bool | None = None
     vek: float | None = None
+    # „pro dospělé" (6. 10. 2026): leky se spodni hranici veku aspon 12 let
+    # (vek.DOSPELI_VEK_OD) a leky bez udaje o veku; detske pripravky pryc.
+    # Zkousene a opustene: jen bez detskych pripravku (zustaly leky „od 6
+    # let") a prisne od 18 let (zbyly hlavne nemocnicni leky).
+    pro_dospele: bool | None = None
     # Cast nazvu (1. 10. 2026, common/nazev_vzor.py): „lek zacina oxy",
     # „lek obsahuje pox", „lek konci prazol" - JEN v nazvu leku.
     nazev_vzor: object | None = None      # NazevVzor
@@ -146,6 +151,8 @@ class Filtr:
             casti.append(f"pro dítě {v} (jen léky, jejichž SPC tento věk výslovně připouští)")
         elif self.pro_deti:
             casti.append("pro děti (jen léky, jejichž SPC uvádí dávkování pro děti)")
+        if self.pro_dospele:
+            casti.append("pro dospělé (léky od 12 let výš nebo bez údaje o věku; bez dětských přípravků)")
         return "; ".join(casti) or "bez filtru"
 
 
@@ -236,6 +243,15 @@ def _podminky(f: Filtr) -> tuple[str, dict]:
     if f.vek is not None:
         kde.append("l.vek_od <= %(vek)s")
         par["vek"] = f.vek
+    if f.pro_dospele:
+        # Pryc leky pro mensi deti: spodni hranice veku pod DOSPELI_VEK_OD
+        # (12 let) a detske pripravky. Lek s NEZNAMYM vekem zustava - SPC
+        # bez zminky o veku je typicky lek pro dospele; jen kdyz ma kladne
+        # davkovani pro deti a vek neuvadi, jde pryc.
+        from common.vek import DOSPELI_VEK_OD
+        kde.append("l.jen_deti IS NOT TRUE AND (l.vek_od >= %(vek_dospeli)s "
+                   "OR (l.vek_od IS NULL AND l.pro_deti IS NOT TRUE))")
+        par["vek_dospeli"] = DOSPELI_VEK_OD
     if f.nazev_vzor is not None and f.nazev_vzor.platny:
         # JEN nazev leku, ne ucinne latky (1. 10. 2026): kombinovane pripravky
         # a vakciny maji desitky latek a vzor se pak chytal skoro vsude.

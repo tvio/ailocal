@@ -22,6 +22,11 @@ import re
 
 # Vekove hranice v letech. Horni mez je VYLUCNA (do 18 = mladsi nez 18).
 DOSPELY = 18.0
+# Filtr „pro dospělé" (hledani.py): lek musi mit spodni hranici veku aspon
+# tady. 12 = bezna hranice „dospělí a dospívající od 12 let" (IBALGIN,
+# BRUFEN); s 18 by zbyly hlavne leky na predpis a nemocnicni, s 15 by
+# vypadl i IBALGIN. Rozhodnuti 6. 10. 2026, cisla ve vek_pacienta.md 2b.
+DOSPELI_VEK_OD = 12.0
 STARSI = 65.0
 
 _C = r"(\d+(?:[,.]\d+)?)"                    # cislo, i desetinne s carkou
@@ -236,11 +241,29 @@ def vek_z_dotazu(dotaz: str) -> tuple[bool | None, float | None]:
     return (True if detsky or vek is not None else None), vek
 
 
+# „pro dospělé", „u dospělých", „dospělý" - i bez diakritiky. Zadost
+# o lek PRO DOSPELE: z vysledku vypadnou detske pripravky (jen_deti).
+_DOSPELY_DOTAZ = re.compile(r"\b(?:(?:pro|u)\s+)?dosp[ěe]l\w*", re.I)
+
+
+def dospeli_z_dotazu(dotaz: str) -> bool:
+    """Chce uzivatel lek PRO DOSPELE? ('něco na kocovinu pro dospělé')
+
+    Kdyz dotaz zminuje i dite ('pro děti i dospělé'), nefiltruje se nic -
+    obe skupiny naraz nejdou splnit a detsky filtr ma prednost (bezpecnost).
+    """
+    t = dotaz or ""
+    if not _DOSPELY_DOTAZ.search(t):
+        return False
+    return vek_z_dotazu(t)[0] is None
+
+
 def bez_veku(text: str) -> str:
     """Text dotazu bez zminky o diteti/veku - pro vektor. Vek resi filtr,
     ve vektoru by jen redil vyznam (CLAUDE.md: kazde slovo navic stoji)."""
     t = text or ""
-    for vzor in (_VEK_CISLO, _VEK_SLOVO, _VEK_ZAKLADNI, _PUL_ROKU, _DETSKY, _KOJENEC, _BATOLE):
+    for vzor in (_VEK_CISLO, _VEK_SLOVO, _VEK_ZAKLADNI, _PUL_ROKU, _DETSKY, _KOJENEC, _BATOLE,
+                 _DOSPELY_DOTAZ):
         t = vzor.sub(" ", t)
     t = re.sub(r"\b(pro|u|pro\s+moje|pro\s+naše|mého|našeho|malé\w*)\s*$", " ", t.strip(), flags=re.I)
     return re.sub(r"\s+", " ", t).strip()
@@ -295,14 +318,74 @@ def _jina_forma(text: str | None, forma: str | None) -> bool:
     return bool(moje and zminene and not (moje & zminene))
 
 
+# --- Detsky pripravek (filtr „pro dospělé") --------------------------------
+# Lek urceny JEN detem: NUROFEN PRO DĚTI, PANADOL BABY, KLACID sirup 125 mg.
+# Dospely, ktery hleda „něco na bolest hlavy pro dospělé", je nechce.
+#
+# POZOR, proc to NENI „vek_od >= 18": to by vyhodilo polovinu trhu vcetne
+# NUROFENU 200 MG a IBALGINU (oba od 12 let) a dospelemu by zbyly jen leky
+# vyhradne pro dospele. Vyhazuje se jen to, co je JEN pro deti.
+_DETSKY_NAZEV = re.compile(
+    r"\bPRO\s+DĚTI\b|\bJUNIOR\b|\bBABY\b|\bDĚTSK|\bPRO\s+KOJENCE\b|\bPRO\s+INFANTIBUS\b|"
+    r"\bKIDS\b|\bPAED\b|\bPAEDIATRIC\b|\bPEDIATRIC\b", re.I)
+
+
+def je_detsky_pripravek(davkovani: list, forma: str | None = None,
+                        nazev: str | None = None) -> tuple[bool, str]:
+    """(je lek jen pro deti?, duvod).
+
+    1. NAZEV to rika („PRO DĚTI", „JUNIOR", „BABY") - presne, 30 SPC.
+    2. Davkovani (4.2): je aspon jedna davka pro DETI (skupina zacina pod
+       12 let a konci do 18) a ZADNA davka pro dospele ani davka bez veku.
+       Zmereno 6. 10. 2026 na 5 880 SPC: ~33 SPC navic, spravne ~85 %
+       (KLACID sirup, MONTELUKAST 4/5 mg, SANORIN 0,5, PARALEN 100 cipky).
+       Znama falesna: FLUTIFORM, VIREAD 245, JODID DRASELNY, infuze
+       CHLORID SODNY / GLUKOZA - model u nich dospelou davku neoznacil vekem.
+
+    Co schvalne NEpocita: skupinu „dospívající" samotnou (ELLAONE „ženy vč.
+    dospívajících", ACTAIR „dospělí a dospívající 12–17 let") a skupinu
+    z indikaci 4.1 (ADVANTAN „děti" u jedne z indikaci).
+    """
+    if nazev and _DETSKY_NAZEV.search(nazev):
+        return True, f"název: {nazev[:40]}"
+    detske: list[str] = []
+    for p in davkovani or []:
+        if not isinstance(p, dict) or druh_polozky(p) != "ano":
+            continue
+        pac = p.get("pacient")
+        if _jina_forma(f"{pac} {p.get('davka') or ''}", forma):
+            continue
+        v = vek_z_textu(pac)
+        if v is None:
+            return False, ""                    # davka bez veku = obecna populace
+        if v[1] is None or v[1] > DOSPELY or re.search(r"dospěl", str(pac), re.I):
+            return False, ""                    # davka saha do dospelosti
+        if v[0] < 12:
+            detske.append(str(pac)[:60])
+    if detske:
+        return True, f"4.2 jen dětské dávky: {detske[0]}"
+    return False, ""
+
+
 def vek_spc(davkovani: list, indikace: list, kontraindikace: list,
-            forma: str | None = None) -> dict:
+            forma: str | None = None, nazev: str | None = None) -> dict:
     """Od kolika let lze lek pouzit, s duvodem (pro audit a popisek v GUI).
 
-    Vraci {"vek_od": float|None, "pro_deti": bool|None, "duvody": [str]}.
-    None = z SPC nejde urcit. `forma` = lekova forma zastupce (kod SUKL,
-    napr. "TBL NOB", "INJ SOL") - polozky jine formy se nepocitaji.
+    Vraci {"vek_od": float|None, "pro_deti": bool|None, "jen_deti": bool,
+    "duvody": [str]}. None = z SPC nejde urcit. `forma` = lekova forma
+    zastupce (kod SUKL, napr. "TBL NOB", "INJ SOL") - polozky jine formy
+    se nepocitaji. `nazev` = nazev leku, jen pro `jen_deti`.
     """
+    ven = _vek_spc(davkovani, indikace, kontraindikace, forma)
+    jen_deti, duvod = je_detsky_pripravek(davkovani, forma, nazev)
+    ven["jen_deti"] = jen_deti
+    if jen_deti:
+        ven["duvody"] = ven["duvody"] + [f"JEN PRO DĚTI ({duvod})"]
+    return ven
+
+
+def _vek_spc(davkovani: list, indikace: list, kontraindikace: list,
+             forma: str | None = None) -> dict:
     duvody: list[str] = []
     kladne: list[float] = []
     zakazy: list[tuple[float, float | None]] = []

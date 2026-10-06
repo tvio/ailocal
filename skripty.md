@@ -108,7 +108,7 @@ extrakci, popis v `extrakce_kontroly.md`.
 | `vek.py` | Věk použití léku z SPC 4.1–4.3 BEZ modelu (`vek_spc`: `vek_od`, `pro_deti`, důvody) a věk v dotazu laika (`vek_z_dotazu`, `bez_veku`). Plní ho `naplni_db.py` (`aktualizuj_vek`, i `--jen-vek`), filtr v `hledani.py`, volá `router.py`. |
 | `nazev_vzor.py` | Hledání podle části názvu: pevné formulace „lék začíná [na] XXX / obsahuje XXX / končí [na] XXX / přibližně XXX" (min. 3 znaky; přibližně = překlepy a fonetika) → filtr JEN na název léku (bez diakritiky). Volá `router.py` deterministicky, filtr v `hledani.py`. |
 | `router.py` | Dotaz v přirozené řeči → filtr + výběr sekce. |
-| `dotazy.py` | Rozšíření DOTAZU (ne dat) o formulace z dokumentů — číselník `slovnik_dotazu.json`. |
+| `dotazy.py` | Rozšíření DOTAZU (ne dat) o formulace z dokumentů — číselník `slovnik_dotazu.json`. Od 6. 10. je úložištěm tabulka `slovnik_dotazu` v DB (mění se z GUI přes `/api/slovnik`, čte se při každém dotazu); JSON je jen výchozí náplň při založení tabulky. `naplni_db.py` ji mazat NESMÍ. |
 | `hledani.py` | Hybridní hledání: cosine (bge-m3) + český fulltext přes RRF, aplikace filtrů. |
 | `ollama_client.py` | Tenký wrapper nad Ollama REST API (`chat`, `embed`, `priprav_modely`). |
 | `log_behu.py` | Detailní log běhu (soubor s průběžným flushem + dávkový zápis do DB). |
