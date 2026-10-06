@@ -8,7 +8,7 @@ OpenAI, je to označené.
 
 Základ URL: `https://api.openai.com`
 Autorizace u všech rout: hlavička `Authorization: Bearer sk-proj-…`
-(klíč z `legacy/key.yaml`, `config.nacti_openai_klic()`).
+(klíč z `key.yaml` v kořeni projektu, `config.nacti_openai_klic()`).
 
 ## Tok jedné dávky
 

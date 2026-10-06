@@ -730,7 +730,16 @@ def main() -> int:
         do_fronty(beh, ids)
 
     if a.beh:
-        api = klient()
+        # Klic se overuje HNED a hlasite: bez nej nebo s nefunkcnim klicem
+        # nema beh smysl a nesmi skoncit, jako by se nic nestalo.
+        from common.config import ChybaKlice, over_openai_klic
+        try:
+            api = klient()
+            over_openai_klic(api)
+        except ChybaKlice as e:
+            log.error("CHYBA KLICE OPENAI: %s", e)
+            log.error("Beh se NEspustil, nic se neodeslalo.")
+            return 2
         srovnej_s_openai(beh, api)
         inventar(beh, a.limit_spc)
         log.info("SOUHRN %s", souhrn(beh))

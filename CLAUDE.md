@@ -82,8 +82,8 @@ Většina „dobrých nápadů" už tam je změřená — někdy jako zamítnut�
 
 **`legacy/` je mrtvá složka** — záloha demo fáze do srpna 2026. Kód,
 modely, tabulky ani skripty odtud **neplatí**; první verze aplikace je
-hotová a nahradila je. Jediné, co se z `legacy/` používá, je
-`key.yaml`. Nečerpej odtud, pokud tě tam někdo výslovně nepošle.
+hotová a nahradila je. Nic se z ní nepoužívá (klíč k OpenAI je od
+6. 10. v kořeni) a je určená ke smazání (`uklid.md`). Nečerpej odtud.
 
 ---
 
@@ -95,7 +95,7 @@ s `reasoning_effort="none"`** (`config.OPENAI_REASONING_EFFORT`).
 Reasoning se účtuje jako výstup a bez vypnutí je účet ~4× vyšší.
 Pozor, luna bere `none`, na `minimal` vrací 400 (u nano je to naopak).
 `gpt-4o`, `gpt-4o-mini` ani řadu `sol` nepouštět. Klíč je
-v `legacy/key.yaml`, načítá se přes `config.nacti_openai_klic()`
+v `key.yaml` v kořeni (v `.gitignore`), načítá se přes `config.nacti_openai_klic()`
 (soubor **není validní YAML**, chybí mezera za dvojtečkou).
 
 Embeddingy jsou jiný produkt a jsou o dva řády levnější — zákaz míří na

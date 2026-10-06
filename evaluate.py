@@ -225,7 +225,7 @@ def test0() -> list[Vysledek]:
     # Tyz zdrojovy text musi mit VSUDE tyz klic. Generovani klice je
     # nedeterministicke, takze tataz indikace ve trech vekovych skupinach
     # dostala tri RUZNE klice - a tim tri ruzne vektory, na ktere se tyz
-    # dotaz chytal ruzne. Sjednocuje `ocisti_json.py`.
+    # dotaz chytal ruzne. Sjednocoval `ocisti_json.py` (jen stary korpus, nerealizovane_kontroly/).
     rozpor = _sql("""
         SELECT count(*) FROM (
             SELECT kod_sukl, sekce, obsah_text FROM leciva_search
@@ -233,7 +233,7 @@ def test0() -> list[Vysledek]:
     skupin = _sql("""SELECT count(*) FROM (SELECT 1 FROM leciva_search
                      WHERE sekce<>'atributy' GROUP BY kod_sukl, sekce,
                      obsah_text) q""")[0][0]
-    det = ([f"{rozpor} textů má víc různých klíčů – pusť ocisti_json.py --zapis"]
+    det = ([f"{rozpor} textů má víc různých klíčů – sjednocení klíčů nad korpusem není hotové (nerealizovane_kontroly/)"]
            if rozpor else [])
     ven.append(Vysledek("Jednotný klíč u téhož textu", skupin - rozpor, skupin, det))
 

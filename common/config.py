@@ -129,7 +129,7 @@ EMBED_DIMENSION = 1024
 # API) BEZ kontrol. Kontroly se zapracují až nad novým korpusem – popis
 # všech kontrol a proč jsou vypnuté: extrakce_kontroly.md.
 # Vypíná: klic_ma_oporu() v extrakci, kroky 4a/4b v pipeline.py
-# a kontrolu slovníku modelem (postav_slovnik.py --zkontroluj).
+# a kontrolu slovníku modelem (nerealizovane_kontroly/postav_slovnik.py --zkontroluj).
 # Data pak mají stav 'neovereno' – to je PRAVDA, ne chyba.
 KONTROLY_ZAPNUTE = False
 
@@ -187,17 +187,62 @@ SKUPINY_PACIENTU = {
 }
 
 
-def nacti_openai_klic(cesta: str | Path = "legacy/key.yaml") -> str:
-    """Načte klíč k OpenAI z key.yaml.
+# Klic k OpenAI: soubor key.yaml v KORENI projektu (je v .gitignore, do
+# gitu nesmi). Do 6. 10. 2026 lezel v legacy/key.yaml.
+OPENAI_KLIC_SOUBOR = Path("key.yaml")
+
+
+class ChybaKlice(RuntimeError):
+    """Klic k OpenAI chybi, ma spatny tvar, nebo ho OpenAI odmitlo."""
+
+
+def nacti_openai_klic(cesta: str | Path = OPENAI_KLIC_SOUBOR) -> str:
+    """Načte klíč k OpenAI z key.yaml. Když to nejde, ChybaKlice s návodem.
 
     Pozor: soubor je "key:sk-proj-..." BEZ mezery za dvojtečkou, takže to
     není validní YAML mapa – yaml.safe_load() vrátí jeden řetězec, ne dict.
     Proto se to parsuje ručně a snese obojí tvar.
+
+    Jestli klíč u OpenAI opravdu FUNGUJE, tady se nepozná – to ověřuje
+    over_openai_klic() jedním voláním, které nic nestojí.
     """
-    text = Path(cesta).read_text(encoding="utf-8").strip()
+    p = Path(cesta)
+    navod = (f"Vytvoř soubor {p} v kořeni projektu s jedním řádkem "
+             f"„key: sk-proj-…“ (je v .gitignore).")
+    if not p.exists():
+        raise ChybaKlice(f"Klíč k OpenAI nenalezen: soubor {p.resolve()} neexistuje. {navod}")
+    text = p.read_text(encoding="utf-8").strip()
     if ":" not in text:
-        raise ValueError(f"{cesta}: nečekaný tvar, chybí dvojtečka")
+        raise ChybaKlice(f"{p}: nečekaný tvar, chybí dvojtečka. {navod}")
     klic = text.split(":", 1)[1].strip().strip("\"'")
     if not klic.startswith("sk-"):
-        raise ValueError(f"{cesta}: za dvojtečkou není klíč OpenAI")
+        raise ChybaKlice(f"{p}: za dvojtečkou není klíč OpenAI (má začínat „sk-“). {navod}")
     return klic
+
+
+def over_openai_klic(klient, model: str | None = None) -> None:
+    """Ověří, že klíč u OpenAI FUNGUJE a že je dostupný model. ChybaKlice, když ne.
+
+    Jedno volání GET /v1/models/<model> – neúčtuje se. Pouští se na začátku
+    cloudového běhu, aby špatný klíč neselhal až po hodině přípravy dávek
+    (nebo hůř: aby běh potichu „doběhl" bez jediného požadavku).
+    """
+    import openai
+
+    model = model or OPENAI_MODEL
+    try:
+        klient.models.retrieve(model)
+    except openai.AuthenticationError as e:
+        raise ChybaKlice(f"OpenAI klíč odmítlo (401): neplatný nebo zrušený klíč v "
+                         f"{OPENAI_KLIC_SOUBOR}. [{e}]") from e
+    except openai.PermissionDeniedError as e:
+        raise ChybaKlice(f"OpenAI klíč nemá oprávnění (403) – projekt nebo model "
+                         f"{model} není pro klíč povolený. [{e}]") from e
+    except openai.NotFoundError as e:
+        raise ChybaKlice(f"Model {model} není pro tento klíč dostupný (404). [{e}]") from e
+    except openai.RateLimitError as e:
+        raise ChybaKlice(f"OpenAI odmítá požadavky (429) – vyčerpaný kredit nebo "
+                         f"limit účtu. [{e}]") from e
+    except openai.APIConnectionError as e:
+        raise ChybaKlice(f"K OpenAI se nejde připojit (síť, proxy) – klíč se "
+                         f"nepodařilo ověřit. [{e}]") from e

@@ -105,7 +105,7 @@ musí se mířit na DGX.
 
 ## OpenAI
 
-**Klíč je v `legacy/key.yaml`** a do tohohle souboru nepatří.
+**Klíč je v `key.yaml` v kořeni projektu** (v `.gitignore`) a do tohohle souboru nepatří.
 Načítá se přes `common.config.nacti_openai_klic()`.
 
 Pozor: `key.yaml` **není validní YAML mapa** — chybí mezera za dvojtečkou
