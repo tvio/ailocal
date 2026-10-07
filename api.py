@@ -27,7 +27,7 @@ from common import dotazy
 from common.config import PG_DSN, MODEL_ROUTER, MODEL_EMBED
 from common.hledani import hledej, seskup, Filtr
 from common.router import rozhodni, VSECHNY_SEKCE
-from common.ollama_client import priprav_modely
+from common.ollama_client import priprav_modely, stav_uzlu
 
 logger = logging.getLogger(__name__)
 
@@ -73,6 +73,10 @@ class StavAplikace(BaseModel):
     pripraveno: bool = Field(description="Jsou modely v pameti a lze hledat?")
     hlaska: str = Field(description="Co se prave deje, pro uzivatele")
     modely: dict[str, str] = Field(default_factory=dict)
+    uzly: list[dict] = Field(
+        default_factory=list,
+        description=("Stroje s Ollamou: dostupnost, kolik pozadavku na nich prave bezi "
+                     "(jen z tohoto procesu), prumerna odezva a modely v pameti"))
 
 
 _stav = {"pripraveno": False,
@@ -106,7 +110,7 @@ def stav() -> StavAplikace:
     """Frontend se ptá při startu a dokud `pripraveno` není `true`,
     ukazuje přesýpací hodiny s hláškou. Bez toho by první dotaz vypadal
     jako zaseknutá aplikace."""
-    return StavAplikace(**_stav)
+    return StavAplikace(**_stav, uzly=stav_uzlu())
 
 
 # ---------------------------------------------------------------------------
@@ -205,7 +209,7 @@ def _pdf(kod: str) -> Path | None:
     global _MAPA_SPC
     if _MAPA_SPC is None:
         try:
-            from naplni_db import mapa_kod_spc
+            from extrakce_4_db import mapa_kod_spc
             _MAPA_SPC = mapa_kod_spc()
         except Exception:
             _MAPA_SPC = {}

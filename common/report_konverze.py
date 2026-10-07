@@ -1,6 +1,6 @@
 """Report podezřelých SPC po konverzi -> data/spc/_report/podezrele.html.
 
-Volá se na KONCI KAŽDÉHO BĚHU konvertuj_serve.py (i po --prekontroluj),
+Volá se na KONCI KAŽDÉHO BĚHU extrakce_1_konverze.py (i po --prekontroluj),
 ať je po měsíčním běhu vidět, co prověřit. Skupiny: 4.8 nenalezena,
 nízké pokrytí, frekvence proti značkám, frekvence podle geometrie;
 v každé seřazeno od nejzávažnějšího. Odkazy na PDF (strana 4.8), md,

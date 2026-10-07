@@ -239,7 +239,12 @@ def _podminky(f: Filtr) -> tuple[str, dict]:
         kde.append("s.frekvence_rank <= %(frank)s")
         par["frank"] = f.frekvence_rank_max
     if f.pro_deti:
-        kde.append("l.pro_deti IS TRUE")
+        # pro_deti = SPC ma NEJAKE kladne detske davkovani. 320 SPC ho ma,
+        # a presto jim zakazy posunuly vek_od na 18 (TUSSIN, SONOVUE) -
+        # u dotazu „pro děti" bez veku pak vychazely leky „od 18 let"
+        # (7. 10. 2026). Neznamy vek (45 SPC „pro děti ano, věk neuveden")
+        # zustava.
+        kde.append("l.pro_deti IS TRUE AND (l.vek_od IS NULL OR l.vek_od < 18)")
     if f.vek is not None:
         kde.append("l.vek_od <= %(vek)s")
         par["vek"] = f.vek
@@ -308,9 +313,18 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     #     'spát'  0,486   'nemůžu spát'   0,587   -> 0,587
     # Puvodni veta se pridava JINAK NEZ slovnikove varianty - viz nize.
     puv = (puvodni_dotaz or "").strip()
+    # Vek uz vyresil FILTR - z puvodni vety musi pryc stejne jako z textu od
+    # routeru. Jinak veta „něco na kocovinu pro dospělé" vyhrala nad
+    # „kocovina" diky slovu „dospělé" a vratila „léčbu dospělých" (MULTIBIC,
+    # 7. 10. 2026); u detskych dotazu stejne tahla k radkum se slovem „děti".
+    if puv and (f.pro_deti or f.vek is not None or f.pro_dospele):
+        from common.vek import bez_veku
+        puv = bez_veku(puv) or puv
     ma_puvodni = bool(puv) and puv not in varianty
 
-    vektory = embed(varianty + ([puv] if ma_puvodni else []), model=MODEL_EMBED)
+    from common.config import HLEDANI_TIMEOUT_S
+    vektory = embed(varianty + ([puv] if ma_puvodni else []), model=MODEL_EMBED,
+                    timeout=HLEDANI_TIMEOUT_S)
 
     kde, par = _podminky(f)
     par.update({"dotaz": dotaz, "n": KANDIDATU})
@@ -416,20 +430,57 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     # Dva zebricky zvlast, spojene az v Pythonu - v SQL by to slo taky,
     # ale takhle je videt, ktere poradi kterou polozku vytahlo, a da se
     # to pouzit pri ladeni vah.
+    # CTENI SEKCE (konkretni lek + jedna obsahova sekce) potrebuje VSECHNY
+    # radky sekce; je jich malo, vybral je filtr na nazev. Viz niz.
+    obsahove = [s for s in (f.sekce or []) if s != "atributy"]
+    cteni_sekce = len(obsahove) == 1 and bool(f.nazev or f.kod_sukl)
+
+    # Z DB se vraci JEN KANDIDATI obou zebricku, ne vsechny radky po filtru.
+    #
+    # Do 7. 10. 2026 SQL vracelo vsechno a orezavalo se az v Pythonu. Na 32
+    # lecich to nevadilo; na korpusu dotaz bez filtru sekce („počasí dnes",
+    # router si neni jisty -> vsechny sekce) tahal 472 844 sirokych radku:
+    # 13 s, z toho samotny vypocet podobnosti v DB 1,3 s. Zbytek byl prenos
+    # a razeni v Pythonu. Totez NU napric trhem (350 tis. radku, 25 s).
+    #
+    # skore = uzka tabulka (id, cosine, fts) pres vsechny radky po filtru,
+    # vyber = top N podle podobnosti + top M podle fulltextu, a teprve
+    # k nim se dotahnou siroke sloupce. Pocet radku po filtru (pro hlasku
+    # „filtr nepustil nic" vs. „nic dost podobneho") se pocita v DB.
+    #
+    # Druhy klic razeni je FYZICKE PORADI radku v tabulce (ctid). Pri shodne
+    # podobnosti (desitky radku s cosine 1,000) drive rozhodovalo poradi,
+    # v jakem radky vratila DB - ctid ho zachovava, takze se vysledky proti
+    # stavu pred 7. 10. nemeni. Bez druheho klice by LIMIT mezi shodnymi
+    # vybiral pokazde jinak.
+    par["n_fts"] = KANDIDATU_FTS
+    omezeni = "" if cteni_sekce else """
+          AND k.id IN (
+              (SELECT id FROM skore ORDER BY cosine DESC, misto LIMIT %(n)s)
+              UNION
+              (SELECT id FROM skore WHERE fts > 0 ORDER BY fts DESC, misto LIMIT %(n_fts)s))"""
     sql = f"""
-        WITH zaklad AS (
-            SELECT s.id, s.kod_sukl, l.nazev, l.sila,
-                   l.na_predpis, l.hrazeno, l.ucinne_latky, l.atc,
-                   l.lekova_forma, s.strana_pdf, l.vek_od, l.pro_deti,
-                   s.sekce, s.obsah_text,
-                   s.frekvence, s.organovy_system, s.sekce_atributy,
+        WITH skore AS MATERIALIZED (
+            SELECT s.id, s.ctid AS misto,
                    {cosine_sql} AS cosine,
                    ts_rank_cd(s.search_fts, %(fts_dotaz)s::tsquery) AS fts
             FROM leciva_search s
             JOIN leciva l USING (kod_sukl)
             WHERE s.embedding IS NOT NULL {kde}
         )
-        SELECT * FROM zaklad
+        SELECT s.id, s.kod_sukl, l.nazev, l.sila,
+               l.na_predpis, l.hrazeno, l.ucinne_latky, l.atc,
+               l.lekova_forma, s.strana_pdf, l.vek_od, l.pro_deti,
+               s.sekce, s.obsah_text,
+               s.frekvence, s.organovy_system, s.sekce_atributy,
+               k.cosine, k.fts,
+               (k.misto::text::point)[0]::bigint * 100000
+                   + (k.misto::text::point)[1]::bigint AS misto,
+               (SELECT count(*) FROM skore) AS po_filtru
+        FROM skore k
+        JOIN leciva_search s ON s.id = k.id
+        JOIN leciva l ON l.kod_sukl = s.kod_sukl
+        WHERE TRUE {omezeni}
     """
 
     with psycopg.connect(dsn) as conn, conn.cursor() as cur:
@@ -439,10 +490,12 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
 
     if not radky:
         return Odpoved(dotaz, f, [], 0, prah)
+    po_filtru = radky[0]["po_filtru"]
 
     # Poradi v obou zebricich
-    dle_sem = sorted(radky, key=lambda r: -r["cosine"])[:KANDIDATU]
-    dle_fts = [r for r in sorted(radky, key=lambda r: -r["fts"]) if r["fts"] > 0][:KANDIDATU_FTS]
+    dle_sem = sorted(radky, key=lambda r: (-r["cosine"], r["misto"]))[:KANDIDATU]
+    dle_fts = [r for r in sorted(radky, key=lambda r: (-r["fts"], r["misto"]))
+               if r["fts"] > 0][:KANDIDATU_FTS]
 
     poradi_sem = {r["id"]: i + 1 for i, r in enumerate(dle_sem)}
     poradi_fts = {r["id"]: i + 1 for i, r in enumerate(dle_fts)}
@@ -464,7 +517,7 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
         dle_id = {r["id"]: r for r in radky}
         serazene = sorted(skore.items(), key=lambda kv: -kv[1])
         return _sestav(serazene, dle_id, poradi_sem, poradi_fts,
-                       dotaz, f, prah, limit, len(radky))
+                       dotaz, f, prah, limit, po_filtru)
 
     # CTENI SEKCE misto hledani v ni.
     # Kdyz uzivatel jmenuje KONKRETNI lek a KONKRETNI sekci ("davkovani
@@ -480,14 +533,12 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     # -> davkovani + atributy, 1. 10. 2026). Cteni sekce se pak nezaplo,
     # nejlepsi pasazi byla identita leku a na davkovani zbyla 2 mista
     # z 5. Lek uz vybral filtr na nazev, atributy jsou tu navic.
-    obsahove = [s for s in (f.sekce or []) if s != "atributy"]
-    if len(obsahove) == 1 and (f.nazev or f.kod_sukl) \
-            and any(r["sekce"] == obsahove[0] for r in radky):
+    if cteni_sekce and any(r["sekce"] == obsahove[0] for r in radky):
         radky = [r for r in radky if r["sekce"] == obsahove[0]]
         dle_id = {r["id"]: r for r in radky}
         serazene = [(r["id"], 0.0) for r in sorted(radky, key=lambda r: r["id"])]
         odp = _sestav(serazene, dle_id, poradi_sem, poradi_fts,
-                      dotaz, f, prah, limit, len(radky))
+                      dotaz, f, prah, limit, po_filtru)
         odp.cely_usek = True
         # Kdyz sekci zuzil jeste NEJAKY DALSI filtr, uz to CELA sekce
         # NENI a tvrdit to je zavadejici: "caste nezadouci ucinky
@@ -507,7 +558,7 @@ def hledej(dotaz: str, *, filtr: Filtr | None = None, limit: int = 20,
     dle_id = {r["id"]: r for r in radky}
     serazene = sorted(skore.items(), key=lambda kv: -kv[1])
     return _sestav(serazene, dle_id, poradi_sem, poradi_fts,
-                   dotaz, f, prah, limit, len(radky))
+                   dotaz, f, prah, limit, po_filtru)
 
 
 def _sestav(serazene, dle_id, poradi_sem, poradi_fts,

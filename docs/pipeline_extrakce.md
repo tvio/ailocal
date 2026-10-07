@@ -1,13 +1,15 @@
-# Jak funguje extrakce do JSON — stav k 29. 9. 2026
+# Jak funguje extrakce do JSON — stav k 6. 10. 2026
 
-Zmapováno z kódu, nic se neměnilo. Popisuje, co se **opravdu** děje,
-ne co je v plánu. Kde se kód a dokumentace rozcházejí, platí kód
-a rozpor je označený ⚠.
+Popisuje, co se **opravdu** děje. Zmapováno z kódu 29. 9., kapitoly 1, 3.1,
+3.4 a 5 přepsány 6. 10. po úklidu: extrakce jede v cloudu (gpt-6-luna,
+Batch API) nad celým korpusem `data/spc/`, stará cesta nad 32 léky
+(`data/leciva/`, qwen) je smazaná.
 
-> **Od 29. 9. jsou kontroly extrakce DOČASNĚ VYPNUTÉ**
-> (`config.KONTROLY_ZAPNUTE = False`). Týká se kroků 4a, 4b, kontroly
-> slovníku a `klic_ma_oporu`. Tenhle dokument popisuje kód se zapnutými
-> kontrolami. Co je vypnuté a co chybí: **`extrakce_kontroly.md`**.
+> **Kontroly extrakce NEBĚŽÍ** (`config.KONTROLY_ZAPNUTE = False`,
+> skripty v `nerealizovane_kontroly/`). Všechny sekce korpusu jsou ve stavu
+> `neovereno`. Co kontroly dělaly a co chybí:
+> **`nerealizovane_kontroly/kontroly_popis.md`**. Kapitola 5 je popisuje
+> jako návrh pro případ, že se k nim někdo vrátí.
 
 Obsah:
 
@@ -23,40 +25,40 @@ Obsah:
 
 ## 1. Celý řetěz na jedné obrazovce
 
+Seznam kroků je `extrakce_all.py` (`KROKY`), přehled skriptů
+`docs/pipeline_prehled.md`.
+
 ```
- PDF SPC
-   │  konvertuj_serve.py        Docling Serve (DGX) → spc.md, strany.json, kontrola.json
-   ▼
- spc.md + spc.pdf
-   │  extrahuj_sekce.py         regexy, BEZ modelu → sekce/<sekce>.md (+ _orez.md k nahlédnutí)
+ API SÚKL, EMA
+   │  extrakce_1_konverze.py   seznam léčiv, inventář SPC, stažení, Docling Serve (DGX)
+   ▼                           → spc.pdf, spc.md, strany.json, kontrola.json
+ data/spc/<identita>/
+   │  extrakce_2_sekce.py      regexy, BEZ modelu → sekce/<sekce>.md (+ _orez.md k nahlédnutí)
    ▼
  sekce/indikace.md, davkovani.md, kontraindikace.md, nezadouci_ucinky.md
-   │  extrahuj_json.py          ořez na jádro → PROMPT → qwen3.5:122b → dopočty
-   │                            JEDNÍM voláním vznikne doslovné + laické + klíč
+   │  extrakce_3_json.py       ořez na jádro → PROMPT → gpt-6-luna (Batch) → dopočty
+   │                           JEDNÍM voláním vznikne doslovné + laické + klíč
+   │                           (--local: totéž přes Ollamu, jeden lék / malá dávka)
    ▼
  json/<sekce>.json + json/_stav.json            stav „neovereno"
-   │  ocisti_json.py            číselníky, deduplikace, sjednocení klíče      BEZ modelu
-   │  zkontroluj_json.py        doslovná shoda se zdrojem → „ok"              BEZ modelu
-   │  zkontroluj_modelem.py     gemma4:26b, jen sekce, které nejsou „ok"      model
-   │  postav_slovnik.py         číselník odborný → laický (+ kontrola gemmou) model
-   │  rozdel_vycty.py           rozdělí výčty v indikacích (qwen)             model, MIMO pipeline.py
-   ▼
- json/*.json (upravené na místě)
-   │  naplni_db.py --znovu      Postgres: leciva, extrakty, extrakce_stav, leciva_search
-   │  vytvor_embeddingy.py      bge-m3, dva vektory na řádek (text + klíč)
-   │  evaluate.py
+   │  extrakce_4_db.py --korpus   Postgres: leciva, extrakty, extrakce_stav, leciva_search
+   │                              + věk použití (vek_od, pro_deti, jen_deti) bez modelu
+   │  extrakce_5_embeddingy.py    bge-m3, dva vektory na řádek (text + klíč)
+   │  extrakce_6_rejstrik.py      data/leky – složka SPC podle názvu a kódu
+   │  hledani_evaluace.py
    ▼
  hledání
 ```
 
 **Důležité pro orientaci:**
 
-- Všechno od `extrahuj_json.py` dál čte **jen `data/leciva/`, tedy 32 léčiv**.
-  Celý korpus (`data/spc/`, 5 880 SPC) má zatím hotové jen sekce.
-- Model se v řetězu volá na **čtyřech** místech: extrakce (qwen), kontrola
-  (gemma), kontrola slovníku (gemma), rozdělení výčtů (qwen).
-- Extrakce **nemá cloudovou cestu.** OpenAI umí zatím jen
-  `zkontroluj_modelem.py --model gpt-…` a benchmarky.
+- Model se v řetězu volá na **jednom** místě: extrakce (luna). Normalizace
+  na číselníky (frekvence, MedDRA, skupina pacientů, ruční číselník pojmů)
+  jsou deterministické a dělají se hned při zápisu JSON.
+- **Mezi extrakcí a DB není žádná kontrola.** Dřívější kroky 3b, 4a, 4b, 5
+  a 8b (kap. 5) nad korpusem neexistují.
+- Extrakty a hledací řádky se nahrávají jednou za SPC, u zástupce
+  (nejmenší kód SÚKL).
 
 ---
 
@@ -65,8 +67,7 @@ Obsah:
 Tohle už je hotové i pro celý korpus. Pro pochopení extrakce je ale
 potřeba vědět, co přesně model dostane.
 
-**Soubor:** `data/spc/<identita>/sekce/<sekce>.md` (pro 32 léčiv
-`data/leciva/<kód>_<NÁZEV>/sekce/`). Vyrábí ho `extrahuj_sekce.py`
+**Soubor:** `data/spc/<identita>/sekce/<sekce>.md` . Vyrábí ho `extrakce_2_sekce.py`
 přes `common/sekce.py: vytahni_vsechny()`.
 
 ### Hledání sekce
@@ -125,31 +126,40 @@ znaky nesníží (jen přeformátuje), viz níže.
 
 Dva soubory:
 
-- `extrahuj_json.py` – smyčka přes léčiva a sekce, stav, výpis,
-- `common/extrakce.py` – prompty, volání modelu a všechno kolem odpovědi.
+- `extrakce_3_json.py` – fronta požadavků (SPC × sekce), odeslání, stav, report,
+- `common/extrakce.py` – prompty, tělo požadavku a všechno kolem odpovědi.
 
-### 3.1 `extrahuj_json.py` – obal
+### 3.1 `extrakce_3_json.py` – runner
 
 ```
-uv run python extrahuj_json.py --vse [--sekce …] [--model …] [--znovu]
-uv run python extrahuj_json.py --kody 0254048
+uv run python extrakce_3_json.py --beh                    # cloud, Batch API, naváže sám
+uv run python extrakce_3_json.py --stav                   # souhrn + report.md
+uv run python extrakce_3_json.py --znovu-chybne --beh     # chyby zpět do fronty
+uv run python extrakce_3_json.py --local --kody 0260480   # lokálně přes Ollamu, jeden lék
 ```
 
-Pro každé léčivo v `data/leciva/` a každou ze 4 sekcí:
+Stav je v `data/spc/_extrakce/stav.sqlite`, 1 řádek = 1 SPC × 1 sekce:
+`cekajici` → `odeslano` → `hotovo` | `chyba`; `bez_sekce` = sekce v SPC není.
 
-1. **Když `json/<sekce>.json` existuje a není `--znovu` → přeskočit.**
-   O tom, co je hotové, rozhoduje jen existence souboru. Stav se nečte.
-2. Když chybí `sekce/<sekce>.md` → stav `chybi_v_dokumentu`, žádné volání.
-3. Jinak se načte **PLNÁ sekce** (ne `_orez.md`) a zavolá
-   `extrahuj_sekci(sekce, text, model=MODEL_SEKCE[sekce])`.
-4. Když jsou nějaké položky → zapíše `json/<sekce>.json`.
-   **Když je výsledek prázdný, soubor se NEzapíše.**
-5. Do stavu se zapíše `{stav, duvod, polozek, model, cas_s}`, při
-   chybě i `surova_odpoved` (prvních 400 znaků).
-6. **`_stav.json` se zapisuje až po všech 4 sekcích daného léčiva.**
-
-Model je pro všechny sekce `qwen3.5:122b` (`config.MODEL_SEKCE`).
-Rozdělení podle sekce v kódu zůstalo, ale všude je stejný model.
+1. **Inventář:** pro každé SPC z inventáře konverze a každou ze 4 sekcí
+   založí požadavek. Když chybí `sekce/<sekce>.md` → `bez_sekce`, do
+   `_stav.json` jde `chybi_v_dokumentu`, nic se neposílá.
+2. **Cloud (`--beh`):** požadavky se balí do dávek JSONL (každý řádek nese
+   celý vlastní prompt), plní se podle limitu tokenů ve frontě OpenAI,
+   dávka dobíhá až 24 h. Před startem se ověří klíč (`key.yaml`) a hlídá
+   se rozpočtový strop `config.CLOUD_STROP_USD`. Popis API:
+   `docs/pipeline_batch_openai.md`.
+3. **Lokálně (`--local`):** stejná fronta, jedna sekce po druhé přes
+   Ollamu (`--model`, výchozí `config.MODEL_HLAVNI`); jen `--kody` nebo
+   `--limit` požadavků.
+4. **Zápis výsledku** je pro obě cesty jedna funkce (`uloz_vysledek`):
+   když jsou položky → `json/<sekce>.json`; **prázdný výsledek soubor
+   nezapíše**. Do `_stav.json` jde `{stav, duvod, polozek, model, tokeny}`,
+   u lokální cesty navíc `zpusob: local`.
+5. **Opakování:** chybný požadavek jde do fronty znovu (nejvýš 3 pokusy):
+   2. pokus s teplotou 0,4 bez seedu, 3. pokus s vynuceným JSON schématem.
+   U dávkování je schéma vždy (model se bez něj cyklil ve ~3 %).
+6. `report.md` vypíše všechny chyby podle ID.
 
 ### 3.2 Předzpracování textu – `orizni_na_jadro()`
 
@@ -223,17 +233,29 @@ Co se po modelu chce v jednotlivých sekcích:
 **Laický tvar i klíč tedy vznikají v TOMTÉŽ volání jako doslovná
 extrakce.** Samostatný krok „zjednodušení" v kódu není.
 
-### 3.4 Volání modelu – `ollama_client.chat()`
+### 3.4 Volání modelu
+
+**Cloud** – tělo požadavku staví `extrakce.telo_cloud()`, stejné pro sync
+i Batch:
 
 | parametr | hodnota | dopad |
 |---|---|---|
-| endpoint | `POST /api/chat`, první dostupná z `10.6.38.10:11434`, `127.0.0.1:11434` | adresy jsou natvrdo v `ollama_client.KANDIDATI` |
-| `format` | `"json"` | Ollama vynutí JSON, ale qwen i tak občas vrátí ```` ```json ```` ohrádku |
+| model | `gpt-6-luna` (`config.OPENAI_MODEL`), jiný funkce odmítne | peníze |
+| `reasoning_effort` | `"none"` | bez toho 4–21× dražší, kvalita stejná |
+| `temperature`, `seed` | 0 a 42; při opakování 0,4 bez seedu | deterministický první pokus |
+| `response_format` | `json_object`; u dávkování a od 3. pokusu JSON schéma (strict) | proti vynechanému klíči a zacyklení |
+| `max_completion_tokens` | 40 000 | strop proti zacyklení (nejdelší legitimní výstup měl 29 860) |
+
+**Lokálně** (`--local`) – `ollama_client.chat()`:
+
+| parametr | hodnota | dopad |
+|---|---|---|
+| endpoint | `POST /api/chat`, stroj vybere `ollama_client.vyber_uzel()` ze `config.OLLAMA_UZLY` | při výpadku zkusí další stroj |
+| `format` | `"json"` | JSON vynucen, schéma ne; qwen občas vrátí ```` ```json ```` ohrádku |
 | `think` | `false` + `/nothink` v system promptu | vypnuté uvažování |
+| `temperature`, `seed`, `num_predict` | 0, 42, 40 000 (od 6. 10.) | jako cloud, kde to jde |
 | `keep_alive` | `2h` | model se neodloží z paměti |
-| timeout | 2 400 s | dlouhá 4.8 dřív padala na 600 s |
-| `num_ctx` | **nenastavuje se**, platí serverové `OLLAMA_CONTEXT_LENGTH` | nejít pod 16 384, Ollama delší prompt tiše usekne |
-| **`temperature`, `seed`** | **nenastavují se** | výchozí vzorkování modelu, tedy **nedeterministický výstup** – odtud nesmysly, které při druhém běhu zmizí (poznatky 23. 9.) |
+| `num_ctx` | nenastavuje se, platí serverové `OLLAMA_CONTEXT_LENGTH` | nejít pod 16 384, Ollama delší prompt tiše usekne |
 
 ### 3.5 Zpracování odpovědi – `_jeden_pokus()`
 
@@ -301,7 +323,7 @@ Tohle je jádro úkolu 2 v `todo.md`, proto samostatně.
 |---|---|---|---|
 | `laicky` / `ucinek_laicky` | ind., kontraind., NÚ | qwen, **v témže volání jako extrakce** | slovník (krok 3.6 #5 a znovu `ocisti_json.py`); `rozdel_vycty.py` (qwen napíše nový) |
 | `klic` | ind., kontraind. | qwen, v témže volání | zahodí se bez opory (3.6 #2); `ocisti_json.py` ho sjednotí mezi položkami se stejným laickým textem |
-| klíč dávkování | dávkování | není z modelu – `naplni_db.py` použije `pacient` | – |
+| klíč dávkování | dávkování | není z modelu – `extrakce_4_db.py` použije `pacient` | – |
 | klíč NÚ | NÚ | **nevzniká vůbec** | – |
 
 ### Co je dnes ověřuje
@@ -335,10 +357,16 @@ Tohle je jádro úkolu 2 v `todo.md`, proto samostatně.
 
 ---
 
-## 5. Navazující kroky 3b až 12
+## 5. Navazující kroky
 
-Všechny přepisují `json/*.json` a `_stav.json` **na místě**. Mezistavy
-se neverzují.
+**Dnes za extrakcí běží jen kroky 4 a 5 pipeline** (`extrakce_4_db.py`,
+`extrakce_5_embeddingy.py`) – popsané na konci kapitoly.
+
+Podkapitoly 3b, 4a, 4b, 5 a 8b popisují kroky **staré cesty nad 32 léky**.
+Nad korpusem neběží: skripty 3b–5 jsou v `nerealizovane_kontroly/`,
+`rozdel_vycty.py` je smazaný (dělení výčtů dělá prompt indikací). Zůstávají
+tu jako popis toho, co kontroly dělaly; přepisovaly `json/*.json`
+a `_stav.json` na místě.
 
 ### 3b `ocisti_json.py` — bez modelu
 
@@ -438,22 +466,23 @@ uv run python rozdel_vycty.py [--zapis]
   doslovné není. Klíč zůstane z původní položky, tedy u všech dílů stejný.
 - V korpusu 32 léčiv: 3 položky → 15.
 
-### 11 `naplni_db.py` — bez modelu
+### Krok 4 `extrakce_4_db.py` — bez modelu
 
 ```
-uv run python naplni_db.py --znovu        # --znovu POVINNĚ
+uv run python extrakce_4_db.py --korpus               # vše od nuly (~40 min)
+uv run python extrakce_4_db.py --obnov-sekci indikace # jen jedna sekce
+uv run python extrakce_4_db.py --jen-vek              # jen přepočet věku
 ```
 
-- Čte `data/leciva/<kód>_<NÁZEV>/api.json` (relační data). Pro korpus je
-  potřeba přepnout na `data/detaily_leciv/` a mapu kód → SPC.
-- `--znovu` = `TRUNCATE leciva CASCADE`. Bez něj skript odmítne běžet
-  (jinak by data tiše zdvojil).
+- Čte `data/detaily_leciv/<kód>.json` (relační data) a mapu kód → SPC
+  z `data/spc/_stav.sqlite`.
+- `--korpus` = `TRUNCATE leciva CASCADE` (`vyprazdni_korpus()`); hledací
+  slovník `slovnik_dotazu` nechá a pojistka to ověří.
 - Plní tabulky:
-  - `leciva`: 1 řádek na kód,
-  - `slovnik_pojmu`,
-  - `extrakty`: celý JSON sekce + plný i ořezaný zdroj,
+  - `leciva`: 1 řádek na kód (sloupce `spc`, `zastupce`, věk),
+  - `extrakty`: celý JSON sekce + plný i ořezaný zdroj – jen u zástupce,
   - `extrakce_stav`,
-  - `leciva_search`: 1 řádek na položku + 1 řádek `atributy` na lék.
+  - `leciva_search`: 1 řádek na položku + 1 řádek `atributy` na SPC.
 - **Co jde do hledaného textu `obsah_text`:**
   - NÚ, indikace, kontraindikace: `laicky (odborne)`. Odborný tvar se
     připojí, jen když je kratší než 60 znaků, jinak by ředil vektor.
@@ -465,21 +494,17 @@ uv run python naplni_db.py --znovu        # --znovu POVINNĚ
   `--jen-ok` pustí jen stav `ok`.
 - `strana_pdf` ze `strany.json` (první nadpis, který začíná číslem bodu).
 
-### 12 `vytvor_embeddingy.py` — bge-m3
+### Krok 5 `extrakce_5_embeddingy.py` — bge-m3
 
 Dva vektory na řádek: `embedding` z `obsah_text` a `embedding_klic`
 z `klic` (jen když klíč je). Hledání bere lepší z obou. Na konci zkontroluje,
 že žádný řádek nezůstal bez vektoru. Loguje do souboru i DB.
 
-### Pořadí – tři zdroje, tři různé odpovědi ⚠
+### Pořadí
 
-| zdroj | pořadí |
-|---|---|
-| `pipeline.py` `KROKY` | extrakce → ocisteni → kontrola1 → kontrola2 → slovnik *(konec; DB, rozdělení a embeddingy chybí)* |
-| `skripty.md` / `zadani.md` | … → slovnik → **rozdel_vycty** → naplni_db → embeddingy |
-| `CLAUDE.md` „po změně dat" | ocisti_json → naplni_db → embeddingy → evaluate *(bez kontrol)* |
-
-Pro měsíční job se musí sjednotit do jednoho seznamu. Viz nález N5.
+Jediný zdroj pořadí je `extrakce_all.py` (`KROKY`): konverze → sekce →
+extrakce → db → embeddingy → rejstřík → evaluace. Dřívější rozpor tří
+zdrojů (nález N5) je tím vyřešený.
 
 ---
 
@@ -528,6 +553,11 @@ Všechny nálezy jsou ověřené v kódu. Neznamenají, že je něco rozbité
 na 32 léčivech (tam se to prošlo očima). Znamenají, že na 5 880 SPC
 to nikdo očima neprojde.
 
+**Stav k 6. 10.:** N5 (pořadí kroků) a N11 (extrakce do cloudu) jsou
+vyřešené; části „pro úkol 3 a 4" popisují rozhodování z 29. 9. Nálezy ke
+kontrolám laického tvaru a klíče (N1–N4, N8) **platí dál** – nad korpusem
+je nic neověřuje.
+
 ### Pro úkol 2 (kontroly laického tvaru a klíče)
 
 - **N1 – Laický tvar dlouhých indikací a kontraindikací neověřuje žádný
@@ -547,7 +577,7 @@ to nikdo očima neprojde.
 
 - **N5 – Posun indexů.** `chybne_indexy` z kontroly 4b jsou pozice
   v seznamu. `ocisti_json.py` (deduplikace) a `rozdel_vycty.py`
-  (vkládání dílů) po kontrole seznam mění, a `naplni_db.py` pak vyřadí
+  (vkládání dílů) po kontrole seznam mění, a `extrakce_4_db.py` pak vyřadí
   **jiné** položky, než označila kontrola. Hrozí to při postupu z
   CLAUDE.md „po změně dat" (ocisti → naplni_db bez nové kontroly)
   a vždy u `rozdel_vycty.py`. Řešení: stabilní ID položky místo indexu,
@@ -556,7 +586,7 @@ to nikdo očima neprojde.
   `json/<sekce>.json`. `_stav.json` se zapisuje až po všech 4 sekcích
   léčiva. Pád uprostřed = JSON bez stavu a příští běh sekci přeskočí se
   stavem „?". Prázdný výsledek soubor nezapíše, takže se pokaždé zkouší
-  znovu. Pro korpus: stav po sekci v SQLite jako u `konvertuj_serve.py`.
+  znovu. Pro korpus: stav po sekci v SQLite jako u `extrakce_1_konverze.py`.
 - **N7 – Nedeterminismus.** Nenastavuje se `temperature` ani `seed`.
   Lokálně lze dát `options={"temperature": 0}`. U luny je potřeba ověřit,
   co model podporuje. Opakovatelnost se dá změřit dvěma běhy nad týmž

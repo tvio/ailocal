@@ -22,17 +22,17 @@ Radek sekce='atributy':
     lek najit podle jmena, sily nebo kodu SUKL. Ma extrakt_id = NULL
     a kontext_text = NULL (identita uz je v obsah_text, bylo by to dvakrat).
 
-Embeddingy tenhle skript NEPOCITA - to dela vytvor_embeddingy.py (krok 5).
+Embeddingy tenhle skript NEPOCITA - to dela extrakce_5_embeddingy.py (krok 5).
 Hledaci slovnik (tabulka slovnik_dotazu) se NEMAZE - viz vyprazdni_korpus().
 
 Do 6. 10. 2026 umel skript i puvodni korpus 32 leciv (data/leciva, prepinace
 --znovu a --kody); ta cesta je smazana.
 
 Pouziti:
-  uv run python naplni_db.py --korpus                  # cely korpus od nuly (~40 min)
-  uv run python naplni_db.py --korpus --limit-spc 50   # zkouska na 50 SPC
-  uv run python naplni_db.py --obnov-sekci davkovani   # jen jedna sekce, ostatni nechat
-  uv run python naplni_db.py --jen-vek                 # jen prepocitat vek pouziti
+  uv run python extrakce_4_db.py --korpus                  # cely korpus od nuly (~40 min)
+  uv run python extrakce_4_db.py --korpus --limit-spc 50   # zkouska na 50 SPC
+  uv run python extrakce_4_db.py --obnov-sekci davkovani   # jen jedna sekce, ostatni nechat
+  uv run python extrakce_4_db.py --jen-vek                 # jen prepocitat vek pouziti
 """
 
 import io
@@ -212,7 +212,7 @@ def klic_hledani(sekce: str, p) -> str | None:
 def sjednot_klice() -> int:
     """Pravidlo klic_hledani() na STAVAJICI DB, bez preplneni.
 
-    Zmenenym radkum se smaze embedding_klic; vytvor_embeddingy.py ho
+    Zmenenym radkum se smaze embedding_klic; extrakce_5_embeddingy.py ho
     dopocita (rezim pro chybejici klice). search_fts je generovany sloupec,
     prepocita se sam.
     """
@@ -233,7 +233,7 @@ def sjednot_klice() -> int:
         n = cur.rowcount
         conn.commit()
     print(f"Sjednoceno {n} klicu (klic = laicky tvar 1-{KLIC_MAX_SLOV} slova). "
-          f"Ted vytvor_embeddingy.py (dopocita vektory klicu).")
+          f"Ted extrakce_5_embeddingy.py (dopocita vektory klicu).")
     return 0
 
 
@@ -503,7 +503,7 @@ def obnov_sekci(sekce: str, jen_ok: bool) -> int:
     Proc: po preextrahovani jedne sekce (30.9.: davkovani bez orezu) by
     --korpus smazal vse a embeddingy celych 451 tis. radku by se pocitaly
     znovu (~2 h). Takhle se smazou a znovu vlozi jen radky te sekce
-    a vytvor_embeddingy.py dopocita jen je (radky bez vektoru).
+    a extrakce_5_embeddingy.py dopocita jen je (radky bez vektoru).
     """
     import time
     t0 = time.perf_counter()
@@ -528,7 +528,7 @@ def obnov_sekci(sekce: str, jen_ok: bool) -> int:
         aktualizuj_vek(cur)
         conn.commit()
     print(f"Nahrano {poc['radky_sekci']} radku sekce {sekce} za "
-          f"{time.perf_counter() - t0:.0f} s. Ted vytvor_embeddingy.py (jen chybejici).")
+          f"{time.perf_counter() - t0:.0f} s. Ted extrakce_5_embeddingy.py (jen chybejici).")
     return 0
 
 
@@ -597,7 +597,7 @@ def main_korpus(jen_ok: bool, limit_spc: int | None) -> int:
         if k.startswith("stav_"):
             print(f"    {k[5:]:24} {v}")
     print(f"\nCas {time.perf_counter() - t0:.0f} s. Embeddingy zatim NEJSOU - "
-          f"spust vytvor_embeddingy.py")
+          f"spust extrakce_5_embeddingy.py")
     return 0
 
 def main() -> int:

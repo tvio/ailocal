@@ -32,7 +32,7 @@ CESTA = Path("slovnik_pojmu.json")
 # slovnik z toho, co je v datech, takze bez tohohle oddeleni by rucni oprava
 # prezila jen pri urcitem poradi kroku - a to je past, na kterou se neda
 # spolehat. Sem se zapisuje reseni polozek z todo.md.
-CESTA_RUCNI = Path("slovnik_rucni.json")
+CESTA_RUCNI = Path(__file__).parent / "data" / "slovnik_rucni.json"
 
 _cache: dict[str, str] | None = None
 

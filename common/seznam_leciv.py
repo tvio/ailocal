@@ -23,9 +23,9 @@ Výstup (formát jako dřívější postav_pool, navíc `hrazeno`):
   data/pool_leciv.json        seznam léčiv (výběr polí + hrazeno)
   data/pool_leciv.meta.json   vydání, ze kterého seznam je
   data/detaily_leciv/<kod>.json  PLNÝ detail kódů v rozsahu (obchodované +
-                              platný stav) – pro naplni_db (api_json, obal…)
-  data/hrazene_scau.json      kódy hrazených (scau) – pro naplni_db
-  data/ciselnik_latky.json    číselník léčivých látek – pro naplni_db
+                              platný stav) – pro extrakce_4_db.py (api_json, obal…)
+  data/hrazene_scau.json      kódy hrazených (scau) – pro extrakce_4_db.py
+  data/ciselnik_latky.json    číselník léčivých látek – pro extrakce_4_db.py
 
 Atributy pro aplikaci: výdej Rx/OTC = zpusobVydejeKod (detail),
 hrazeno = kód v seznamu scau, stav registrace, obchodovanost = jeDodavka.
@@ -54,13 +54,13 @@ PLATNE_STAVY = {"R", "B", "C", "F", "I", "K", "M", "Y"}
 
 POOL = DATA_DIR / "pool_leciv.json"
 META = DATA_DIR / "pool_leciv.meta.json"
-# Plný JSON detailu kódů v rozsahu (obchodované + platný stav) – naplni_db.py
+# Plný JSON detailu kódů v rozsahu (obchodované + platný stav) – extrakce_4_db.py
 # z něj bere obalKod, indikacniSkupinaKod a celý api_json. Pool drží jen výběr.
 DETAILY = DATA_DIR / "detaily_leciv"
-# Cache hrazených pro naplni_db.nacti_hrazene() – obnovuje se se seznamem,
+# Cache hrazených pro extrakce_4_db.nacti_hrazene() – obnovuje se se seznamem,
 # jinak zůstala z 24. 8. (hrazenost = kód je v seznamu scau, ne atribut detailu).
 HRAZENE = DATA_DIR / "hrazene_scau.json"
-# Číselník léčivých látek (kód -> název) pro naplni_db.nacti_latky() – bez
+# Číselník léčivých látek (kód -> název) pro extrakce_4_db.nacti_latky() – bez
 # obnovy by nová látka byla v DB jen jako číslo (cache byla z 20. 8.).
 LATKY = DATA_DIR / "ciselnik_latky.json"
 VLAKEN = 16

@@ -12,7 +12,7 @@ Format radku (viz todo.md):
 Vysledek je vzdy ve tvaru hotovo/celkem, at je videt uspesnost, ne jen
 "hotovo" - 4/6 a 6/6 jsou dve velmi ruzne veci.
 
-Stavy se pouzivaji STEJNE jako v stavy.md, nezavadi se druhy slovnik.
+Stavy se pouzivaji STEJNE jako v docs/pipeline_stavy.md, nezavadi se druhy slovnik.
 
 Pouziti:
     log = LogBehu("krok3")
@@ -39,7 +39,7 @@ CREATE TABLE IF NOT EXISTS beh_log (
     lecivo      TEXT,               -- adresar leciva, NULL u celkovych zaznamu
     sekce       TEXT,
     akce        TEXT NOT NULL,      -- extrakce | kontrola | embedding | ...
-    stav        TEXT NOT NULL,      -- slovnik ze stavy.md
+    stav        TEXT NOT NULL,      -- slovnik ze docs/pipeline_stavy.md
     hotovo      INTEGER,
     celkem      INTEGER,
     trvani_s    NUMERIC,

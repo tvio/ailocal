@@ -1,21 +1,22 @@
-# Věk pacienta – jak funguje filtr „pro děti" (stav k 1. 10. 2026)
+# Věk pacienta – filtry „pro děti", „dítě X let" a „pro dospělé"
 
-Cíl: dotaz laika „lék na reflux pro děti" nebo „něco na horečku pro
-tříleté dítě" má vrátit **jen léky, které SPC pro daný věk výslovně
-připouští** – i když to neříká indikace.
+Stav k 7. 10. 2026. Cíl: dotaz laika „lék na reflux pro děti" nebo „něco
+na horečku pro tříleté dítě" má vrátit **jen léky, které SPC pro daný věk
+výslovně připouští** – i když to neříká indikace. Opačným směrem „pro
+dospělé" vyřadí léky pro menší děti (kap. 2b).
 
 Celé je to **bez modelu**: deterministická pravidla nad už vyextrahovanými
 daty (`common/vek.py`). Model ani router o věku nerozhoduje.
 
 ```
- SPC 4.1 / 4.2 / 4.3 (json)          dotaz uživatele
-          │                                  │
-   vek_spc()  (naplni_db.py)          vek_z_dotazu()  (router.py)
-          │                                  │
- leciva.vek_od / pro_deti            Filtr.pro_deti / Filtr.vek
-          └──────────────┬───────────────────┘
-                 hledani.py: WHERE l.pro_deti IS TRUE
-                                   AND l.vek_od <= věk
+ SPC 4.1 / 4.2 / 4.3 (json)             dotaz uživatele
+          │                                     │
+   vek_spc()  (extrakce_4_db.py)        vek_z_dotazu(), dospeli_z_dotazu()
+          │                                     │      (router.py: _pridej_vek)
+ leciva.vek_od / pro_deti / jen_deti    Filtr.pro_deti / vek / pro_dospele
+          └──────────────┬──────────────────────┘
+                 hledani.py:  děti     WHERE l.pro_deti IS TRUE AND l.vek_od <= věk
+                              dospělí  WHERE l.jen_deti IS NOT TRUE AND (l.vek_od >= 12 OR …)
 ```
 
 ---
@@ -37,11 +38,12 @@ daty (`common/vek.py`). Model ani router o věku nerozhoduje.
 |---|---|---|
 | `vek_od` | od kolika let (jen z URČITÉHO údaje) | číslo v letech (0,25 = 3 měsíce), `NULL` = nejde určit |
 | `pro_deti` | SPC uvádí kladné dávkování pro nějakou dětskou skupinu | `true` / `false` / `NULL` = nevím |
-| `vek_duvody` | ze kterých řádků SPC to plyne (audit) | seznam textů „4.2 ANO od 1: …", „4.3 NE do 6: …" |
+| `jen_deti` | přípravek určený JEN dětem (název „PRO DĚTI / JUNIOR / BABY…" nebo v 4.2 jen dětské dávky) – pro filtr „pro dospělé", kap. 2b | `true` / `false` |
+| `vek_duvody` | ze kterých řádků SPC to plyne (audit) | seznam textů „4.2 ANO od 1: …", „4.3 NE do 6: …", „JEN PRO DĚTI (…)" |
 
 Uloženo u **všech kódů** SPC (ne jen u zástupce). Počítá se při každém
-plnění DB (`naplni_db.py --korpus`, `--obnov-sekci`), samostatně
-`naplni_db.py --jen-vek`.
+plnění DB (`extrakce_4_db.py --korpus`, `--obnov-sekci`), samostatně
+`extrakce_4_db.py --jen-vek`.
 
 ### Pravidla (pořadí odpovídá kódu)
 
@@ -74,19 +76,24 @@ plnění DB (`naplni_db.py --korpus`, `--obnov-sekci`), samostatně
 při dětském dotazu **nezobrazí**. Horší je doporučit dítěti nevhodný lék
 než lék neukázat.
 
-### Čísla (korpus, zástupci SPC)
+### Čísla (korpus, zástupci SPC, 7. 10. 2026)
 
 | `vek_od` | SPC |
 |---|---|
-| < 1 rok (od narození / měsíců) | 404 |
-| 1–11 let | 1 136 |
-| 12–17 let | 651 |
-| 18+ (jen dospělí) | 2 917 |
-| nejde určit | 772 |
+| < 1 rok (od narození / měsíců) | 416 |
+| 1–11 let | 1 157 |
+| 12–17 let | 656 |
+| 18+ (jen dospělí) | 2 907 |
+| nejde určit | 744 |
 
-Kontrolní léky: VIBROCIL kapky 1 / sprej 6, GAVISCON 12, PARALEN 500 6 /
-125 mg 3, NOVALGIN tbl 15 / inj 0,25, IBALGIN BABY 0,25, ASPIRIN 500 12,
-XARELTO 18.
+Věk je určený u 87 % SPC (5 136 z 5 880). `pro_deti`: ano 2 594, ne 2 729,
+nevím 557. `jen_deti`: 75 SPC.
+
+Kontrolní léky: VIBROCIL kapky 1 / sprej 6, PARALEN 500 mg 6 / 125 mg 3,
+NOVALGIN tbl 15 / inj 0,25, IBALGIN BABY 0,25, ASPIRIN 500 12, XARELTO 18.
+
+**Známá chyba:** COLDREX HORKÝ NÁPOJ CITRON S MEDEM má 18, správně 15 –
+viz mezery (zákaz podmíněný hmotností).
 
 ---
 
@@ -146,7 +153,8 @@ nastaví jen `pro_deti` bez věku.
 | mám bolesti 3 roky | – | – | **žádný** (číslo bez dítěte) |
 | bolest kloubů pro seniory | – | – | **žádný** (viz mezery) |
 | lék pro babičku 80 let | – | – | **žádný** (věk ≥ 18 se ignoruje) |
-| lék pro dospělého | – | – | **žádný** |
+| lék pro dospělého, horečka pro dospělé | – | – | filtr **pro dospělé** (kap. 2b) |
+| lék na kašel pro děti i dospělé | ano | – | jen dětský filtr (obojí naráz splnit nejde) |
 
 ### Co dál router udělá
 
@@ -156,14 +164,21 @@ nastaví jen `pro_deti` bez věku.
    význam (CLAUDE.md: každé slovo navíc stojí 0,03–0,05).
 3. Popis filtru, který vidí uživatel: „pro děti (jen léky, jejichž SPC
    uvádí dávkování pro děti)" / „pro dítě 3 let (jen léky, jejichž SPC
-   tento věk výslovně připouští)".
+   tento věk výslovně připouští)" / „pro dospělé (léky od 12 let výš
+   nebo bez údaje o věku; bez dětských přípravků)".
 
 ### Filtr v hledání (`common/hledani.py`)
 
 ```sql
-AND l.pro_deti IS TRUE          -- vždy, když dotaz zmiňuje dítě
-AND l.vek_od <= %(vek)s         -- jen když je známý věk
+AND l.pro_deti IS TRUE                          -- vždy, když dotaz zmiňuje dítě
+AND (l.vek_od IS NULL OR l.vek_od < 18)         -- ne léky až od 18 let (od 7. 10.)
+AND l.vek_od <= %(vek)s                         -- jen když je známý věk
 ```
+
+Druhý řádek je pojistka proti nesouladu v datech: 320 SPC má `pro_deti`
+ano (nějaké kladné dětské dávkování) a zároveň `vek_od` 18, protože
+hranici posunuly zákazy. „Lék na kašel pro děti" pak vracel TUSSIN od
+18 let. 45 SPC „pro děti ano, věk neuveden" při dotazu bez věku zůstává.
 
 Lék s `pro_deti = NULL` nebo `vek_od = NULL` (nejde určit) se při
 dětském dotazu **nezobrazí**.
@@ -199,7 +214,7 @@ NOVUM (od 6). Filtr zná jen spodní hranici; údaj „má dávku pro dospělé"
 v DB není.
 
 `leciva.jen_deti` počítá `vek.je_detsky_pripravek()` (v `vek_spc()`,
-do DB `naplni_db.aktualizuj_vek` – tedy i `--jen-vek` a každé plnění):
+do DB `extrakce_4_db.aktualizuj_vek` – tedy i `--jen-vek` a každé plnění):
 
 1. **název**: PRO DĚTI, JUNIOR, BABY, DĚTSK-, PRO KOJENCE, PRO INFANTIBUS,
    KIDS, PAED, PEDIATRIC → 31 SPC, přesné;
@@ -219,10 +234,12 @@ z indikací 4.1 (ADVANTAN) – zkoušeno, přidávalo to falešné.
 
 ## 3. GUI
 
-Detail léku má řádek **„Věk použití"** (`static/app.js: popisVeku`):
-„od 3 měsíců", „od 6 let", „jen dospělí (od 18 let)", „pro děti ano,
-věk v SPC neuveden", „z SPC nejde určit". Důvody (`vek_duvody`) zatím
-v GUI nejsou (todo).
+- U nálezu je štítek **„věk: od X let"** – je vidět, proč lék prošel.
+- Detail léku má řádek **„Věk použití"** (`static/app.js: popisVeku`):
+  „od 3 měsíců", „od 6 let", „jen dospělí (od 18 let)", „pro děti ano,
+  věk v SPC neuveden", „z SPC nejde určit".
+- Blok routeru nad výsledky ukáže popis filtru (viz výš).
+- Důvody (`vek_duvody`) ani příznak `jen_deti` v GUI nejsou.
 
 ---
 
@@ -230,12 +247,15 @@ v GUI nejsou (todo).
 
 | mezera | dopad | příklad |
 |---|---|---|
-| **„pro děti" bez věku = jakýkoli věk pod 18** | vrátí i léky od 12 nebo 15 let | „lék na horečku pro děti" může vrátit NOVALGIN tablety (od 15) – v běžné řeči „děti" ≈ do 12 let |
+| **„pro děti" bez věku = jakýkoli věk pod 18** | vrátí i léky od 12 nebo 15 let (od 18 už ne) | „lék na horečku pro děti" může vrátit NOVALGIN tablety (od 15) – v běžné řeči „děti" ≈ do 12 let |
 | **kojenec = pevně 0,5 roku** | lék od 3 měsíců projde, od 7 měsíců ne – i když „kojenec" je 0–12 měsíců | hrubé |
 | **senioři / starší nejsou vůbec** | „pro seniory", „babičce 80 let" nic nefiltruje ani nepřidá | dávkování přitom má „starší pacienti" u 3 511 položek (úprava dávky / bez úpravy) |
-| **jen spodní hranice** | „od 6 let" nic neříká o horní hranici (lék jen pro děti) | pediatrické přípravky pro dospělého |
+| **jen spodní hranice** | „od 6 let" nic neříká o tom, jestli má lék dávku pro dospělé; filtr „pro dospělé" proto vyřadí i PARALEN 500 a NUROFEN 200 (od 6 let) | údaj „má dávku pro dospělé" v DB není, jen `jen_deti` u 75 SPC |
+| **zákaz podmíněný hmotností** | „15–18 let s hmotností pod 50 kg: není určen" se čte jako zákaz do 18 pro všechny | COLDREX HORKÝ NÁPOJ 18 místo 15, EBGLYSS 17 místo 12; zkoušená oprava rozbila 6× VORICONAZOLE (poznatky 6. 10.) |
+| **`jen_deti` z dávkování má ~8 falešných** | lék při „pro dospělé" chybí, přestože je i pro dospělé | FLUTIFORM, VIREAD 245, BEXSERO, GENOTROPIN |
+| **věk stojí na extrakci** | když model skupinu pacientů k indikaci nepřiřadí nebo dávku neoznačí věkem, pravidlo nemá z čeho číst; extrakci nic nekontroluje | `docs/prezentace_scenare.md` kap. 6 |
 | **hmotnost se nepočítá** | „děti 20–25 kg" se bere jen podle věku | |
 | **4.4 neextrahujeme** | pediatrická upozornění mimo 4.1–4.3 chybí | Reyeův syndrom (aspirin) |
 | **věk z textu, ne z modelu** | neobvyklé formulace parser nepozná → „nejde určit" (13 % SPC) | |
 
-Návrhy na rozšíření jsou v `todo.md` (bod 4b) a v `poznatky.md` (30. 9. večer).
+Návrhy na rozšíření jsou v `todo.md` a měření v `poznatky.md` (30. 9. večer, 6. 10.).

@@ -1,9 +1,20 @@
 # Stavy extrakce — co který znamená a kdo ho nastavuje
 
-Každá sekce každého léčiva má **vždy explicitní stav**, nikdy `NULL`.
-Uloženo v `data/leciva/<kod>_<NAZEV>/json/_stav.json`, klíč `stav`.
+Každá sekce každého SPC má **vždy explicitní stav**, nikdy `NULL`.
+Uloženo v `data/spc/<identita>/json/_stav.json`, klíč `stav`; do DB jde
+do tabulky `extrakce_stav` (`extrakce_4_db.py`).
 
-Aktuální přehled: `uv run python pipeline.py --stav`
+Aktuální přehled: `uv run python extrakce_3_json.py --stav`
+(fronta extrakce) a `uv run python extrakce_all.py --stav` (celá pipeline).
+
+> **Stav k 6. 10. 2026: v korpusu jsou jen stavy, které nastavuje sama
+> extrakce** – `neovereno`, `castecna`, `prazdna`, `selhala_extrakce`,
+> `chybi_v_dokumentu`. Stavy `ok` a `zamitnuto_kontrolou` nastavovaly
+> kontroly 4a/4b, které nad celým korpusem **neběží**
+> (`nerealizovane_kontroly/`). Všech 23 495 vytěžených sekcí je tedy
+> `neovereno` (nebo `prazdna`) – „nevíme", ne „je to dobře". Do DB se
+> nahrávají i tak (`extrakce_4_db.py` bez `--jen-ok`). Číselník a přechody
+> níž popisují návrh včetně kontrol.
 
 ---
 
@@ -27,11 +38,11 @@ nehlásil „nenašli jsme nic" tam, kde ve skutečnosti nic nemáme.
 
 | stav | znamená | nastavuje | smí se ukázat uživateli? |
 |---|---|---|---|
-| `ok` | ověřeno proti zdroji | `zkontroluj_json.py`, `zkontroluj_modelem.py` | **ano** |
+| `ok` | ověřeno proti zdroji | kontroly 4a/4b (`nerealizovane_kontroly/`, neběží) | **ano** |
 | `neovereno` | extrakce proběhla, nikdo neověřil | `common/extrakce.py` | ne |
 | `castecna` | část položek se zachránit dala, část ne | `common/extrakce.py` | ne |
-| `zamitnuto_kontrolou` | kontrola našla položku bez opory ve zdroji | `zkontroluj_modelem.py` | **ne** |
-| `chybi_v_dokumentu` | sekce v SPC vůbec není | `extrahuj_json.py` | ano, jako „není uvedeno" |
+| `zamitnuto_kontrolou` | kontrola našla položku bez opory ve zdroji | kontrola 4b (neběží) | **ne** |
+| `chybi_v_dokumentu` | sekce v SPC vůbec není | `extrakce_3_json.py` (inventář) | ano, jako „není uvedeno" |
 | `selhala_extrakce` | model neodpověděl použitelně | `common/extrakce.py` | ne |
 | `prazdna` | sekce existuje, ale nic z ní nevzešlo | `common/extrakce.py` | ne |
 
@@ -48,7 +59,8 @@ Znamená, že sekce prošla aspoň jednou kontrolou:
 
 **POZOR na rozsah:** `ok` u nežádoucích účinků říká, že sedí **struktura**
 — účinek, frekvence, orgánový systém. **Neříká nic o laickém tvaru.**
-Ten se ověřuje jinde, v číselníku pojmů (`slovnik_pojmu.md`).
+Ten se měl ověřovat jinde, v číselníku pojmů – generovaný číselník je
+od 29. 9. smazaný, platí jen ruční `common/data/slovnik_rucni.json`.
 
 **`neovereno`** — výchozí stav po extrakci. Data existují, ale nikdo je
 neporovnal se zdrojem. **Není to totéž co „je to špatně"** — je to
@@ -122,9 +134,10 @@ kontrola ho neověřuje:
 - kontrolnímu modelu je v promptu **výslovně řečeno**, že zjednodušení
   se za chybu nepovažuje (jinak by hlásil falešné poplachy na každou parafrázi)
 
-Ověřuje se proto **zvlášť, na úrovni termínu**, v číselníku pojmů —
-419 dvojic v `slovnik_pojmu.md`, kontrolovaných samostatnou úlohou
-„odpovídá tenhle laický tvar tomuhle odbornému termínu?".
+Měl se proto ověřovat **zvlášť, na úrovni termínu**, v číselníku pojmů
+(na 32 lécích 419 dvojic, kontrolovaných úlohou „odpovídá tenhle laický
+tvar tomuhle odbornému termínu?"). Nad celým korpusem tahle kontrola
+neexistuje – známý nedodělek, viz `CLAUDE.md`.
 
 Výjimka: u `indikace` a `kontraindikace` žádný odborný tvar vedle sebe
 není — položka **je** ten laický text, takže ho kontrolní model posuzuje

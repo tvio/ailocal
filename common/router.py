@@ -340,8 +340,9 @@ def rozhodni(dotaz: str, *, model: str = MODEL_ROUTER,
 
     prompt = f"{POKYN}\n\n--- DOTAZ ---\n{dotaz}\n--- KONEC ---"
     try:
+        from common.config import HLEDANI_TIMEOUT_S
         odpoved = chat(prompt, system=SYSTEM, model=model,
-                       base_url=base_url, json_mode=True)
+                       base_url=base_url, json_mode=True, timeout=HLEDANI_TIMEOUT_S)
         d = json.loads(_ocisti_odpoved(odpoved))
     except Exception as e:
         logger.warning("router selhal (%s: %s), hleda se ve vsem",

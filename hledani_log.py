@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Podrobny log jednoho hledani - co se deje krok za krokem.
 
-Na rozdil od hledej.py neukazuje jen VYSLEDEK, ale cely postup: co vratil
+Na rozdil od hledani_cli.py neukazuje jen VYSLEDEK, ale cely postup: co vratil
 router, cim se dotaz rozsiril, kolik radku pustil filtr, jak dopadla
 podobnost u jednotlivych radku a co odriznul prah.
 
@@ -10,8 +10,8 @@ Slouzi ke dvema vecem:
   - ladit, kdyz neco nesedi
 
 Pouziti:
-  uv run python log_hledani.py "mám průjem"
-  uv run python log_hledani.py "mám průjem" --radku 15
+  uv run python hledani_log.py "mám průjem"
+  uv run python hledani_log.py "mám průjem" --radku 15
 """
 
 import io
@@ -39,7 +39,7 @@ def main() -> int:
     sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
     ap = argparse.ArgumentParser(description="podrobny log jednoho hledani")
     ap.add_argument("dotaz", nargs="+")
-    ap.add_argument("--prah", type=float, default=0.55)
+    ap.add_argument("--prah", type=float, default=0.60)   # jako hledani_cli.py a GUI
     ap.add_argument("--radku", type=int, default=12, help="kolik radku vypsat")
     a = ap.parse_args()
     dotaz = " ".join(a.dotaz)
@@ -74,7 +74,7 @@ def main() -> int:
         elif v == dotaz:
             zdroj = "puvodni veta uzivatele (pojistka proti orezani)"
         else:
-            zdroj = "slovnik_dotazu.json"
+            zdroj = "hledaci slovnik (tabulka slovnik_dotazu)"
         print(f"  {i}. {v!r:52} <- {zdroj}")
 
     # --- 3. filtr v SQL ------------------------------------------------

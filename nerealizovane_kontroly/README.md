@@ -9,7 +9,7 @@ pipeline – seznam kroků pipeline je nevolá.
 z kořene projektu (po přesunu sem by se musely pouštět z kořene jako
 modul, nebo upravit cesty).
 
-Co má být hotové a co chybí, je v `extrakce_kontroly.md`.
+Co má být hotové a co chybí, je v `nerealizovane_kontroly/kontroly_popis.md`.
 
 | skript | co dělá | stav |
 |---|---|---|
@@ -30,4 +30,4 @@ Co má být hotové a co chybí, je v `extrakce_kontroly.md`.
 1. Přepsat vstup z `data/leciva/<kód>_<NÁZEV>/` na `data/spc/<identita>/`
    (stav po SPC × sekce je v `data/spc/_extrakce/stav.sqlite`).
 2. Zařadit jako kroky do seznamu kroků pipeline za extrakci.
-3. Nálezy N1–N5, N8 a regresní sada: `extrakce_kontroly.md`.
+3. Nálezy N1–N5, N8 a regresní sada: `nerealizovane_kontroly/kontroly_popis.md`.

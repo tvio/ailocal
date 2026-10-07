@@ -1,10 +1,12 @@
 # Scénáře pro předvádění – celý trh
 
-Korpus **5 880 SPC obchodovaných léčiv** (8 778 kódů SÚKL), stav 1. 10. 2026.
-Starší verze pro 32 léčiv je v gitu (commit `1aae11f` a starší).
+Korpus **5 880 SPC obchodovaných léčiv** (8 778 kódů SÚKL). **Přeměřeno
+7. 10. 2026** – po přeextrahování indikací (4. 10.) se první výsledky u řady
+dotazů změnily. Starší verze pro 32 léčiv je v gitu (commit `1aae11f` a starší).
 
-**Všechny dotazy jsou odzkoušené** stejnou cestou jako GUI (router →
-filtry → hledání, práh 0,60). V tabulkách jsou skutečné první výsledky.
+**Všechny dotazy jsou odzkoušené** stejnou cestou jako GUI (`/api/hledat`:
+router → filtry → hledání, práh 0,60). V tabulkách jsou skutečné první
+výsledky ze 7. 10.
 Router je nedeterministický, pořadí se může mírně lišit – když se dotaz
 „pokazí", stačí ho zopakovat.
 
@@ -21,6 +23,7 @@ uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
 
 - **Po změně kódu vždy restart API** a v prohlížeči **Ctrl+F5**.
 - **První dotaz trvá ~12 s** (načítá se model routeru), další 2–3 s.
+  Dotazy přes nežádoucí účinky celého trhu nebo přes všechny sekce ~6 s.
   Před publikem jeden dotaz „na zahřátí" předem.
 - Ollama a Docling běží na DGX – musí být dostupné.
 
@@ -31,9 +34,9 @@ uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
 | | |
 |---|---|
 | léčiva | **5 880 SPC** = všechna obchodovaná léčiva ČR (zářijové vydání SÚKL) |
-| hledatelných položek | **451 186** (indikace, kontraindikace, dávkování, nežádoucí účinky) |
+| hledatelných položek | **472 844** (indikace, kontraindikace, dávkování, nežádoucí účinky) |
 | zdroj | oficiální SPC ze SÚKL a EMA, odkaz do PDF na konkrétní stranu |
-| extrakce | cloudový model (gpt-6-luna, Batch API), **~8 $ za celý trh** |
+| extrakce | cloudový model (gpt-6-luna, Batch API), **~8 $ za jeden průchod trhem**, celkem i s opravami 11 $ |
 | hledání | lokálně: router gemma4:26b + embedding bge-m3 + český fulltext |
 | věk použití | odvozen z SPC bez modelu u **87 % léčiv** |
 
@@ -70,20 +73,20 @@ uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
 
 | dotaz | první výsledky | co ukazuje |
 |---|---|---|
-| ★ `pálí mě žáha` | ČAJ ZE ŠALVĚJE, OMEPRAZOLE OLIKLA, MAALOX („pálení žáhy (pyróza)") | laické slovo najde odborné „pyróza" |
-| ★ `mám reflux` | RENNIE, GAPULSID | slovo „reflux" v textu RENNIE není – „návrat žaludečního obsahu do úst" |
-| ★ `bolí mě v krku` | PARAPYREX COMBI, PARACETAMOL DR. MAX, TRACHISAN | jiné druhy léků na tentýž příznak |
-| `nemůžu dýchat nosem` | OLYNTH PLUS, SEPTANAZAL | zápor zůstává součástí příznaku |
-| `nemůžu spát` | čajová směs, SÉDATIF PC, ADORMA | mezi výsledky i homeopatikum (otevřené rozhodnutí) |
-| `pálí mě při močení` | UROLOGICKÁ ČAJOVÁ SMĚS, URCYSTON PLANTA | trefa, ale jen bylinné přípravky |
+| ★ `pálí mě žáha` | KINITO, GAVISCON DUO EFEKT, MAALOX („pálení žáhy (pyróza)") | laické slovo najde odborné „pyróza" |
+| ★ `mám reflux` | RENNIE, GAPULSID, GAVISCON DUO EFEKT | slovo „reflux" v textu RENNIE není – „návrat žaludečního obsahu do úst" |
+| ★ `bolí mě v krku` | VOLTAREN ACTIGO EXTRA, STREPFEN, OROFAR, PARAPYREX COMBI | jiné druhy léků na tentýž příznak |
+| `nemůžu dýchat nosem` | OLYNTH PLUS, SEPTANAZAL, NASIC | zápor zůstává součástí příznaku |
+| `nemůžu spát` | BURONIL (noční neklid s poruchami spánku), ESOGNO, SANVAL | léky na nespavost na předpis; první BURONIL je antipsychotikum |
+| `pálí mě při močení` | URCYSTON PLANTA, UROLOGICKÁ ČAJOVÁ SMĚS, pak IBEROGAST (pálení v nadbřišku) | trefa, ale jen bylinné přípravky; od 3. místa šum |
 
 ### B. Filtry výdeje a hrazení
 
 | dotaz | první výsledky | co ukazuje |
 |---|---|---|
-| ★ `hrazený lék na reflux` | GAPULSID, HELICID, OMEPRAZOLE OLIKLA | filtr z registru SÚKL, ne ze SPC |
-| ★ `volně prodejný lék na bolest hlavy` | ACYLPYRIN, VALETOL | OTC |
-| `lék na alergii hrazený pojišťovnou` | TAMALIS, FLUTIKASON TEVA (na 1. místě ale MUTAFLOR) | viz slabá místa |
+| ★ `hrazený lék na reflux` | GAPULSID, OMEPRAZOL MEDREG, OMEPRAZOLE OLIKLA, HELICID | filtr z registru SÚKL, ne ze SPC |
+| `volně prodejný lék na bolest hlavy` | PREVAC, NUROFEN PRO DĚTI JAHODA (2×), CETALGEN, NUROFEN 400 | OTC; nahoře dětské sirupy – s „pro dospělé" zmizí |
+| `lék na alergii hrazený pojišťovnou` | TAMALIS, ECOSAL INHALER, ACARIZAX, ALERGIMED | hrazení + příznak |
 
 ### C. Látka, síla, kód
 
@@ -116,26 +119,26 @@ uv run uvicorn api:app --port 8000          # GUI http://localhost:8000/
 | dotaz | první výsledky | co ukazuje |
 |---|---|---|
 | ★ `paralen bolest hlavy` | PARALEN – bolest hlavy (indikace) | router hledá v indikacích i NÚ, rozhodnou data |
-| `po kterém léku můžou vypadávat vlasy` | METOJECT, AMARHYTON – vypadávání vlasů | NÚ napříč trhem (~10 s) |
+| `po kterém léku můžou vypadávat vlasy` | METOJECT PEN, AMARHYTON, VINBLASTIN TEVA – vypadávání vlasů | NÚ napříč trhem (~6 s, prohledává 350 tisíc řádků) |
 
 ### G. Věk pacienta ★ (nové)
 
 | dotaz | první výsledky | co ukazuje |
 |---|---|---|
-| ★ `horečka dítě šest let` | PARACETAMOL DR. MAX, PANADOL NOVUM (od 6 let) | **BRUFEN od 12 let se neukáže** |
-| ★ `suchý kašel dítě pět let` | DITUZDIN, ROBITUSSIN JUNIOR, BRONCHOSTOP | věk slovem i číslem |
-| ★ `volně prodejný lék na horečku pro dítě 5 let` | IBUPROFEN DR. MAX sirup, NUROFEN PRO DĚTI | věk + OTC dohromady |
-| `kašel u tříletého dítěte` | ROBITUSSIN, ROBITUSSIN JUNIOR | „tříletého" → 3 roky |
-| `hrazený lék na reflux pro děti` | HELICID, OMEPRAZOLE OLIKLA | hrazení + děti |
+| ★ `horečka dítě šest let` | NUROFEN PRO DĚTI JAHODA, PANADOL NOVUM (od 6 let), PREVAC | **léky od 12 let se neukážou** |
+| ★ `suchý kašel dítě pět let` | BRONCHOSTOP, DITUZDIN, ROBITUSSIN JUNIOR, DROSETUX NEO | věk slovem i číslem |
+| ★ `volně prodejný lék na horečku pro dítě 5 let` | NUROFEN PRO DĚTI JAHODA, PREVAC, NUROFEN PRO DĚTI čípky, IBALGIN BABY | věk + OTC dohromady |
+| `kašel u tříletého dítěte` | PREVAC, BRONCHIPRET TYMIÁN A BŘEČŤAN, pak CEFZIL (antibiotikum na zánět průdušek) | „tříletého" → 3 roky; od 3. místa antibiotika |
+| `hrazený lék na reflux pro děti` | OMEPRAZOL MEDREG, OMEPRAZOLE OLIKLA, ESOMEPRAZOLE OLIKLA, HELICID | hrazení + děti |
 
 **Pro dospělé ★ (nové 6. 10.)** – opačný směr: zmizí léky pro menší děti.
 
 | dotaz | první výsledky | co ukazuje |
 |---|---|---|
 | ★ `horečka` | NUROFEN PRO DĚTI JAHODA (2×), VOLTAREN ACTIGO, NOVALGIN, PANADOL NOVUM | bez věku jsou nahoře dětské sirupy |
-| ★ `horečka pro dospělé` | VOLTAREN ACTIGO EXTRA, NOVALGIN, CETALGEN, IBOVAL RAPID, PARAPYREX COMBI, PARALEN GRIP | dětské sirupy pryč, zůstaly běžné léky z lékárny |
-| ★ `bolí mě v krku pro dospělé` | VOLTAREN ACTIGO EXTRA, STREPFEN, PARAPYREX COMBI, STREPSILS PLUS, CETALGEN | |
-| `něco na kocovinu pro dospělé` | IMIGRAN, IBALGIN RAPIDCAPS, CETALGEN, IBALGIN 400, NUROFEN 400 | funguje jen s výrazem `kocovin` v hledacím slovníku (slovník + věk dohromady) |
+| ★ `horečka pro dospělé` | VOLTAREN ACTIGO EXTRA, NOVALGIN, CETALGEN, IBOVAL RAPID, PARAPYREX COMBI | dětské sirupy pryč, zůstaly běžné léky z lékárny |
+| ★ `bolí mě v krku pro dospělé` | VOLTAREN ACTIGO EXTRA, STREPFEN, PARAPYREX COMBI, STREPSILS PLUS, CETALGEN | bez OROFARU a NUROFENU PRO DĚTI z dotazu bez věku |
+| `něco na kocovinu` → přidat do slovníku → znovu | nejdřív léky na **covid**; po přidání výrazu `kocovin` → `bolest hlavy` v GUI léky na bolest hlavy | **ukázka hledacího slovníku naživo** – viz kap. 7. Výraz ve slovníku 7. 10. NENÍ, před ukázkou ho nepřidávat |
 
 Co k tomu říct: „pro dospělé" = léky, které SPC připouští **nejdřív od
 12 let**, a léky, u kterých SPC věk neuvádí; přípravky určené jen dětem
@@ -143,7 +146,7 @@ vypadnou. Projde 4 256 z 5 880 SPC. Hranice 12 let je záměr: přísných
 18 let by vyhodilo i IBALGIN a zbyly by hlavně nemocniční léky.
 
 U výsledku je štítek **„věk: od X let"** – vidět, proč lék prošel. Věk se
-z SPC odvozuje bez modelu (`vek_pacienta.md`). Kontrolní příklad:
+z SPC odvozuje bez modelu (`docs/hledani_vek.md`). Kontrolní příklad:
 VIBROCIL kapky od 1 roku, sprej od 6 let – rozdíl je v SPC.
 
 ### H. Hledání podle názvu ★ (nové)
@@ -153,7 +156,7 @@ VIBROCIL kapky od 1 roku, sprej od 6 let – rozdíl je v SPC.
 | ★ `lék přibližně zirtek` | ZYRTEC | fonetika: i/y, k/c |
 | ★ `lék přibližně oftalmoframikoin` | OPHTHALMO-FRAMYKOIN | ph/th, y, spojovník |
 | `lék přibližně kalideko` | KALYDECO | |
-| `lék přibližně nurophen pro děti` | NUROFEN PRO DĚTI | přibližně + věk |
+| `lék přibližně nurophen pro děti` | NUROFEN 400 a NUROFEN RAPID (od 12 let), pak NUROFEN PRO DĚTI | přibližně + věk; „pro děti" = cokoli pod 18 let, proto i tablety od 12 |
 | ★ `lék začíná oxy` | OXYBUPROCAINE, OXYCODON… abecedně | |
 | `lék končí na prazol` | ARIPIPRAZOL, OMEPRAZOL… abecedně | pozor: koncovka chytí i antipsychotika |
 | `lék obsahuje pox` | RAPOXOL | |
@@ -181,9 +184,11 @@ Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLI
 | `něco na kocovinu` | léky na **covid** | práh 0,60 je z 32 léků, na trhu pouští falešné shody (todo: přeměřit) |
 | `lék na plešatost` | čaje na **plynatost** | dtto |
 | `rýma miminko`, `ucpaný nos miminko`, `nosní kapky pro kojence` | nemocniční antibiotika v injekcích | léky „od narození" jsou hlavně nemocniční; chybí upřednostnění OTC a formy podání |
-| `lék na kašel pro děti` | na 1. místě DALACIN (antibiotikum na bronchitidu) | lepší `suchý kašel dítě pět let` |
-| `mám zácpu`, `lék na alergii…` | na 1. místě MUTAFLOR | probiotikum s mnoha indikacemi |
+| `lék na kašel pro děti` | na 1. místě CLARITHROMYCIN OLIKLA a KLACID 500 (antibiotika, od 12 let) | „pro děti" bez věku pustí vše, co SPC připouští pod 18 let; lepší `suchý kašel dítě pět let` |
+| `mám zácpu` | na 1. místě OXYKODON/NALOXON (zácpa způsobená opioidy), pak HYLAK FORTE | opioid, který zácpu jen zmiňuje; chybí upřednostnění běžných léků |
 | `nežádoucí účinky paralenu na kůži` | celá sekce, orgán se neuplatní | router orgánový systém nepozná vždy |
+| `volně prodejný lék na bolest hlavy` | nahoře PREVAC (homeopatikum) a NUROFEN PRO DĚTI | homeopatika mají indikace psané stejnými slovy; dětské sirupy řeší „pro dospělé" |
+| `pro člověka 70 let` | jednou výsledky z dávkování („pacienti starší 70 let"), jednou nic | věk dospělého se nefiltruje a router si u dotazu není jistý sekcí |
 | `velmi časté nežádoucí účinky xarelto` | nic | XARELTO velmi časté NÚ nemá (správně, ale vypadá to jako chyba) |
 | `lék končí na prazol` bez vysvětlení | i antipsychotika | koncovka ≠ skupina léků |
 | hledání podle věku u neobvyklé formulace | věk se nepozná | parser zná dítě X let, X-letý, X měsíců, kojenec, batole, miminko |
@@ -196,11 +201,14 @@ Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLI
 ## 5. Kdyby se to pokazilo během ukázky
 
 - **Divný výsledek** → zopakovat dotaz (router je nedeterministický).
-- **Špatná sekce** → v GUI vynutit sekci (rozbalovací seznam „sekce").
-- **Nic nenalezeno, ale mělo** → posuvník prahu dolů (dnes má smysl jen
+- **Špatná sekce** → rozbalit „Nastavení hledání" pod vyhledávacím polem
+  a vynutit sekci.
+- **Nic nenalezeno, ale mělo** → tamtéž posuvník prahu dolů (má smysl jen
   u sémantického hledání; u filtrů a vzorů se neuplatní).
 - **GUI se chová postaru** → restart API + Ctrl+F5.
 - **Dlouho nic** → model se načítá (stavová hláška v GUI), počkat.
+- **Sloupec Shoda je prázdný** → není to chyba: u čtení sekce a u dotazů
+  jen na název, látku nebo kód shoda nic neříká a neukazuje se.
 
 ---
 
@@ -210,8 +218,13 @@ Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLI
 chyby a jak vypadají. Jeden lék, jedna věta SPC, tři chyby. Stav 6. 10.,
 neopraveno (`poznatky.md` 6. 10.).
 
-**Dotaz:** `na co je coldrex horký nápoj citron s medem` → celá sekce
+**Dotaz:** `coldrex horký nápoj citron s medem indikace` → celá sekce
 indikací (10 položek), kód SÚKL 0260480. Odkaz na PDF otevře bod 4.1.
+(Kratší `coldrex indikace` ukáže indikace všech šesti COLDREXů.)
+
+Slovo **„indikace"** v dotazu je spolehlivé: 7. 10. dalo celou sekci
+3× ze 3. Formulace „na co je coldrex…" ne – router k ní přidal i nežádoucí
+účinky (3× ze 3) a pak se ukáže jen nejlepší shoda, ne celá sekce.
 
 **Co říká SPC (4.1):**
 
@@ -238,10 +251,39 @@ indikací (10 položek), kód SÚKL 0260480. Odkaz na PDF otevře bod 4.1.
   položky – a ty se špatně hledají, protože vypadají věrohodně.
 - Holá „bolest" je nebezpečnější, než vypadá: lék pak vyjde vysoko
   na každý dotaz o bolesti. V celém trhu ji má 37 léků.
-- Srovnání: sesterský `na co je coldrex maxgrip citron` má skoro stejnou
+- Srovnání: sesterský `coldrex maxgrip citron indikace` má skoro stejnou
   větu, ale v jednom odstavci – skupinu „od 15 let" i věk má správně.
   Rozhoduje tedy drobnost v úpravě dokumentu.
 - Proto je u každého výsledku **odkaz na stranu PDF**: aplikace je
   vyhledávač v oficiálních dokumentech, ne zdroj pravdy.
 - Automatické kontroly extrakce existují, ale nad novým korpusem zatím
   neběží – je to další krok, ne hotová věc.
+
+---
+
+## 7. Ukázka hledacího slovníku naživo ★
+
+**K čemu:** ukázat, že když aplikace slovu nerozumí, dá se ji to naučit
+bez programátora a bez přepočítání dat.
+
+1. Dotaz `něco na kocovinu` → vyjdou léky na **covid-19** (slovo
+   „kocovina" v indikacích žádného léku není a je mu podobné „covid").
+2. Rozbalit **„Hledací slovník"** pod vyhledávacím polem.
+3. Váš výraz: `kocovin` (kmen – chytí kocovina, kocovinu, kocovinou).
+4. Do druhého pole napsat `bolest hlavy`, v nabídce kliknout na
+   „bolest hlavy"; přepsat na `nevolnost` a kliknout na jednu z nabídnutých.
+5. **Přidat** → výraz je první v seznamu.
+6. Znovu `něco na kocovinu` → léky na bolest hlavy a nevolnost.
+   S `něco na kocovinu pro dospělé` zmizí dětské sirupy.
+
+Co k tomu říct:
+
+- Slovník **rozšiřuje dotaz, ne data**: uživatel dál vidí větu z dokumentu
+  s odkazem na stranu.
+- Formulaci, která v indikacích žádného léku není, uložit nejde – nabídka
+  ukazuje, co v datech opravdu je, s počtem léků.
+- Platí hned a pro všechny. Úpravy zatím nejsou za přihlášením.
+- Vybrat tři skoro stejné formulace („bolest hlavy", „bolesti hlavy
+  včetně migrény"…) je škoda míst – jsou nejvýš čtyři.
+
+Po ukázce výraz křížkem zase odebrat, ať je příště co předvádět.

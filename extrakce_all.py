@@ -62,19 +62,19 @@ from common.config import DATA_DIR
 # (id, popis, skript, argumenty, vnejsi sluzby)
 KROKY = [
     ("konverze",   "seznam leciv z API SUKL, inventar SPC, stazeni, prevod, kontroly prevodu",
-     "konvertuj_serve.py", ["--obchodovana"], "API SUKL, EMA, Docling Serve"),
+     "extrakce_1_konverze.py", ["--obchodovana"], "API SUKL, EMA, Docling Serve"),
     ("sekce",      "sekce 4.1 / 4.2 / 4.3 / 4.8 z markdownu a PDF",
-     "extrahuj_sekce.py", [], "-"),
+     "extrakce_2_sekce.py", [], "-"),
     ("extrakce",   "sekce -> JSON (laicky tvar, klic, frekvence) pres OpenAI Batch",
-     "extrahuj_json_cloud.py", ["--beh"], "OpenAI (key.yaml)"),
+     "extrakce_3_json.py", ["--beh"], "OpenAI (key.yaml)"),
     ("db",         "naplneni Postgresu od nuly + vek pouziti",
-     "naplni_db.py", ["--korpus"], "Postgres"),
+     "extrakce_4_db.py", ["--korpus"], "Postgres"),
     ("embeddingy", "vektory pro hledaci radky a klice (jen chybejici)",
-     "vytvor_embeddingy.py", [], "Ollama bge-m3, Postgres"),
+     "extrakce_5_embeddingy.py", [], "Ollama bge-m3, Postgres"),
     ("rejstrik",   "data/leky + _rejstrik.csv (hledani slozky SPC podle nazvu a kodu)",
-     "postav_rejstrik.py", [], "-"),
+     "extrakce_6_rejstrik.py", [], "-"),
     ("evaluace",   "kvalita dat + parafraze podle ATC + negativni dotazy",
-     "evaluate.py", [], "Ollama router, Postgres"),
+     "hledani_evaluace.py", [], "Ollama router, Postgres"),
 ]
 ID_KROKU = [k[0] for k in KROKY]
 
@@ -144,12 +144,12 @@ def over_extrakci(log: Log) -> bool:
     if nedobehlo:
         log(f"STOP: extrakce NEDOBEHLA - ve fronte {st.get('cekajici', 0)}, "
             f"u OpenAI {st.get('odeslano', 0)} pozadavku. Nejspis bezi jina instance, "
-            f"nebo zasahl rozpoctovy strop. Stav: extrahuj_json_cloud.py --stav")
+            f"nebo zasahl rozpoctovy strop. Stav: extrakce_3_json.py --stav")
         return False
     if chyb:
         log(f"POZOR: {chyb} pozadavku skoncilo chybou (data/spc/_extrakce/report.md). "
             f"Do DB pujdou jejich STARE vystupy, pokud existuji. "
-            f"Oprava: extrahuj_json_cloud.py --znovu-chybne --beh")
+            f"Oprava: extrakce_3_json.py --znovu-chybne --beh")
     return True
 
 
@@ -184,7 +184,7 @@ def vypis_stav() -> None:
     rej = DATA_DIR / "spc" / "_rejstrik.csv"
     print(f"6 rejstrik   {datetime.fromtimestamp(rej.stat().st_mtime):%Y-%m-%d %H:%M}"
           if rej.exists() else "6 rejstrik   neexistuje")
-    print("7 evaluace   bez ulozeneho stavu - pustit: evaluate.py")
+    print("7 evaluace   bez ulozeneho stavu - pustit: hledani_evaluace.py")
 
 
 def main() -> int:

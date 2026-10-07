@@ -11,8 +11,8 @@ Dve casti:
      sekce, filtry, zapor, diakritika, "nedomyslet si". Vystup se bere
      az PO zpracovani v `rozhodni()` (vcetne obnov_diakritiku), tedy
      presne to, co jde do hledani.
-  B) END-TO-END - parafraze podle ATC z evaluate.py (PARAFRAZE_KORPUS)
-     pres router + hledani s prahem 0,60, jako v hledej.py. evaluate.py
+  B) END-TO-END - parafraze podle ATC z hledani_evaluace.py (PARAFRAZE_KORPUS)
+     pres router + hledani s prahem 0,60, jako v hledani_cli.py. hledani_evaluace.py
      ma u parafrazi filtr natvrdo a router nevola; tady se meri, jestli
      se uzivatel k leku ze spravne skupiny skutecne dostane.
 
@@ -44,7 +44,7 @@ from common.hledani import hledej, seskup       # noqa: E402
 TADY = Path(__file__).parent
 
 PRAH = 0.60
-REZERVA = 60      # jako hledej.py
+REZERVA = 60      # jako hledani_cli.py
 
 FILTRY = ("nazev", "kod_sukl", "ucinna_latka", "atc_prefix", "na_predpis",
           "hrazeno", "frekvence", "sila", "organovy_system",
@@ -236,7 +236,7 @@ def zmer_model(model: str, opak: int, parafraze: list) -> dict:
         print(f"   {znak:4} {dotaz[:44]:44} "
               f"{'' if not spatne else 'X ' + ', '.join(spatne)}"[:150], flush=True)
 
-    # B) end-to-end: router + hledani s prahem, jako hledej.py
+    # B) end-to-end: router + hledani s prahem, jako hledani_cli.py
     e2e_ok, e2e_det = 0, []
     for dotaz, ocekavane in parafraze:
         for _ in range(opak):
@@ -248,7 +248,7 @@ def zmer_model(model: str, opak: int, parafraze: list) -> dict:
                        limit=REZERVA, prah=PRAH)
             leky = seskup(o.vysledky, leciv=5)
             nalez = [l.nazev for l in leky]
-            # ocekavane = ATC prefixy (evaluate.PARAFRAZE_KORPUS), ne nazvy:
+            # ocekavane = ATC prefixy (hledani_evaluace.PARAFRAZE_KORPUS), ne nazvy:
             # na celem trhu muze spravne vyjit jiny lek tehoz druhu.
             if any((l.nejlepsi.atc or "").startswith(e) for l in leky for e in ocekavane):
                 e2e_ok += 1
@@ -292,7 +292,7 @@ def main() -> int:
     ap.add_argument("--json", type=Path, default=TADY / "bench_router.json")
     a = ap.parse_args()
 
-    from evaluate import PARAFRAZE_KORPUS as PARAFRAZE
+    from hledani_evaluace import PARAFRAZE_KORPUS as PARAFRAZE
     oc.chat = _chat_s_metrikou
 
     modely = [m.strip() for m in a.modely.split(",") if m.strip()]

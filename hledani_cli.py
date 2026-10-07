@@ -13,11 +13,11 @@ na polozku, takze bez seskupeni by top-10 mohlo byt osm radku Paralenu.
 Proto se hleda s rezervou a seskupuje se az potom.
 
 Pouziti:
-  uv run python hledej.py "volne prodejny lek na bolest"
-  uv run python hledej.py "bolest bricha nezadouci ucinek" --prah 0.6
-  uv run python hledej.py "Paralen 500mg" --pasaze
-  uv run python hledej.py "bolest hlavy" --bez-routeru
-  uv run python hledej.py "bolest" --vaha-semantika 0.95
+  uv run python hledani_cli.py "volne prodejny lek na bolest"
+  uv run python hledani_cli.py "bolest bricha nezadouci ucinek" --prah 0.6
+  uv run python hledani_cli.py "Paralen 500mg" --pasaze
+  uv run python hledani_cli.py "bolest hlavy" --bez-routeru
+  uv run python hledani_cli.py "bolest" --vaha-semantika 0.95
 """
 
 import io
@@ -64,7 +64,7 @@ def _adresar(kod: str) -> str:
     global _MAPA_SPC
     if _MAPA_SPC is None:
         try:
-            from naplni_db import mapa_kod_spc
+            from extrakce_4_db import mapa_kod_spc
             _MAPA_SPC = mapa_kod_spc()
         except Exception:
             _MAPA_SPC = {}
@@ -90,11 +90,10 @@ def vypis_atc_zachranu(dotaz: str, filtr=None) -> None:
         return
     popisy = {}
     import json as _json
-    from pathlib import Path as _Path
-    if _Path("atc_mapa.json").exists():
+    from common.dotazy import CESTA_ATC
+    if CESTA_ATC.exists():
         popisy = {k: v.get("popis", "")
-                  for k, v in _json.loads(
-                      _Path("atc_mapa.json").read_text(encoding="utf-8")).items()
+                  for k, v in _json.loads(CESTA_ATC.read_text(encoding="utf-8")).items()
                   if isinstance(v, dict)}
 
     print()
@@ -240,12 +239,12 @@ def main() -> int:
     p = argparse.ArgumentParser(description=__doc__,
                                 formatter_class=argparse.RawDescriptionHelpFormatter)
     # nargs="*" a ne "+": pri "+" argparse pozicni argument uzavre na prvnim
-    # prepinaci, takze "hledej.py mam --zpusob cosine \"kopřivka\"" skoncilo
+    # prepinaci, takze "hledani_cli.py mam --zpusob cosine \"kopřivka\"" skoncilo
     # chybou "unrecognized arguments". Zbytek se dosbira z parse_known_args.
     p.add_argument("dotaz", nargs="*", help="text dotazu (uvozovky nejsou nutne)")
     p.add_argument("--leciv", type=int, default=10, help="kolik leciv vratit")
     p.add_argument("--prah", type=float, default=0.60,
-                   help="minimalni podobnost (vychozi 0.60 - namerena hodnota, viz evaluate.py --prahy; 0 = vypnout)")
+                   help="minimalni podobnost (vychozi 0.60 - namerena hodnota, viz hledani_evaluace.py --prahy; 0 = vypnout)")
     p.add_argument("--vaha-semantika", type=float, default=None,
                    help="0..1, kolik vahy ma semantika proti fulltextu")
     p.add_argument("--zpusob", choices=["rrf", "cosine"], default="rrf",
@@ -275,7 +274,7 @@ def main() -> int:
 
     dotaz = " ".join(list(a.dotaz) + [z for z in zbytek if not z.startswith("-")]).strip()
     if not dotaz:
-        p.error("chybí dotaz. Příklad: hledej.py \"volně prodejný lék na bolest\"")
+        p.error("chybí dotaz. Příklad: hledani_cli.py \"volně prodejný lék na bolest\"")
 
     if not a.bez_kontroly_modelu:
         priprav_modely(tichy=a.json)

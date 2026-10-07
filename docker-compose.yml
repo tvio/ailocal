@@ -13,7 +13,7 @@
 #
 # pgpass MUSI existovat jako SOUBOR jeste pred prvnim spustenim. Kdyz
 # chybi, Docker si na jeho miste vyrobi ADRESAR a pgadmin pak nenabehne
-# s nejasnou chybou. Zaklada ho `uv run python priprav_infrastrukturu.py`.
+# s nejasnou chybou. Zaklada ho `uv run python provoz_priprava.py`.
 
 # Jmeno projektu MUSI byt explicitni. Bez nej si ho compose odvodi z nazvu
 # ADRESARE - a ten se jmenuje "ailocal", takze by se nove kontejnery zaradily

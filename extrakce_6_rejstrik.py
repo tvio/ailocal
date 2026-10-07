@@ -17,9 +17,9 @@ nekopiruje. Na Linuxu (server) se misto nej udela symlink.
 Slozka data/leky se pri kazdem behu postavi znovu (mesicni zmeny).
 
 Pouziti:
-  uv run python postav_rejstrik.py
-  uv run python postav_rejstrik.py --najdi vibrocil       # bez Total Commanderu
-  uv run python postav_rejstrik.py --najdi 0218102
+  uv run python extrakce_6_rejstrik.py
+  uv run python extrakce_6_rejstrik.py --najdi vibrocil       # bez Total Commanderu
+  uv run python extrakce_6_rejstrik.py --najdi 0218102
 """
 
 import io
@@ -33,7 +33,7 @@ import argparse
 import unicodedata
 from pathlib import Path
 
-from naplni_db import mapa_kod_spc
+from extrakce_4_db import mapa_kod_spc
 
 SPC_DIR = Path("data/spc")
 DETAILY = Path("data/detaily_leciv")
@@ -55,7 +55,7 @@ def radky() -> list[dict]:
     mapa = mapa_kod_spc()
     zastupci = {}
     for kod, spc in sorted(mapa.items()):
-        zastupci.setdefault(spc, kod)          # nejmensi kod = zastupce (jako naplni_db)
+        zastupci.setdefault(spc, kod)          # nejmensi kod = zastupce (jako extrakce_4_db)
     ven = []
     for kod, spc in sorted(mapa.items()):
         f = DETAILY / f"{kod}.json"

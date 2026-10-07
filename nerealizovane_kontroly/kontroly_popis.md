@@ -1,5 +1,12 @@
 # Kontroly extrakce — co existuje, co je vypnuté, co chybí
 
+> **Stav k 6. 10. 2026:** skripty kontrol leží v této složce a umí jen
+> původní korpus 32 léků, který je smazaný. `pipeline.py`, o kterém se
+> níž píše, už neexistuje (seznam kroků je `extrakce_all.py` a kontroly
+> v něm nejsou). Dokument zůstává jako popis toho, co kontroly dělaly
+> a co je potřeba dodělat nad `data/spc/`. Přehled skriptů: `README.md`
+> v této složce.
+
 **Stav k 29. 9. 2026: kontroly extrakce jsou DOČASNĚ VYPNUTÉ.**
 Přepínač je `config.KONTROLY_ZAPNUTE = False`.
 
@@ -11,7 +18,7 @@ dostat korpus do JSON. **Kontroly se zapracují až nad novým korpusem**
 Důsledek: sekce z nového korpusu zůstanou ve stavu **`neovereno`**. To
 je pravda, ne chyba, a v GUI i v zadání se to tak musí říkat.
 
-Podrobný výklad celé extrakce je v `extrakce.md`. Tady je jen výsek
+Podrobný výklad celé extrakce je v `docs/pipeline_extrakce.md`. Tady je jen výsek
 o kontrolách.
 
 ---
@@ -20,7 +27,7 @@ o kontrolách.
 
 | kontrola | soubor | vypnutá jak | co se děje místo ní |
 |---|---|---|---|
-| opora klíče | [common/extrakce.py](common/extrakce.py) `klic_ma_oporu()`, volá `_jeden_pokus()` | `if KONTROLY_ZAPNUTE …` | klíč od modelu projde, jak je |
+| opora klíče | [common/extrakce.py](../common/extrakce.py) `klic_ma_oporu()`, volá `_jeden_pokus()` | `if KONTROLY_ZAPNUTE …` | klíč od modelu projde, jak je |
 | krok 4a – deterministická proti zdroji | [zkontroluj_json.py](zkontroluj_json.py) | `pipeline.py` přeskočí `kontrola1` | stav zůstane `neovereno` |
 | krok 4b – jiným modelem (gemma4:26b) | [zkontroluj_modelem.py](zkontroluj_modelem.py) | `pipeline.py` přeskočí `kontrola2` | stav zůstane `neovereno` |
 | kontrola slovníku modelem | [postav_slovnik.py](postav_slovnik.py) `--zkontroluj` | `pipeline.py` ho nepředá | slovník se postaví, ale neověří |
@@ -33,15 +40,15 @@ Skripty jdou dál pustit i samostatně.
 - povinné klíče položek + oprava překlepů v názvech klíčů
   (`_jeden_pokus`, `_oprav_klice`). Bez nich by nešlo data načíst.
 - normalizace frekvence a orgánového systému (`normalizuj_frekvenci`,
-  [common/meddra.py](common/meddra.py)),
+  [common/meddra.py](../common/meddra.py)),
 - skupina pacientů (`normalizuj_skupinu`),
 - laický tvar ze slovníku (`common/slovnik.py: uplatni`),
 - `ocisti_json.py` (číselníky, deduplikace, sjednocení klíče),
-- kontrola **konverze** ([common/kontrola_konverze.py](common/kontrola_konverze.py)).
+- kontrola **konverze** ([common/kontrola_konverze.py](../common/kontrola_konverze.py)).
   Ta proběhla na celém korpusu, výsledek je v `data/spc/_report/podezrele.html`
   (395 podezřelých, zatím neprojito).
 
-**`naplni_db.py`** bez `--jen-ok` nahraje i sekce `neovereno`, takže
+**`extrakce_4_db.py`** bez `--jen-ok` nahraje i sekce `neovereno`, takže
 vypnutí kontrol hledání nerozbije.
 
 ---
@@ -50,7 +57,7 @@ vypnutí kontrol hledání nerozbije.
 
 ### 2.1 Opora klíče – `klic_ma_oporu()`
 
-[common/extrakce.py](common/extrakce.py)
+[common/extrakce.py](../common/extrakce.py)
 
 - **Kdy:** hned po odpovědi modelu, u indikací a kontraindikací.
 - **Co:** aspoň polovina významových slov klíče (delších než 2 znaky,
@@ -92,7 +99,7 @@ diakritiky, bez mezer a interpunkce):
   položka, jiná frekvence, jiný SOC nebo věcně jiný obsah.
   **Zjednodušení se za chybu výslovně nepočítá.**
 - **Výstup:** `kontrola_modelem.chybne_indexy`. Stav `ok`, nebo
-  `zamitnuto_kontrolou`. `naplni_db.py` pak vyřadí jen označené položky.
+  `zamitnuto_kontrolou`. `extrakce_4_db.py` pak vyřadí jen označené položky.
 - **Proč jiný model:** model si neodsouhlasí vlastní chybu.
 - **Slabiny:** na gemma4:26b se neměřila (převzato 24. 9. podle routeru).
   Indexy jsou **pozice v seznamu**, takže je `ocisti_json.py`
@@ -112,7 +119,7 @@ diakritiky, bez mezer a interpunkce):
 
 ## 3. Co chybí – k zapracování nad novým korpusem
 
-Čísla N odkazují na `extrakce.md` kap. 7.
+Čísla N odkazují na `docs/pipeline_extrakce.md` kap. 7.
 
 | # | co | návrh | stav |
 |---|---|---|---|
@@ -139,4 +146,4 @@ Z 316 položek indikací a kontraindikací jich klíč mělo 164:
 
 Návrh: klíč, který pravidla poruší, nastavit na `null`. Položka se pak
 hledá jen podle textu jako dnes. Klíči bez diakritiky doplnit tvar ze
-zdroje. O přínosu rozhodne `evaluate.py`.
+zdroje. O přínosu rozhodne `hledani_evaluace.py`.

@@ -42,18 +42,18 @@ VYSTUPY
     data/spc/_extrakce/report.md               souhrn + VSECHNY chyby podle ID
 
 Pouziti:
-  uv run python extrahuj_json_cloud.py --beh            # cely beh v popredi, naváže sam
-  uv run python extrahuj_json_cloud.py --stav           # jen souhrn + report.md
-  uv run python extrahuj_json_cloud.py --znovu-chybne   # chyby zpet do fronty
-  uv run python extrahuj_json_cloud.py --znovu-seznam vadne.txt   # vybrane ID
-  uv run python extrahuj_json_cloud.py --beh --test --limit-spc 5 --test-chyby
+  uv run python extrakce_3_json.py --beh            # cely beh v popredi, naváže sam
+  uv run python extrakce_3_json.py --stav           # jen souhrn + report.md
+  uv run python extrakce_3_json.py --znovu-chybne   # chyby zpet do fronty
+  uv run python extrakce_3_json.py --znovu-seznam vadne.txt   # vybrane ID
+  uv run python extrakce_3_json.py --beh --test --limit-spc 5 --test-chyby
 
   # lokalne (Ollama) - maly rozsah
-  uv run python extrahuj_json_cloud.py --local --kody 0260480            # jeden lek, vsechny sekce
-  uv run python extrahuj_json_cloud.py --local --kody 0260480 --sekce indikace
-  uv run python extrahuj_json_cloud.py --local --kody 0260480 --model gemma4:26b
-  uv run python extrahuj_json_cloud.py --local --limit 20                # 20 cekajicich z fronty
-  uv run python extrahuj_json_cloud.py --local --test --limit-spc 5 --model novy:model
+  uv run python extrakce_3_json.py --local --kody 0260480            # jeden lek, vsechny sekce
+  uv run python extrakce_3_json.py --local --kody 0260480 --sekce indikace
+  uv run python extrakce_3_json.py --local --kody 0260480 --model gemma4:26b
+  uv run python extrakce_3_json.py --local --limit 20                # 20 cekajicich z fronty
+  uv run python extrakce_3_json.py --local --test --limit-spc 5 --model novy:model
                                 # zkouska modelu - vystup do _extrakce_test, korpus beze zmeny
 """
 
@@ -552,7 +552,7 @@ def beh_local(beh: Beh, *, model: str, kody: list[str] | None, sekce: list[str] 
         chybi = [i for i in ids if i not in znam]
         if chybi:
             log.error("CHYBA: pozadavek neni v inventari extrakce (SPC nema vytazene "
-                      "sekce? pust extrahuj_sekce.py): %s", ", ".join(chybi[:5]))
+                      "sekce? pust extrakce_2_sekce.py): %s", ", ".join(chybi[:5]))
             return 2
         ids = [i for i in ids if znam[i] != "bez_sekce"]
     else:

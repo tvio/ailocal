@@ -5,6 +5,129 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-07 — Víc uživatelů: Spark vyřizuje router po jednom; rozdělování zátěže mezi stroje
+
+Před nasazením na server: co se stane, když hledá víc lidí naráz.
+
+| současně | router, poslední čeká | celé hledání, poslední čeká |
+|---|---|---|
+| 1 | 1,6 s | 3,4 s |
+| 2 | 3,0 s | – |
+| 4 | 6,1 s | 7,3 s |
+| 8 | 11,6 s | 13,8 s |
+
+- **Ollama na Sparku jede router sériově:** propustnost ~0,66 dotazu/s
+  bez ohledu na souběh, čekání roste lineárně. Embedding problém není
+  (8 souběžných dávek 0,16 s).
+- **Ollama vytížení nehlásí.** `/api/ps` vrací jen modely v paměti
+  (`name`, `size`, `size_vram`, `expires_at`, `context_length`) – žádnou
+  frontu. Aplikace si proto počítá rozpracované dotazy sama; cizí zátěž
+  vidí jen jako delší odezvu.
+- **Řešení:** `common/ollama_client.py` rozděluje dotazy mezi stroje
+  z `config.OLLAMA_UZLY` (spark, dell 10.6.38.9, lokální): hlídač
+  dostupnosti každých 15 s, priorita prvního stroje, přelití při
+  `OLLAMA_SOUBEZNE = 1` rozpracovaném dotazu, náhradní cesta při výpadku
+  nebo překročení 30 s, modely držené v paměti na všech strojích.
+- **Dell 7. 10. spojení odmítá** (port zavřený), takže skutečné rozdělení
+  změřit nešlo. Logika ověřena simulací na dvou falešných strojích
+  (`benchmarky/soubeh/bench_soubeh.py --simulace`, 13 kontrol): priorita,
+  4 souběžné dotazy 2 + 2 za polovinu času, výpadek prvního bez chyby pro
+  uživatele, návrat, výpadek obou = chyba místo zaseknutí.
+- Gemma je na Sparku načtená s kontextem 262 144 – `OLLAMA_NUM_PARALLEL`
+  by ho násobil; neměřeno.
+- Evaluace přes nového klienta beze změny: 18/20, 69 %, 5/6.
+
+---
+
+## 2026-10-07 — Scénáře přeměřené po přeextrahování indikací; původní věta nesla věk do vektoru
+
+Všech 55 dotazů z `docs/prezentace_scenare.md` puštěno přes `/api/hledat`
+(stejná cesta jako GUI). Tabulky byly z 1. 10., tedy před promptem
+indikací v2 (4. 10.).
+
+- **První výsledky se změnily u 14 dotazů**, žádný nepřestal fungovat.
+  „pálí mě žáha": ČAJ ZE ŠALVĚJE, OMEPRAZOLE OLIKLA, MAALOX → KINITO,
+  GAVISCON DUO EFEKT, MAALOX. „nemůžu spát": čajová směs, SÉDATIF PC →
+  BURONIL, ESOGNO, SANVAL. „mám zácpu": MUTAFLOR → OXYKODON/NALOXON
+  (zácpa způsobená opioidy). Filtry, čtení sekce, hledání podle názvu
+  a věk dítěte dávají totéž.
+- **Chyba v hledání (opraveno):** původní věta uživatele šla do vektoru
+  i se zmínkou o věku. „něco na kocovinu pro dospělé" vrátilo MULTIBIC
+  „léčbu dospělých" – věta vyhrála nad „kocovina" díky slovu „dospělé".
+  Text od routeru věk odstraněný měl, pojistná původní věta ne. Teď se
+  u dotazů s věkovým filtrem čistí obojí (`hledani.hledej`, `bez_veku`).
+  Evaluace po opravě beze změny: 18/20, 69 %, 5/6.
+- **„pro děti" bez věku pouštělo léky od 18 let** (opraveno): 320 SPC má
+  `pro_deti` ano a zároveň `vek_od` 18 (TUSSIN u „lék na kašel pro děti",
+  SONOVUE u „hrazený lék na reflux pro děti"). Filtr teď navíc žádá
+  `vek_od` pod 18 nebo neznámý.
+- **COLDREX ve scénářích: rozhoduje formulace dotazu, ne data.**
+  „coldrex indikace" i „coldrex horký nápoj citron s medem indikace" dají
+  celou sekci indikací 3× ze 3. „na co je coldrex horký nápoj citron
+  s medem" 3× ze 3 ne – router přidal i nežádoucí účinky a ukáže se jen
+  nejlepší shoda (6. 10. tatáž věta dala jen indikace). Scénář přepsán
+  na dotaz se slovem „indikace".
+- **Dotazy bez filtru sekce byly pomalé a NEBYL to router:** „kurz eura
+  dnes" 27 s, „počasí dnes" 13 s, NÚ napříč trhem 25 s. Rozpad „počasí
+  dnes": router 1,6 s, embedding 0,02 s, **SQL 13,0 s**. Přesné maximum
+  podobnosti přes všech 472 844 řádků přitom DB spočítá za 1,3 s – zbytek
+  byl přenos všech širokých řádků do Pythonu a řazení tam (SQL vracelo
+  všechno po filtru, což na 32 lécích nevadilo). **Oprava:** z DB se
+  vracejí jen kandidáti (top 100 podle podobnosti + až 1 000 podle
+  fulltextu), počet řádků po filtru se počítá v DB. NÚ napříč trhem
+  25 → 5,7 s, všechny sekce 13 → 5,1 s, 55 dotazů scénářů 205 → 128 s.
+  Časový limit na router by nepomohl.
+- **Pořadí mezi shodnými hodnotami záviselo na plánu dotazu.** Po změně
+  SQL se u 12 z 55 dotazů přeházely řádky se stejnou podobností
+  („vypadávat vlasy": BLOXAZOC → METOJECT, AMARHYTON – tedy zpět na stav
+  z 1. 10.). Druhým klíčem řazení je teď fyzické pořadí řádku (ctid),
+  takže je výběr stabilní. Evaluace beze změny i po jednotlivých dotazech.
+- **PREVAC** (homeopatikum) je v první trojici u horečky, kašle i bolesti
+  hlavy – má indikace psané stejnými slovy jako léky.
+- Výraz `kocovin` ve slovníku záměrně není (uživatel ho odebral) – při
+  prezentaci se přidává naživo, scénáře kap. 7.
+- `docs/hledani_jak_funguje.md` byl zastaralý víc než ostatní: router
+  qwen (je gemma), fulltext „bez stemmingu" (je hunspell, lematizuje),
+  chyběl druhý vektor klíče, čtení sekce, přesný filtr. Přepsán.
+
+---
+
+## 2026-10-06 — Úklid projektu: jedna pipeline, přejmenované skripty, dokumentace v `docs/`
+
+Stará cesta nad 32 léky (`data/leciva`, lokální qwen) byla vrostlá do
+živého kódu i do půlky návodů; po úklidu zbyla jen cesta korpusu.
+
+- **Skripty v kořeni 31 → 12.** Seznam kroků je `extrakce_all.py` (7 kroků,
+  `--stav` čte stavové soubory a DB). Přejmenováno: `konvertuj_serve` →
+  `extrakce_1_konverze`, `extrahuj_sekce` → `extrakce_2_sekce`,
+  `extrahuj_json_cloud` → `extrakce_3_json`, `naplni_db` → `extrakce_4_db`,
+  `vytvor_embeddingy` → `extrakce_5_embeddingy`, `postav_rejstrik` →
+  `extrakce_6_rejstrik`, `hledej` → `hledani_cli`, `log_hledani` →
+  `hledani_log`, `evaluate` → `hledani_evaluace`, `priprav_infrastrukturu`
+  → `provoz_priprava`. **Starší zápisy níž používají původní názvy.**
+- **Dokumenty:** popisy do `docs/` (`pipeline_*`, `hledani_*`, `provoz_*`,
+  `prezentace_*`); v kořeni zůstaly jen soubory, do kterých se zapisuje.
+  `skripty.md` → `docs/pipeline_prehled.md`, `extrakce.md` →
+  `docs/pipeline_extrakce.md`, `hledej.md` → `docs/hledani_jak_funguje.md`,
+  `gui.md` → `docs/hledani_gui_api.md`, `vek_pacienta.md` →
+  `docs/hledani_vek.md`, `scenare.md` → `docs/prezentace_scenare.md`.
+- **Evaluace po úklidu beze změny:** parafráze ATC 18/20, přesnost 69 %,
+  negativní 5/6. Pokrytí sekcí počítané po SPC je 96 % (5 642 z 5 880);
+  dřívějších 64 % bylo po kódech a vypadalo jako díra v datech.
+- **Lokální extrakce jako volba kroku 3** (`--local`): 1 sekce gemmou
+  4:26b za 10 s (12 položek). Celý korpus by při 30 tok/s trval ~9,6 dne
+  (25,0 M výstupních tokenů), proto jen jeden lék / malá dávka.
+- **Klíč OpenAI se ověřuje před během** (soubor, tvar, 401, 404 modelu) –
+  volání `models.retrieve` se neúčtuje.
+- **Ztráta při úklidu:** `detektory.py --help` neznal argumenty, spustil se
+  a přepsal `podezrele.jsonl` se stavem indikací před promptem v2 (čísla
+  jsou v zápisu 4. 10.). Skript teď předchozí výstup odkládá s datem.
+- **Neověřeno:** `extrakce_all.py --vse` vcelku, cloudový běh po vytažení
+  společného zápisu výsledku, `bench_router.py` po úpravě části B,
+  `--prahy` a `--vahy` evaluace.
+
+---
+
 ## 2026-10-06 — Filtr „pro dospělé": hranice 12 let; `vek_od` je spodní mez, ne „pro koho lék je"
 
 Podnět: „kocovina" → mezi léky na bolest hlavy NUROFEN PRO DĚTI JAHODA.

@@ -9,10 +9,36 @@ DATA_DIR = Path("data")                  # korpus je v data/spc/<identita SPC>/
 # A) veřejné dokumentované API – stabilní kontrakt, detail léku + PDF
 SUKL_API = "https://prehledy.sukl.gov.cz/dlp/v1"
 # B) nedokumentované API webové aplikace – JEDINÉ, které umí vyhledávat
-#    (podle názvu i ATC). Používat pouze na discovery, viz zadani.md.
+#    (podle názvu i ATC). Používat pouze na discovery.
 SUKL_SEARCH_API = "https://prehledy.sukl.gov.cz/prehledy/v1"
 
 # --- Ollama ---
+# Stroje s Ollamou v poradi PRIORITY: prvni se pouziva, dokud ma volno,
+# dalsi az kdyz ma prvni praci (common/ollama_client.py: vyber_uzel).
+# Stroj, ktery nebezi, se preskoci a zapoji se sam, az nabehne.
+#   spark    DGX Spark - hlavni
+#   dell     Dell se stejnym jadrem - 7. 10. 2026 jeste nema otevreny port Ollamy
+#   lokalni  Ollama na stroji s aplikaci (vyvoj)
+# Na serveru prepsat promennou prostredi:
+#   OLLAMA_UZLY="spark=http://10.6.38.10:11434,dell=http://10.6.38.9:11434"
+import os as _os
+
+OLLAMA_UZLY: list[tuple[str, str]] = (
+    [tuple(x.strip().split("=", 1)) for x in _os.environ["OLLAMA_UZLY"].split(",") if "=" in x]
+    if _os.environ.get("OLLAMA_UZLY") else [
+        ("spark", "http://10.6.38.10:11434"),
+        ("dell", "http://10.6.38.9:11434"),
+        ("lokalni", "http://127.0.0.1:11434"),
+    ])
+# Kolik pozadavku posilat na jeden stroj NARAZ, nez se sahne na dalsi.
+# 1 = zmereno 7. 10. 2026: Spark vyrizuje router po jednom (2 soubezne
+# dotazy = 2x delsi cekani), takze druhy dotaz ma jit hned na druhy stroj.
+# Zvysit, az bude na strojich nastaveno OLLAMA_NUM_PARALLEL > 1 a zmereno,
+# ze to pomaha.
+OLLAMA_SOUBEZNE = int(_os.environ.get("OLLAMA_SOUBEZNE", "1"))
+# Jak dlouho smi HLEDANI cekat na router a na vektor dotazu (s); pak zkusi
+# dalsi stroj. Extrakce ma vlastni, dlouhy OLLAMA_TIMEOUT.
+HLEDANI_TIMEOUT_S = float(_os.environ.get("HLEDANI_TIMEOUT_S", "30"))
 # Extrakce dlouhé sekce 4.8 na 72B modelu překročila 600 s a spadla na timeout,
 # takže se tvářila jako selhaná extrakce. Limit je záměrně velkorysý – lepší
 # počkat než dostat falešné 'selhala_extrakce'.
@@ -33,7 +59,7 @@ MODEL_EXTRAKCE = MODEL_HLAVNI
 # gemma4:26b je MoE (128 expertu, aktivnich 8). Jako router zmereno
 # 24.9.2026 (bench_router.py, poznatky.md): median 1,51 s proti 4,56 s
 # u qwen3.5:122b, 103 tok/s proti 30, spravne 24/26 proti 21/26,
-# evaluate.py shodne. Router je 92 % casu dotazu, takze tohle je primo
+# hledani_evaluace.py shodne. Router je 92 % casu dotazu, takze tohle je primo
 # to, co uzivatel ceka.
 MODEL_ROUTER = "gemma4:26b"
 # Kontrola MUSI byt JINY model nez ten, ktery extrahoval - model si
@@ -63,7 +89,7 @@ OPENAI_REASONING_EFFORT = "none"
 OPENAI_CENA_VSTUP = 0.10
 OPENAI_CENA_VYSTUP = 0.50
 OPENAI_BATCH_SLEVA = 0.5
-# ROZPOCTOVA POJISTKA pro extrahuj_json_cloud.py: skutecna utrata (z usage)
+# ROZPOCTOVA POJISTKA pro extrakce_3_json.py: skutecna utrata (z usage)
 # + odhad rozjetych davek + odhad nove davky nesmi strop prekrocit - jinak
 # se dalsi davka NEODESLE. Na uctu 10 $ (29.9.2026, platform.openai.com),
 # odhad celeho korpusu 5,5 $, pesimisticky 6,4 $ (poznatky 29.9.). Strop
@@ -86,15 +112,15 @@ EMBED_DIMENSION = 1024
 # --- Kontroly extrakce: DOČASNĚ VYPNUTÉ (29.9.2026) ---
 # Rozhodnuto kvůli času: nový korpus jde nejdřív přes cloud (luna, Batch
 # API) BEZ kontrol. Kontroly se zapracují až nad novým korpusem – popis
-# všech kontrol a proč jsou vypnuté: extrakce_kontroly.md.
-# Vypíná: klic_ma_oporu() v extrakci, kroky 4a/4b v pipeline.py
+# všech kontrol a proč jsou vypnuté: nerealizovane_kontroly/kontroly_popis.md.
+# Vypíná: klic_ma_oporu() v extrakci; kroky 4a/4b nad korpusem neexistují
 # a kontrolu slovníku modelem (nerealizovane_kontroly/postav_slovnik.py --zkontroluj).
 # Data pak mají stav 'neovereno' – to je PRAVDA, ne chyba.
 KONTROLY_ZAPNUTE = False
 
 # --- Docling Serve na DGX Spark (CUDA) ---
 # Přes SSH tunel na localhost. 13× rychlejší než lokální Docling, výstup
-# totožný (poznatky.md 24.9.2026). Používá konvertuj_serve.py.
+# totožný (poznatky.md 24.9.2026). Používá extrakce_1_konverze.py.
 DOCLING_SERVE_URL = "http://localhost:5001"
 
 # --- PostgreSQL ---

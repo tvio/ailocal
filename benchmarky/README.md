@@ -14,6 +14,7 @@ z kořene projektu. Výsledek s čísly patří do `poznatky.md`.
 | benchmark | na jakou otázku odpovídá | kdy pustit | co potřebuje | cena |
 |---|---|---|---|---|
 | `router/bench_router.py` | Který lokální model má dělat router: rychlost (medián, p90, tok/s), správnost na pravidlech (sekce, filtry, zápor, diakritika) a stabilita při opakování. | změna modelu routeru nebo promptu routeru | Ollama, Postgres | zdarma, minuty na model |
+| `soubeh/bench_soubeh.py` | Jak dlouho čeká N uživatelů naráz na router (nebo na celé hledání, `--hledani`) a jak se dotazy rozdělí mezi stroje s Ollamou. `--simulace`: test výběru stroje, přelití a výpadků na dvou falešných strojích. | po zapojení dalšího stroje, po změně `OLLAMA_NUM_PARALLEL` nebo `OLLAMA_SOUBEZNE`; `--simulace` po zásahu do `common/ollama_client.py` | Ollama, Postgres; `--simulace` nic | zdarma, minuty |
 | `extrakce_cloud/bench_extrakce_luna.py` | Kolik bude stát extrakce celého korpusu v cloudu (`--tokeny`) a jak vypadá výstup na malém, středním a velkém SPC (`--beh`). | před každým hromadným cloudovým během; po změně promptu nebo modelu | `data/spc/`, pro `--beh` klíč OpenAI | `--tokeny` zdarma, `--beh` centy |
 | `indikace_fragmenty/detektory.py` | Kolik položek indikací je podezřelých (kus věty, začíná předložkou, nesoulad s ATC). Bez modelu. | po přeextrahování indikací | Postgres | zdarma, sekundy |
 | `indikace_fragmenty/soudce.py` | Kolik z podezřelých položek je opravdu chyba (skupina pacientů / kus věty) – soudí gemma nad celým textem 4.1. | když je potřeba skutečný podíl chyb, ne jen počet podezřelých | Ollama, Postgres, výstup `detektory.py` | zdarma, desítky minut |
@@ -22,7 +23,7 @@ z kořene projektu. Výsledek s čísly patří do `poznatky.md`.
 ## Poznámky k jednotlivým
 
 - **`router/bench_router.py`** – část B (end-to-end) bere parafráze podle ATC
-  z `evaluate.py` (`PARAFRAZE_KORPUS`): trefa = v top 5 je lék ze správné
+  z `hledani_evaluace.py` (`PARAFRAZE_KORPUS`): trefa = v top 5 je lék ze správné
   skupiny. Po přesunu a téhle úpravě (6. 10.) jsem celý benchmark nepouštěl,
   jen `--help`.
 - **`indikace_fragmenty/detektory.py`** předchozí `podezrele.jsonl` odloží
@@ -32,5 +33,5 @@ z kořene projektu. Výsledek s čísly patří do `poznatky.md`.
 
 ## Evaluace není benchmark
 
-`evaluate.py` (kořen projektu) je regresní test hledání a pouští
+`hledani_evaluace.py` (kořen projektu) je regresní test hledání a pouští
 se po **každé** změně promptu, modelu, vah nebo prahu – viz `CLAUDE.md`.

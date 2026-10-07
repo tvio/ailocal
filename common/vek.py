@@ -25,7 +25,7 @@ DOSPELY = 18.0
 # Filtr „pro dospělé" (hledani.py): lek musi mit spodni hranici veku aspon
 # tady. 12 = bezna hranice „dospělí a dospívající od 12 let" (IBALGIN,
 # BRUFEN); s 18 by zbyly hlavne leky na predpis a nemocnicni, s 15 by
-# vypadl i IBALGIN. Rozhodnuti 6. 10. 2026, cisla ve vek_pacienta.md 2b.
+# vypadl i IBALGIN. Rozhodnuti 6. 10. 2026, cisla ve docs/hledani_vek.md 2b.
 DOSPELI_VEK_OD = 12.0
 STARSI = 65.0
 

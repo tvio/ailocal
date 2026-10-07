@@ -13,9 +13,9 @@ Generativni model embedding NEUMI, /api/embed vraci 501.
 Prubeh se loguje do souboru i do DB (viz common/log_behu.py).
 
 Pouziti:
-  uv run python vytvor_embeddingy.py             # jen chybejici
-  uv run python vytvor_embeddingy.py --znovu     # prepocitat vse
-  uv run python vytvor_embeddingy.py --davka 32
+  uv run python extrakce_5_embeddingy.py             # jen chybejici
+  uv run python extrakce_5_embeddingy.py --znovu     # prepocitat vse
+  uv run python extrakce_5_embeddingy.py --davka 32
 """
 
 import io
@@ -77,7 +77,7 @@ def main() -> int:
                 celkem = cur.fetchone()[0]
 
             # Radky, ktere vektor obsahu MAJI, ale chybi jim vektor KLICE
-            # (klic se zmenil - naplni_db.py --sjednot-klice, 2. 10. 2026).
+            # (klic se zmenil - extrakce_4_db.py --sjednot-klice, 2. 10. 2026).
             celkem_vlozeno += dopocitej_klice(conn, a.model, a.davka, log)
 
             if not celkem:

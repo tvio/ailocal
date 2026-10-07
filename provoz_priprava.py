@@ -9,7 +9,7 @@ na to nijak neukazuje. Overeno v praxi, stalo to hodinu hledani.
 Skript je idempotentni, da se poustet opakovane.
 
 Pouziti:
-  uv run python priprav_infrastrukturu.py
+  uv run python provoz_priprava.py
 """
 
 import shutil

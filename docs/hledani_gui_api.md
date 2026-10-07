@@ -1,9 +1,11 @@
 # GUI a API
 
-Webová nadstavba nad hledáním. Backend **FastAPI**, frontend **vanilla JS**
-bez frameworku a bez build kroku.
+Webová nadstavba nad hledáním. Backend **FastAPI** (`api.py`), frontend
+**vanilla JS** bez frameworku a bez build kroku (`static/`). Stav k 7. 10. 2026.
 
-    uv run uvicorn api:app --port 8000 --reload
+    uv run uvicorn api:app --port 8000
+
+Jak hledání funguje uvnitř: `docs/hledani_jak_funguje.md`.
 
 | adresa | co tam je |
 |---|---|
@@ -14,9 +16,10 @@ bez frameworku a bez build kroku.
 
 ## Nahrávání modelu při startu
 
-Generativní model má **87 GB** a Ollama ho po ~5 minutách nečinnosti
-odloží. Kdyby se načítal až u prvního dotazu, první návštěvník čeká
-minutu a neví proč.
+Pro hledání jsou potřeba dva modely: router `gemma4:26b` (19 GB)
+a `bge-m3`. Ollama je po ~5 minutách nečinnosti odloží a načtení routeru
+trvá kolem 10 sekund. Kdyby se načítal až u prvního dotazu, první
+návštěvník čeká a neví proč.
 
 Proto se nahrává **na pozadí hned při startu** (`@app.on_event("startup")`
 pustí vlákno). Než je hotovo:
@@ -33,7 +36,7 @@ Výpis léčiv (`/api/leciva`) model nepotřebuje a jede hned.
 
 | metoda | cesta | k čemu |
 |---|---|---|
-| GET | `/api/stav` | jsou modely v paměti? |
+| GET | `/api/stav` | jsou modely v paměti? + `uzly`: stav strojů s Ollamou (dostupnost, rozpracované dotazy, odezva, modely v paměti) |
 | GET | `/api/lecivo/{kod}/sekce/{sekce}` | všechny položky jedné sekce léku v pořadí dokumentu (GUI: „Ostatní indikace léku" v rozbalení, načítá se až při rozbalení) |
 | GET | `/api/leciva` | výpis korpusu (jen zástupci SPC), stránkovaný (`strana`, `na_strance` 5–200, GUI nabízí 10/25/50/100) a řaditelný |
 | GET | `/api/hledat` | sémantické hledání |
@@ -44,10 +47,16 @@ Výpis léčiv (`/api/leciva`) model nepotřebuje a jede hned.
 | DELETE | `/api/slovnik?vyraz=&formulace=` | odebrat jednu formulaci |
 
 **Hledací slovník v GUI** (6. 10.): zabalený blok pod vyhledáváním s návodem
-a dvěma příklady. Zápis jde do tabulky `slovnik_dotazu` v Postgresu –
-společná všem instancím API, čte se při každém hledání (žádná cache, žádný
-restart). `slovnik_dotazu.json` je jen výchozí náplň při založení tabulky.
-Bez přihlášení může slovník měnit každý, kdo GUI vidí.
+a dvěma příklady. Uživatel napíše svůj výraz (kmen slova), do druhého pole
+část indikace; pod polem se nabídnou formulace, které v datech opravdu
+jsou, s počtem léků. Klikáním jich jde vybrat víc (nejvýš 4), tlačítko
+Přidat uloží celý výběr a seznam se znovu načte – nový výraz je první.
+Křížkem jde jednotlivou formulaci odebrat.
+
+Zápis jde do tabulky `slovnik_dotazu` v Postgresu – společná všem
+instancím API, čte se při každém hledání (žádná cache, žádný restart).
+`common/data/slovnik_dotazu.json` je jen výchozí náplň při založení tabulky.
+**Bez přihlášení může slovník měnit každý, kdo GUI vidí** (`todo.md`).
 
 ### Jeden tvar odpovědi pro obojí
 
@@ -55,9 +64,14 @@ Bez přihlášení může slovník měnit každý, kdo GUI vidí.
 kreslí jednu komponentu. U výpisu bez hledání jsou pole z hledání prostě
 `null` a v rozbaleném detailu se ukážou jako **NA**.
 
-    { "dotaz": null, "router": null, "celkem": 26, "strana": 1,
-      "stran": 3, "radky": [ { "lecivo": {...}, "skore": null,
-      "nejlepsi": null, "dalsi": [] } ] }
+    { "dotaz": null, "router": null, "celkem": 5880, "strana": 1,
+      "stran": 588, "radky": [ { "lecivo": {...}, "skore": null,
+      "nejlepsi": null, "dalsi": [] } ],
+      "cely_usek": false, "usek_orezan": false, "vyber_filtrem": false,
+      "atc_navrh": [] }
+
+`lecivo` nese i věk použití (`vek_od`, `pro_deti`). Výpis i hledání
+vracejí jen **zástupce SPC** (víc balení téhož léku se neopakuje).
 
 ### Řazení
 
@@ -87,13 +101,9 @@ takže se dokument otevře **rovnou u nalezeného místa**. Ikona je 📝.
 ### Práh podobnosti jde nastavit z obrazovky
 
 Posuvník **Práh podobnosti** (0 – 0,9, krok 0,05) se posílá jako
-`?prah=`. Výchozí **0,55** je naměřená hodnota, tlačítko vedle ho vrátí.
-
-| práh | „mám reflux" vrátí |
-|---|---|
-| 0,30 | 10 léčiv (i zjevný šum) |
-| **0,55** | **4 léčiva** |
-| 0,75 | 1 léčivo (jen MAALOX 0,86) |
+`?prah=`. Výchozí je **0,60**, tlačítko vedle ho vrátí. Hodnota je
+naměřená na 32 lécích a na celém trhu pouští falešné shody – přeměření
+je v `todo.md`.
 
 Posun posuvníku jen překresluje číslo; **hledá se až při puštění**
 (`change`, ne `input`) — jinak by každý krok posílal dotaz na model.
@@ -163,12 +173,16 @@ Jeden soubor `static/app.js`, žádné závislosti.
 | prvek | chování |
 |---|---|
 | pole dotazu | placeholder `hrazené léky na reflux`, **Enter hledá** |
-| posuvník prahu | 0 – 0,9; hledá se až při puštění; tlačítko vrátí 0,55 |
+| „Nastavení hledání" | zabalený blok (výchozí stav): omezení na sekci, posuvník prahu (0 – 0,9; hledá se až při puštění; tlačítko vrátí 0,60) a „Zvýraznit od" |
+| „Zvýraznit od" | jen obarví řádky podle shody (spolehlivé / hraniční), nic nefiltruje a neposílá dotaz |
+| „Hledací slovník" | zabalený blok: návod, přidání výrazu s formulacemi z nabídky, seznam a odebrání |
+| stránkování | okénkem, výběr 10 / 25 / 50 / 100 na stránku |
 | Hledat / Reset | Reset vrátí úvodní výpis a zruší filtr sekce |
-| šipka ▼ vlevo | rozbalí metadata řádku (skóre, cosine, ts_rank, pořadí, strana) |
+| šipka ▼ vlevo / klik na řádek | rozbalí detail: další shody nebo celá sekce, údaje o léku; skóre (RRF, cosine, ts_rank) jen tam, kde něco říká |
 | 📝 vpravo | otevře SPC v PDF na příslušné straně |
 | hodiny v řádku | *model pracuje…* během dotazu |
 | hodiny přes stránku | *aplikace startuje* dokud není model v paměti |
+| sloupec Shoda | podobnost nejlepší pasáže; **prázdný** u čtení sekce a u dotazů jen z atributů |
 
 **Metadata jsou schválně zabalená.** Díky tomu se úvodní výpis a výsledek
 hledání skoro neliší – u výpisu jsou skóre `NA`, ale nejsou vidět, dokud
@@ -181,11 +195,18 @@ si je někdo nerozbalí.
 - řazení ve výsledcích hledání (teď jen relevance)
 - filtr Rx/OTC a hrazení klikáním (jde jen dotazem nebo přes API)
 - stránkování hledání načítá celý výsledek a stránkuje až v paměti
+- přihlášení pro úpravy hledacího slovníku
+- upozornění, když je v zabaleném „Nastavení hledání" něco jinak než
+  výchozí (vybraná sekce, posunutý práh)
+- stav strojů s Ollamou je jen v `/api/stav`, v GUI vidět není
+- víc procesů API (uvicorn workers): každý proces si počítá vytížení
+  strojů sám, o dotazech ostatních procesů neví
 
 ## Provoz
 
 `--reload` po čase přestal zabírat a server běžel na starém kódu.
-**Po změně schématu odpovědi radši restartovat.**
+**Po změně kódu API radši restartovat**, po změně `static/` stačí
+v prohlížeči Ctrl+F5.
 
 ### Jak na Windows najít a zabít proces (obdoba `ps -ef | grep`)
 
@@ -221,7 +242,7 @@ Zabití podle PID jde i klasicky:
 | režim | kdy | řádek | rozbalení |
 |---|---|---|---|
 | **hledání** | „pálí mě žáha" | záhlaví „Nalezeno (nejlepší shoda)", v buňce [sekce] + pasáž, pod ní drobně „pro: … · věk · +N shod ▼" | další shody podle podobnosti, metadata |
-| **čtení sekce** (`cely_usek`) | „nežádoucí účinky paralen", „dávkování vibrocil" | **souhrn sekce**: NÚ počty podle frekvence, dávkování skupiny pacientů, indikace počet + začátek | celá sekce uspořádaná podle smyslu: **NÚ seskupené podle frekvence** (nejčastější nahoře), **dávkování jako tabulka** (pro koho / dávka / jak často / poznámka), indikace seznam; metadata sbalená v „Údaje o léku a skóre" |
+| **čtení sekce** (`cely_usek`) | „nežádoucí účinky paralen", „dávkování vibrocil" | **souhrn sekce**: NÚ počty podle frekvence, dávkování skupiny pacientů, indikace počet + začátek | celá sekce uspořádaná podle smyslu: **NÚ seskupené podle frekvence** (nejčastější nahoře), **dávkování jako tabulka** (pro koho / dávka / jak často / poznámka), indikace seznam; metadata sbalená v „Údaje o léku" (bez skóre) |
 
 Čtení sekce s 1–2 léky se **rozbalí samo**. Sekce zúžená filtrem
 („vzácné NÚ paralen") má v souhrnu „(odpovídá filtru)".
@@ -231,7 +252,7 @@ s první položkou „vzácné" vypadaly, jako by lék měl jen vzácné účink
 
 Štítky u nálezu: **„indikace pro: …"** = skupina pacientů dané indikace
 (z 4.1, jen když je známá); **„věk: od X let"** = věk použití léku
-(`vek_pacienta.md`), podle něj filtruje „pro dítě X let".
+(`docs/hledani_vek.md`), podle něj filtruje „pro dítě X let".
 
 **Buňka Nalezeno** (1. 10. 2026): vlevo **barevná značka sekce** s pevnou
 šířkou (Indikace / Kontraindikace / Dávkování / Nežád. účinky / Identita,

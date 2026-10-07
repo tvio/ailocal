@@ -10,7 +10,7 @@ vzala text. Tady je to na jednom místě. Pravidlo výběru zdroje
 Vadnou TABULKU Doclingu surový text automaticky nenahrazuje – takové
 případy jen označí kontrola konverze (sloupec „kontrola").
 
-Volá extrahuj_sekce.py --korpus na konci běhu.
+Volá extrakce_2_sekce.py --korpus na konci běhu.
 """
 import csv
 import html

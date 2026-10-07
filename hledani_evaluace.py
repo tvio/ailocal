@@ -20,10 +20,10 @@ trhu nefungovaly ("negativni" temata v trhu jsou, parafraze cekaly
 konkretni nazev) a byly smazany; jsou v gitu do commitu 71c761c.
 
 Pouziti:
-  uv run python evaluate.py                  # vse (test 0 + parafraze + negativni)
-  uv run python evaluate.py --jen-data       # jen test 0 (rychle, bez modelu)
-  uv run python evaluate.py --prahy          # parafraze a negativni pro ruzne prahy
-  uv run python evaluate.py --vahy           # porovnat zpusoby razeni (rrf / cosine)
+  uv run python hledani_evaluace.py                  # vse (test 0 + parafraze + negativni)
+  uv run python hledani_evaluace.py --jen-data       # jen test 0 (rychle, bez modelu)
+  uv run python hledani_evaluace.py --prahy          # parafraze a negativni pro ruzne prahy
+  uv run python hledani_evaluace.py --vahy           # porovnat zpusoby razeni (rrf / cosine)
 """
 
 import io
@@ -346,8 +346,8 @@ def main() -> int:
         for d in v.detaily:
             print(f"      {d}")
     print()
-    print("Práh se měří: uv run python evaluate.py --prahy")
-    print("Způsob řazení: uv run python evaluate.py --vahy")
+    print("Práh se měří: uv run python hledani_evaluace.py --prahy")
+    print("Způsob řazení: uv run python hledani_evaluace.py --vahy")
     return 0
 
 

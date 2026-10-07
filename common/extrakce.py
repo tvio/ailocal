@@ -215,7 +215,7 @@ POVINNE_KLICE = {
 class VysledekExtrakce:
     sekce: str
     polozky: list = field(default_factory=list)
-    stav: str = "ok"          # viz tabulka extrakce_stav v zadani.md
+    stav: str = "ok"          # viz docs/pipeline_stavy.md
     duvod: str = ""
     model: str = ""
     cas_s: float = 0.0
@@ -390,7 +390,7 @@ def normalizuj_skupinu(hodnota: str | None) -> tuple[str, str]:
     Nikdy nevrací prázdno. Když zdroj skupinu nerozlišuje, vrátí explicitní
     'není uvedeno' / 'neuvedeno' – ze scházející hodnoty by nešlo poznat,
     jestli ji zdroj neuvádí, nebo ji model přehlédl. Stejný princip jako
-    u stavů extrakce (viz stavy.md).
+    u stavů extrakce (viz docs/pipeline_stavy.md).
 
     Text zůstává DOSLOVA ze zdroje ("děti od 1 roku a s hmotností ≥ 10 kg"),
     protože ta podmínka je zdravotně podstatná. Kód je hrubší, aby se dalo
@@ -668,7 +668,7 @@ def zpracuj_odpoved(
 
     # Klic bez opory v puvodnim textu se ZAHAZUJE - viz klic_ma_oporu().
     # Docasne vypnuto spolu s ostatnimi kontrolami (config.KONTROLY_ZAPNUTE,
-    # extrakce_kontroly.md).
+    # nerealizovane_kontroly/kontroly_popis.md).
     from common.config import KONTROLY_ZAPNUTE
 
     if KONTROLY_ZAPNUTE and nazev_sekce in ("indikace", "kontraindikace"):

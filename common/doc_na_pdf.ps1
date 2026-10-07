@@ -1,7 +1,7 @@
 # Prevod Word dokumentu (.doc/.rtf) na DOCX a PDF pres nainstalovany MS Word.
 # Pouziti: powershell -NoProfile -File doc_na_pdf.ps1 <vstup> <vystup.docx> <vystup.pdf>
 #
-# Vola konvertuj_serve.py pro SPC, ktera SUKL ma jen jako Word (CAVINTON).
+# Vola extrakce_1_konverze.py pro SPC, ktera SUKL ma jen jako Word (CAVINTON).
 #   DOCX = zdroj OBSAHU: Docling ho cte primo ze struktury (tabulky podle
 #          bunek, bez odhadu z vzhledu stranky).
 #   PDF  = jen pro GUI (odkaz na stranu) a kontroly; Word do nej zapise

@@ -16,7 +16,7 @@ Do _prehled.json přidá "_konverze": verdikt kontroly převodu
 Bez modelu, ~10 min na celý korpus. Přepočítá vždy všechno.
 
 Použití:
-  uv run python extrahuj_sekce.py
+  uv run python extrakce_2_sekce.py
 """
 
 import io
@@ -138,7 +138,7 @@ def main() -> None:
     if chybejici:
         print(f"⚠ Nenalezené sekce: " + ", ".join(f"{k}={v}" for k, v in chybejici.most_common()))
         print("  Tyhle sekce dostanou v tabulce extrakce_stav stav 'chybi_v_dokumentu'")
-        print("  – musí být odlišené od 'selhala_extrakce', viz zadani.md.")
+        print("  – musí být odlišené od 'selhala_extrakce', viz docs/pipeline_stavy.md.")
     else:
         print("Všechny sledované sekce nalezeny u všech léčiv.")
     # Přehled celého korpusu na jednom místě – tisíce složek ručně

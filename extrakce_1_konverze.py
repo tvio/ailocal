@@ -56,10 +56,10 @@ Výstup: data/spc/<identita>/{spc.pdf, spc.md, strany.json, kontrola.json}
         logs/konverze_serve_<čas>.log
 
 Příklady:
-  uv run python konvertuj_serve.py --kod 0254048
-  uv run python konvertuj_serve.py --obchodovana
-  uv run python konvertuj_serve.py --obchodovana --od-davky 17
-  uv run python konvertuj_serve.py --stav
+  uv run python extrakce_1_konverze.py --kod 0254048
+  uv run python extrakce_1_konverze.py --obchodovana
+  uv run python extrakce_1_konverze.py --obchodovana --od-davky 17
+  uv run python extrakce_1_konverze.py --stav
 """
 
 import io
@@ -896,9 +896,9 @@ def main() -> int:
                     "se vrátí do fronty")
         return 130
     report_na_konci()
-    log.info("KONEC. Souhrn: uv run python konvertuj_serve.py --stav")
+    log.info("KONEC. Souhrn: uv run python extrakce_1_konverze.py --stav")
     if chyb:
-        log.info("Chyby zkusit znovu: uv run python konvertuj_serve.py %s --znovu-chyby",
+        log.info("Chyby zkusit znovu: uv run python extrakce_1_konverze.py %s --znovu-chyby",
                  " ".join(x for x in sys.argv[1:] if x != "--znovu-chyby"))
     return 0
 

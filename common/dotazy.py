@@ -34,7 +34,10 @@ from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
-CESTA = Path("slovnik_dotazu.json")     # jen VYCHOZI NAPLN tabulky, viz niz
+# Datove soubory lezi vedle modulu (common/data/), ne v koreni projektu -
+# cesta tak nezavisi na tom, odkud se skript pousti.
+DATA = Path(__file__).parent / "data"
+CESTA = DATA / "slovnik_dotazu.json"     # jen VYCHOZI NAPLN tabulky, viz niz
 
 # ---------------------------------------------------------------------------
 # Uloziste: tabulka slovnik_dotazu v Postgresu (6. 10. 2026)
@@ -49,7 +52,7 @@ CESTA = Path("slovnik_dotazu.json")     # jen VYCHOZI NAPLN tabulky, viz niz
 # slovnik_dotazu.json zustava v gitu jako vychozi napln: nahraje se JEN
 # kdyz tabulka jeste neexistuje. Pozdejsi upravy souboru se do DB nedostanou.
 #
-# POZOR: naplni_db.py (--korpus, --znovu) tuhle tabulku mazat NESMI - jsou
+# POZOR: extrakce_4_db.py (--korpus, --znovu) tuhle tabulku mazat NESMI - jsou
 # v ni zaznamy pridane uzivateli. Nema cizi klic na leciva, takze
 # TRUNCATE leciva CASCADE se ji netyka.
 DDL = """
@@ -273,7 +276,7 @@ def rozsir(dotaz: str, *, cesta: Path | None = None, limit: int = 4) -> list[str
 #      prisli bychom o dohledatelnost na stranu SPC, coz je hlavni
 #      prednost cele ukazky.
 
-CESTA_ATC = Path("atc_mapa.json")
+CESTA_ATC = DATA / "atc_mapa.json"
 
 _cache_atc: dict[str, list[str]] | None = None
 

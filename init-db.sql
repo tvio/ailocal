@@ -243,7 +243,7 @@ CREATE INDEX ON leciva_search USING gin  (sekce_atributy);
 --
 -- Proc to nejde resit NULLem: NULL znamena zaroven "lek opravdu nema
 -- nezadouci ucinky" i "extrakce selhala". U aplikace pro laiky je ten
--- rozdil zasadni. Uplny popis stavu je v stavy.md.
+-- rozdil zasadni. Uplny popis stavu je v docs/pipeline_stavy.md.
 -- ===========================================================================
 CREATE TABLE extrakce_stav (
     id              BIGSERIAL PRIMARY KEY,
@@ -296,7 +296,7 @@ CREATE TABLE slovnik_pojmu (
 
 -- ===========================================================================
 -- Slovnik dotazu: vyraz uzivatele -> formulace, ktera je v datech (HLEDANI).
--- Upravuje se z GUI (/api/slovnik). NENI soucast korpusu: naplni_db.py ji
+-- Upravuje se z GUI (/api/slovnik). NENI soucast korpusu: extrakce_4_db.py ji
 -- mazat NESMI (zaznamy pridane uzivateli), proto nema cizi klic na leciva.
 -- DDL je i v common/dotazy.py - tam se tabulka zalozi na uz bezici databazi
 -- a naplni z slovnik_dotazu.json (vychozi napln, jen pri zalozeni).
@@ -326,7 +326,7 @@ CREATE TABLE beh_log (
     lecivo      TEXT,
     sekce       TEXT,
     akce        TEXT NOT NULL,
-    stav        TEXT NOT NULL,      -- slovnik ze stavy.md
+    stav        TEXT NOT NULL,      -- slovnik ze docs/pipeline_stavy.md
     hotovo      INTEGER,
     celkem      INTEGER,
     trvani_s    NUMERIC,

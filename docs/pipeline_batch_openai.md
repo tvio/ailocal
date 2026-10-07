@@ -1,6 +1,6 @@
 # OpenAI Batch API – routy, zprávy, stavy
 
-Referenční popis API, které používá `extrahuj_json_cloud.py`. Po vzoru
+Referenční popis API, které používá `extrakce_3_json.py`. Po vzoru
 Swaggeru: routa → co posílám → co se vrací. Příklady jsou **skutečné**
 z testovacího běhu 29. 9. 2026 (`data/spc/_extrakce_test/`), dlouhé
 texty zkrácené (`…`). Kde příklad není z našeho běhu, ale z dokumentace
@@ -26,7 +26,7 @@ Autorizace u všech rout: hlavička `Authorization: Bearer sk-proj-…`
     GET  /v1/batches?limit=100            seznam dávek (srovnání se sirotky)
 ```
 
-| routa | funkce v `extrahuj_json_cloud.py` |
+| routa | funkce v `extrakce_3_json.py` |
 |---|---|
 | `POST /v1/files` | `odesli_davky()` → `api.files.create(...)` |
 | `POST /v1/batches` | `odesli_davky()` → `api.batches.create(...)` |
@@ -365,7 +365,7 @@ gpt-6-luna Batch: vstup **0,05 $**, výstup **0,25 $** za 1 M tokenů
 | 1 M výstupních tokenů | **~236 kompletních SPC**, ~18 700 položek, ~0,32 $ i se vstupem |
 | 1 SPC (4 sekce) | 5 968 vstup + 4 243 výstup tokenů = **0,00136 $** |
 | 1 000 SPC | **~1,36 $** |
-| celý korpus 5 880 SPC | **~8,0 $** (zaplaceno 10,18 $ i s opakováním a smyčkami) |
+| celý korpus 5 880 SPC | **~8,0 $** jeden průchod; do 4. 10. zaplaceno **11,00 $** i s opakováním, smyčkami a přeextrahováním dávkování a indikací (strop `config.CLOUD_STROP_USD` = 11,50 $) |
 | za 1 $ | ~735 SPC |
 
 ---
@@ -382,3 +382,90 @@ gpt-6-luna Batch: vstup **0,05 $**, výstup **0,25 $** za 1 M tokenů
   na platform.openai.com → Settings → Billing.
 - **Soubory u OpenAI zůstávají** (vstup i výstup). Časem je jde smazat
   `DELETE /v1/files/{id}`. Lokální kopie jsou v `data/spc/_extrakce/davky/`.
+
+---
+
+# Jak běh spustit a sledovat
+
+## Spuštění
+
+```bash
+uv run python extrakce_3_json.py --beh --max-davek 1   # pilot: 1 dávka = až 1 000 požadavků, ~0,3 $
+uv run python extrakce_3_json.py --beh                 # zbytek, naváže
+uv run python extrakce_3_json.py --stav                # kdykoli: souhrn + report.md
+uv run python extrakce_3_json.py --beh --max-davek 0   # jen dosledovat rozjeté, nic nového neposílat
+```
+
+Běh nejdřív ověří klíč v `key.yaml` (soubor, tvar, funkčnost u OpenAI,
+dostupnost modelu). Když něco nesedí, skončí hned chybou `CHYBA KLICE
+OPENAI` a kódem 2, nic neodešle.
+
+Při znovuspuštění se tokeny nepočítají znovu, takže runner naváže během
+pár sekund. V rámci celé pipeline ho pouští `extrakce_all.py` (krok 3)
+a po něm ověří, že ve frontě ani u OpenAI nic nezbylo.
+
+**Dávky se neposílají všechny naráz.** OpenAI má limit tokenů ve frontě
+(2 M pro gpt-6-luna), runner posílá, kolik se vejde, čeká na dokončení
+a posílá další. Když proces skončí (restart počítače, zavřené okno),
+odeslané dávky u OpenAI doběhnou, ale **neodeslaný zbytek fronty čeká na
+další spuštění** – stejný příkaz naváže.
+
+## Chyby
+
+Chyby jsou v `data/spc/_extrakce/report.md`. Zpět do fronty:
+
+```bash
+uv run python extrakce_3_json.py --znovu-chybne --beh      # všechny chybné (nejvýš 3 pokusy)
+uv run python extrakce_3_json.py --znovu-seznam soubor.txt  # vybraná ID, i už hotová
+```
+
+## Kde je vidět, co prošlo a co ne
+
+1. **Stav** každého požadavku i dávky: `data/spc/_extrakce/stav.sqlite`.
+   Přežije pád, Ctrl+C i restart.
+2. **Log** průběžně na obrazovku i do `data/spc/_extrakce/log/`: stav každé
+   dávky (validace → zpracování 11/19 → hotovo) a každá chyba s ID.
+3. **Report** `data/spc/_extrakce/report.md`: tabulka dávek a seznam všech
+   chybných požadavků s důvodem.
+
+## Běh nezávisle na IDE (Windows)
+
+Proces spuštěný z VS Code zavřením IDE skončí. Dávky u OpenAI běží dál,
+ale výsledky nikdo nestáhne a zbytek fronty se neodešle. Proto:
+
+**Ručně v samostatném okně** (`-NoExit` nechá okno otevřené i po konci):
+
+```powershell
+Start-Process powershell -ArgumentList '-NoExit','-Command','cd C:\python\ailocal; uv run python extrakce_3_json.py --beh'
+```
+
+**Hlídač v Plánovači úloh každých 15 minut.** Runner má zámek
+(`data/spc/_extrakce/beh.lock`, drží ho operační systém): když už běží,
+další spuštění se hned tiše ukončí; když spadl, další spuštění naváže.
+
+```powershell
+schtasks /Create /TN "localsemantic_extrakce" /SC MINUTE /MO 15 /TR "powershell -NoProfile -WindowStyle Hidden -Command \"cd C:\python\ailocal; uv run python extrakce_3_json.py --beh\""
+schtasks /Delete /TN "localsemantic_extrakce" /F     # po doběhnutí smazat
+```
+
+**Pozor:** `--max-davek N` platí pro JEDNO spuštění. Nechat ho
+v plánovači s N > 0 znamená N nových dávek každých 15 minut.
+
+## Sledování odkudkoli
+
+```powershell
+# log naživo (nejnovější soubor)
+Get-Content (Get-ChildItem C:\python\ailocal\data\spc\_extrakce\log\*.log | Sort-Object LastWriteTime | Select-Object -Last 1) -Wait -Tail 20
+
+# souhrn + aktualizace report.md (jde i když běh právě jede)
+uv run python extrakce_3_json.py --stav
+```
+
+Uspání notebooku proces pozastaví, dávky u OpenAI běží dál a po probuzení
+se stav dotáhne.
+
+## Bez cloudu
+
+Pro jeden lék nebo malou dávku jde krok 3 pustit lokálně přes Ollamu
+(`--local`, `--kody`, `--model`) – stejná fronta, stejný výstup. Popis:
+`docs/pipeline_prehled.md`.
