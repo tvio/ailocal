@@ -119,16 +119,20 @@ EMBED_DIMENSION = 1024
 KONTROLY_ZAPNUTE = False
 
 # --- Docling Serve na DGX Spark (CUDA) ---
-# Přes SSH tunel na localhost. 13× rychlejší než lokální Docling, výstup
-# totožný (poznatky.md 24.9.2026). Používá extrakce_1_konverze.py.
-DOCLING_SERVE_URL = "http://localhost:5001"
+# 13× rychlejší než lokální Docling, výstup totožný (poznatky.md 24.9.2026).
+# Používá extrakce_1_konverze.py. Na notebooku přes SSH tunel na localhost;
+# na serveru proměnná prostředí DOCLING_SERVE_URL (např. http://10.6.38.10:5001).
+DOCLING_SERVE_URL = _os.environ.get("DOCLING_SERVE_URL", "http://localhost:5001").rstrip("/")
 
 # --- PostgreSQL ---
-PG_HOST = "localhost"
-PG_PORT = 5432
-PG_USER = "localsemantic"
-PG_PASSWORD = "localsemantic"
-PG_DATABASE = "localsemantic"
+# Výchozí hodnoty = docker-compose.yml na stejném stroji. Jinde přepsat
+# proměnnými prostředí PG_HOST, PG_PORT, PG_USER, PG_PASSWORD, PG_DATABASE
+# (vzor v .env.example).
+PG_HOST = _os.environ.get("PG_HOST", "localhost")
+PG_PORT = int(_os.environ.get("PG_PORT", "5432"))
+PG_USER = _os.environ.get("PG_USER", "localsemantic")
+PG_PASSWORD = _os.environ.get("PG_PASSWORD", "localsemantic")
+PG_DATABASE = _os.environ.get("PG_DATABASE", "localsemantic")
 
 PG_DSN = f"postgresql://{PG_USER}:{PG_PASSWORD}@{PG_HOST}:{PG_PORT}/{PG_DATABASE}"
 

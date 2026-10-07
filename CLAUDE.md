@@ -95,7 +95,8 @@ změna pořadí, co musí být v konfiguraci).
 | `docs/hledani_gui_api.md` | API a webová aplikace |
 | `docs/prezentace_scenare.md` | **odzkoušené dotazy pro předvádění** + ukázka chyb v datech |
 | `docs/prezentace_vyklad.md` | výklad pro vedení IT, laicky |
-| `docs/provoz_pristupy.md` | hesla, adresy, řešení potíží |
+| `docs/provoz_pristupy.md` | hesla, adresy, stroje s Ollamou, řešení potíží |
+| `docs/provoz_prenos_na_server.md` | přenos na server (RHEL): kód gitem, data tarem, DB dumpem, co na Linuxu nepoběží, Claude Code na serveru |
 | `benchmarky/README.md` | co který benchmark měří a kolik stojí |
 | `nerealizovane_kontroly/kontroly_popis.md` | kontroly extrakce: co dělaly, proč neběží, co chybí |
 
@@ -199,7 +200,7 @@ uv run python hledani_log.py "..."     # podrobný log jednoho hledání
 uv run python hledani_evaluace.py              # test dat + parafráze ATC + negativní
 uv run python extrakce_all.py --stav   # kde který krok pipeline je
 
-# konverze celého korpusu (Docling Serve přes tunel na localhost:5001)
+# konverze celého korpusu (Docling Serve: config.DOCLING_SERVE_URL / proměnná prostředí)
 uv run python extrakce_1_konverze.py --obchodovana      # navazuje sám
 uv run python extrakce_1_konverze.py --stav             # souhrn, podezřelé, kde se stálo
 ```

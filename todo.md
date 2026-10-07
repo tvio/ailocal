@@ -87,9 +87,24 @@ přejmenovány (`extrakce_N_…`, `hledani_…`); dokumentace v `docs/`. Zbývá
 - [ ] Tajnosti mimo image (env/secret), Ollama + Docling Serve z konfigurace
 
 ### 4. Nasazení na server
-- [ ] Přenést image + data + dump, konfigurace, spuštění
-- [ ] Smoke test: `hledani_cli.py`, `hledani_evaluace.py --korpus`, GUI
-- [ ] Měsíční cron + upozornění (viz CÍLOVÝ STAV níže)
+Server: RHEL 9.4, x86, dosáhne na Spark. Má tam běžet všechno a dál se
+tam vyvíjí přes Remote-SSH. **Postup: `docs/provoz_prenos_na_server.md`.**
+- [x] Konfigurace z prostředí: Ollama, Postgres, Docling Serve (`.env.example`)
+- [ ] Na serveru: Docker (nebo podman), `uv`, dosah na Docling Serve 5001,
+      OpenAI, SÚKL, EMA
+- [ ] Přenést: kód gitem, data tarem (4,7 GB), DB `pg_dump`/`pg_restore`
+      (6,3 GB, embeddingy se nepočítají znovu), `key.yaml` ručně
+- [ ] Ověřit vlastní image Postgresu (hunspell) – notebook běží ze
+      základního `pgvector/pgvector:pg17`
+- [ ] Smoke test: `extrakce_all.py --stav`, `hledani_cli.py`,
+      `hledani_evaluace.py` (18/20, 69 %, 5/6), `bench_soubeh.py --simulace`, GUI
+- [ ] **`.doc` SPC na Linuxu:** převod přes MS Word a PowerShell nepoběží;
+      náhrada přes LibreOffice (4 dokumenty z 5 880, jen krok 1)
+- [ ] SELinux a připojené soubory v `docker-compose.yml` (`:z`)
+- [ ] API jako služba systemd; měsíční cron `extrakce_all.py --vse`
+      + upozornění (viz CÍLOVÝ STAV níže)
+- [ ] Co má Claude vědět i na serveru, psát do `CLAUDE.md` – paměť Claude
+      je vázaná na počítač a k 7. 10. je prázdná
 
 ### 4b. Před prezentací
 - [x] (1. 10.) **Výpis VŠECH hledacích vzorů s odzkoušenými příklady** → `docs/prezentace_scenare.md` přepsán pro korpus – aby se

@@ -4,6 +4,7 @@ __pycache__/
 *.py[oc]
 .mypy_cache/
 key.yaml
+.env
 *.key
 pgpass
 logs/
