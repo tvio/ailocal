@@ -9,7 +9,7 @@ VS Code Remote-SSH. Notebook přestává být hlavní kopií dat.
 
 | část | velikost | jak se přenáší |
 |---|---|---|
-| kód, dokumentace, `CLAUDE.md` | malé | `git clone` (větev `v1.5`) |
+| kód, dokumentace, `CLAUDE.md` | malé | `git clone` (hlavní větev `master`; `v1.5` do ní byla sloučena 7. 10.) |
 | `data/spc`, `data/detaily_leciv`, seznamy | 4,7 GB, statisíce souborů | `tar` proudem přes ssh |
 | databáze (hlavně `leciva_search` s vektory) | 6,3 GB | `pg_dump -Fc` → `pg_restore` |
 | `key.yaml` (OpenAI) | – | ručně, není v gitu |
@@ -41,7 +41,7 @@ curl -sI https://www.ema.europa.eu | head -1     # EU dokumenty (krok 1)
 ## 1. Kód
 
 ```bash
-cd ~ && git clone -b v1.5 https://github.com/tvio/ailocal.git && cd ailocal
+cd ~ && git clone https://github.com/tvio/ailocal.git && cd ailocal    # hlavní větev master
 uv sync
 ```
 
