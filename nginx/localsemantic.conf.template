@@ -1,0 +1,35 @@
+# HTTPS pred API (uvicorn). Sablona: obraz nginx pri startu dosadi promenne
+# prostredi GUI_PORT a API_UPSTREAM (docker-compose.yml) a vysledek ulozi do
+# /etc/nginx/conf.d/. Promenne nginxu ($host...) zustavaji, jak jsou.
+#
+# Certifikat se cte z pripojeneho adresare (TLS_CERT_DIR). Po jeho vymene:
+#     docker exec localsemantic-nginx nginx -s reload
+
+server {
+    listen ${GUI_PORT} ssl;
+    http2 on;
+    server_name _;
+
+    ssl_certificate     /etc/nginx/cert/${TLS_CERT};
+    ssl_certificate_key /etc/nginx/cert/${TLS_KEY};
+    ssl_protocols       TLSv1.2 TLSv1.3;
+    ssl_session_cache   shared:SSL:10m;
+
+    # Kdo prijde na tenhle port pres http://, toho presmeruj na https://
+    error_page 497 =301 https://$http_host$request_uri;
+
+    gzip on;
+    gzip_types application/json application/javascript text/css;
+
+    location / {
+        proxy_pass http://${API_UPSTREAM};
+        proxy_http_version 1.1;
+        proxy_set_header Host              $http_host;
+        proxy_set_header X-Real-IP         $remote_addr;
+        proxy_set_header X-Forwarded-For   $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto https;
+        # Hledani ceka na router az HLEDANI_TIMEOUT_S (30 s) a pri soubehu
+        # vic uzivatelu stoji ve fronte - vychozich 60 s by spojeni utnulo.
+        proxy_read_timeout 180s;
+    }
+}

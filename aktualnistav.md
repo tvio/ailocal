@@ -1,3 +1,27 @@
+# STAV K 9.10.2026 — APLIKACE JE NA SERVERU, DATABÁZE OBNOVENÁ Z DUMPU
+
+- **9. 10. (server, `/opt/ailocal`):** dump obnoven do kontejneru
+  `localsemantic-postgres`: 8 778 kódů, 5 880 SPC, 472 844 hledacích řádků,
+  0 bez vektoru, slovník dotazů 53, 34/34 indexů platných, 0 chyb v
+  `logs/pg_restore.log`. Evaluace **18/20, 69 %, 5/6** = stejně jako na
+  notebooku (`logs/evaluace_po_prenosu.log`).
+- **Data Postgresu jsou v `data/pgdata` na `/opt`**, ne ve volume Dockeru
+  (na `/` bylo jen 9,9 GB volných). Řídí to `PGDATA_DIR` v `.env`;
+  bez něj compose použije volume jako dřív (notebook beze změny).
+- **GUI běží na `https://t-api-dlp01.sukl.cz:8090/`**: kontejner
+  `localsemantic-nginx` (HTTPS, certifikát `*.sukl.cz` z `/opt/nginx/cert`)
+  → uvicorn na hostu přes unixový socket `run/api.sock`. **Otevřený je jen
+  port 8090**, port 8000 se na serveru nepoužívá. Ověřeno ze serveru: certifikát platný,
+  GUI, Swagger, PDF, hledání „mám reflux" 5,3 s. **Z jiného počítače
+  neověřeno** – čeká na povolení portu 8090 v síti.
+- **API běží jako služba systemd `localsemantic-api`** (enabled, jednotka
+  v `systemd/`); log `journalctl -u localsemantic-api`. Skutečný restart
+  serveru vyzkoušený není. Další krok: `extrakce_6_rejstrik.py`,
+  `bench_soubeh.py --simulace`, pak cron (`todo.md` TOP 4). Po ověření
+  provozu smazat `data/localsemantic.dump` (2,9 GB).
+
+Níže stav ze 7. 10.:
+
 # STAV K 7.10.2026 — ÚKLID HOTOVÝ, DOKUMENTACE V `docs/` PROJITÁ PROTI KÓDU
 
 - **7. 10.:** `docs/` aktualizované (hledání přepsáno celé, GUI/API, věk,

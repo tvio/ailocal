@@ -12,6 +12,11 @@ Jak hledání funguje uvnitř: `docs/hledani_jak_funguje.md`.
 | http://localhost:8000/ | aplikace |
 | http://localhost:8000/docs | **Swagger** – dokumentace a zkoušení API |
 
+**Na serveru** je aplikace na `https://t-api-dlp01.sukl.cz:8090/` – HTTPS
+dělá kontejner nginx před uvicornem (`docs/provoz_prenos_na_server.md` kap. 5).
+Frontend volá API relativními adresami (`/api/…`), takže o portu ani
+o HTTPS neví a nic se v něm nenastavuje.
+
 ---
 
 ## Nahrávání modelu při startu

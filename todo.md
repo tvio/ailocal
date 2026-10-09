@@ -1,16 +1,4 @@
-# TODO ME
-0. Leky cely korpus
-Pridat debug log do GUI pro hledani
-1. Sestaveni flow aplikace dle skritpy.md
-1. Udelat logovani komple konverze
-2. Udelat logovani komplet od A..Z
-2. Vylepsit vyhledavani, kdyz najde nejaky vysoky rank - tak pridat vsehcno z dane ATC skupiny a lecive latky. 
-4. Proc lek na kasel vraci ACIFEIN
-5. PODIVAT SE: evaluace po preextrahovani indikaci (4. 10.) 18/20 misto 20/20 –
-   „kašlu a nejde mi vykašlat hlen" 0/5, „pálí mě při močení" 0/5.
-   Detail nize v TOP („Evaluace po indikacich v2") a v `poznatky.md` 4. 10.
 
----
 
 # TOP – OD 2. 10. 2026: PIPELINE, ÚKLID, KONTEJNER, SERVER
 
@@ -91,17 +79,34 @@ Server: RHEL 9.4, x86, dosáhne na Spark. Má tam běžet všechno a dál se
 tam vyvíjí přes Remote-SSH. **Postup: `docs/provoz_prenos_na_server.md`.**
 - [x] Konfigurace z prostředí: Ollama, Postgres, Docling Serve (`.env.example`)
 - [ ] Na serveru: Docker (nebo podman), `uv`, dosah na Docling Serve 5001,
-      OpenAI, SÚKL, EMA
-- [ ] Přenést: kód gitem, data tarem (4,7 GB), DB `pg_dump`/`pg_restore`
-      (6,3 GB, embeddingy se nepočítají znovu), `key.yaml` ručně
-- [ ] Ověřit vlastní image Postgresu (hunspell) – notebook běží ze
-      základního `pgvector/pgvector:pg17`
-- [ ] Smoke test: `extrakce_all.py --stav`, `hledani_cli.py`,
-      `hledani_evaluace.py` (18/20, 69 %, 5/6), `bench_soubeh.py --simulace`, GUI
+      OpenAI, SÚKL, EMA – Docker 9. 10. běží, Ollama na Sparku dostupná;
+      Docling Serve, OpenAI, SÚKL a EMA ze serveru neověřeno
+- [x] Přenést: kód gitem, data tarem (4,7 GB), DB `pg_dump`/`pg_restore`
+      (embeddingy se nepočítají znovu), `key.yaml` ručně – hotovo 9. 10.,
+      DB 5,6 GB v `data/pgdata` na `/opt` (`PGDATA_DIR` v `.env`)
+- [ ] **Místo na `/opt`: 18 GB volných.** Měsíční `extrakce_4_db.py --korpus`
+      plní od nuly – ověřit, kolik místa navíc potřebuje (WAL, mrtvé řádky),
+      a dát do monitoringu jobu kontrolu volného místa před během
+- [ ] `data/localsemantic.dump` (2,9 GB) po ověření provozu smazat
+- [ ] Záloha DB na serveru (`pg_dump` do souboru); `data/pgdata` se nesmí
+      balit tarem spolu s `data/`
+- [x] Ověřit vlastní image Postgresu (hunspell) – 9. 10. na serveru
+      sestavený a použitý, evaluace stejná jako na notebooku
+- [ ] Smoke test: 9. 10. prošlo `extrakce_all.py --stav`, `hledani_cli.py`,
+      `hledani_evaluace.py` (18/20, 69 %, 5/6); zbývá `bench_soubeh.py
+      --simulace`, `extrakce_6_rejstrik.py` (symlinky) a GUI
 - [ ] **`.doc` SPC na Linuxu:** převod přes MS Word a PowerShell nepoběží;
       náhrada přes LibreOffice (4 dokumenty z 5 880, jen krok 1)
-- [ ] SELinux a připojené soubory v `docker-compose.yml` (`:z`)
-- [ ] API jako služba systemd; měsíční cron `extrakce_all.py --vse`
+- [x] SELinux a připojené soubory v `docker-compose.yml` – `:z` není
+      potřeba (SELinux je Enforcing, ale Docker tu běží bez jeho podpory)
+- [x] HTTPS pro GUI na portu 8090 (9. 10.): kontejner `localsemantic-nginx`,
+      certifikát `*.sukl.cz` z `/opt/nginx/cert`, profil `server` v compose
+- [ ] Povolení portu 8090 v síti (požadavek u správců) – pak ověřit
+      z počítače uživatele `https://t-api-dlp01.sukl.cz:8090/`
+- [ ] Certifikát platí do 17. 3. 2027; po výměně `nginx -s reload`
+- [x] API jako služba systemd `localsemantic-api` (9. 10., jednotka
+      v `systemd/`) – ověřit po skutečném restartu serveru
+- [ ] měsíční cron `extrakce_all.py --vse`
       + upozornění (viz CÍLOVÝ STAV níže)
 - [ ] Co má Claude vědět i na serveru, psát do `CLAUDE.md` – paměť Claude
       je vázaná na počítač a k 7. 10. je prázdná

@@ -22,7 +22,10 @@ cloudu** (OpenAI Batch); lokální extrakce je jen volba pro jeden lék.
 **Kde co je:** spustitelné skripty v kořeni (`extrakce_N_…` = kroky
 pipeline, `hledani_…` = CLI, log, evaluace, `api.py`), sdílený kód
 v `common/`, dokumentace v `docs/`, benchmarky v `benchmarky/`,
-nedodělané kontroly v `nerealizovane_kontroly/`, GUI ve `static/`.
+nedodělané kontroly v `nerealizovane_kontroly/`, GUI ve `static/`,
+nastavení HTTPS pro server v `nginx/` (kontejner před API; na serveru je
+otevřený jen port 8090, API poslouchá na socketu `run/api.sock`),
+jednotka služby API v `systemd/`.
 
 **CÍLOVÝ STAV:** celá pipeline jako jeden skript `extrakce_all.py`
 spouštěný **cronem jednou měsíčně na serveru** – přírůstkově (nová /

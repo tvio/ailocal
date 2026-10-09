@@ -40,7 +40,10 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - pgdata:/var/lib/postgresql/data
+      # Vychozi = pojmenovany volume. Na serveru je Docker na korenovem
+      # disku, kde na databazi (~7 GB) neni misto - PGDATA_DIR v .env
+      # (napr. ./data/pgdata) ji presune do adresare na jinem disku.
+      - ${PGDATA_DIR:-pgdata}:/var/lib/postgresql/data
       - ./init-db.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U localsemantic"]
@@ -74,6 +77,28 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
+  # HTTPS pro GUI a API. Jen na serveru: spousti se s profilem "server"
+  # (COMPOSE_PROFILES=server v .env), na notebooku se nespusti a certifikat
+  # tam byt nemusi. API samo bezi mimo Docker na hostu a posloucha na
+  # unixovem socketu run/api.sock, ZADNY sitovy port neotvira - ven jde
+  # jen GUI_PORT. Az bude API v kontejneru, staci zmenit API_UPSTREAM.
+  nginx:
+    profiles: ["server"]
+    image: nginx:alpine
+    container_name: localsemantic-nginx
+    restart: unless-stopped
+    environment:
+      GUI_PORT: ${GUI_PORT:-8090}
+      API_UPSTREAM: ${API_UPSTREAM:-unix:/run/localsemantic/api.sock:}
+      TLS_CERT: ${TLS_CERT:-sukl.cz.crt}
+      TLS_KEY: ${TLS_KEY:-sukl.cz.key}
+    ports:
+      - "${GUI_PORT:-8090}:${GUI_PORT:-8090}"
+    volumes:
+      - ./nginx/localsemantic.conf.template:/etc/nginx/templates/default.conf.template:ro
+      - ${TLS_CERT_DIR:-/opt/nginx/cert}:/etc/nginx/cert:ro
+      - ./run:/run/localsemantic
 
 volumes:
   pgdata:

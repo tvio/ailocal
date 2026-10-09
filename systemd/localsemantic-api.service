@@ -1,0 +1,28 @@
+# API localsemantic (uvicorn) jako sluzba. HTTPS a port 8090 dela kontejner
+# localsemantic-nginx, ktery sem predava pres socket run/api.sock.
+#
+# Instalace (cesty a uzivatele upravit, kdyz projekt neni v /opt/ailocal):
+#     sudo cp systemd/localsemantic-api.service /etc/systemd/system/
+#     sudo systemctl daemon-reload
+#     sudo systemctl enable --now localsemantic-api
+# Po zmene kodu:  sudo systemctl restart localsemantic-api
+# Log:            journalctl -u localsemantic-api -f
+#
+# Spousti se pres bash zamerne: SELinux nedovoli systemd spustit primo
+# program z domovskeho adresare (uv, Python) ani cist .env z /opt/ailocal.
+# Nastaveni (.env) proto nacita uv, ne systemd.
+
+[Unit]
+Description=localsemantic API (hledani v SPC)
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+User=thajek
+Group=thajek
+ExecStart=/usr/bin/bash -c 'cd /opt/ailocal && mkdir -p run && exec /home/thajek/.local/bin/uv run --no-sync --env-file .env uvicorn api:app --uds run/api.sock --proxy-headers --forwarded-allow-ips="*"'
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

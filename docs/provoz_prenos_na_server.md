@@ -35,8 +35,12 @@ curl -sI https://prehledy.sukl.gov.cz | head -1  # seznam léčiv a SPC (krok 1)
 curl -sI https://www.ema.europa.eu | head -1     # EU dokumenty (krok 1)
 ```
 
-- Místo na disku: ~5 GB data + ~7 GB databáze + ~4 GB dump dočasně +
+- Místo na disku: ~5 GB data + ~7 GB databáze + ~3 GB dump dočasně +
   několik GB závislostí (`docling` táhne torch).
+  **Zkontrolovat, kde má místo Docker** (`docker info --format '{{.DockerRootDir}}'`
+  a `df -h` na tu cestu): volume s databází jinak skončí na kořenovém disku.
+  Na serveru 9. 10. bylo na `/` volných 9,9 GB (a běží tam další aplikace),
+  na `/opt` 25 GB – proto `PGDATA_DIR` v `.env` (kap. 4).
 
 ## 1. Kód
 
@@ -87,9 +91,13 @@ uv run python extrakce_all.py --stav     # konverze 5 897 ok, sekce 5 880, extra
 český slovník hunspell):
 
 ```bash
+# když Docker nemá na svém disku ~8 GB volných: data Postgresu do adresáře
+# vedle projektu (docker compose čte .env v kořeni sám)
+echo 'PGDATA_DIR=./data/pgdata' >> .env
+
 docker compose build && docker compose up -d
 docker exec localsemantic-postgres psql -U localsemantic -d localsemantic -Atc "select to_tsvector('czech_unaccent','pálení žáhy')"
-# musí vrátit 'pálení':1 'žáha':2  – tedy „žáhy" převedené na „žáha"
+# musí obsahovat 'žáha':2 – tedy „žáhy" převedené na „žáha" (na serveru: 'pálení':1 'pálený':1 'žáha':2)
 ```
 
 Tahle kontrola je důležitá: kontejner na notebooku běží ze základního image
@@ -111,13 +119,30 @@ docker exec localsemantic-postgres rm /tmp/localsemantic.dump
 scp C:\python\ailocal\data\localsemantic.dump uzivatel@server:~/ailocal/data/
 ```
 
-**Na serveru** – obnova:
+**Na serveru** – obnova. Dump se do kontejneru **nekopíruje** (`docker cp`
+by ho zapsal na disk Dockeru, tj. další 3 GB na `/`); čte ho pomocný
+kontejner ze stejného image přes připojený soubor:
 
 ```bash
-docker cp data/localsemantic.dump localsemantic-postgres:/tmp/
-docker exec localsemantic-postgres pg_restore -U localsemantic -d localsemantic --clean --if-exists --no-owner -j 4 /tmp/localsemantic.dump
-docker exec localsemantic-postgres rm /tmp/localsemantic.dump
+mkdir -p logs
+docker run --rm --name localsemantic-restore --network localsemantic_default \
+  -e PGPASSWORD=localsemantic \
+  -e PGOPTIONS="-c maintenance_work_mem=1GB -c max_parallel_maintenance_workers=0" \
+  -v "$PWD/data/localsemantic.dump:/localsemantic.dump:ro" \
+  localsemantic/postgres:pg17-cs \
+  pg_restore -h postgres -U localsemantic -d localsemantic \
+    --clean --if-exists --no-owner -j 3 --verbose /localsemantic.dump > logs/pg_restore.log 2>&1
+grep -ci error logs/pg_restore.log     # čekáno 0
 ```
+
+`PGOPTIONS`: stavba indexu HNSW se s výchozími 64 MB nevejde do paměti
+a trvá mnohonásobně déle; souběžné stavění indexu je vypnuté, protože
+kontejner má `/dev/shm` jen 64 MB. `-j 3` nechává jedno jádro ze čtyř
+ostatním aplikacím na serveru.
+
+`PGDATA_DIR` patří uživateli z kontejneru (uid 999, práva 700) – z hostu
+se do něj bez `sudo` nedá podívat a **nesmí se přibalit do `tar` složky
+`data/`** (běžící databáze se soubory nezálohuje; k tomu je `pg_dump`).
 
 Vektory jsou v dumpu, embeddingy se **nepočítají znovu** (ušetří ~2 h
 a Ollamu). Znovu se staví indexy a fulltextový sloupec. Kontrola:
@@ -136,11 +161,39 @@ uv run python hledani_cli.py "mám reflux"                    # RENNIE, GAPULSID
 uv run python hledani_evaluace.py                            # čekáno 18/20, 69 %, 5/6
 uv run python benchmarky/soubeh/bench_soubeh.py --simulace   # rozdělování zátěže, bez Ollamy
 uv run python extrakce_6_rejstrik.py                         # rejstřík jako symlinky
-uv run uvicorn api:app --host 0.0.0.0 --port 8000            # GUI pro ostatní v síti
 ```
 
-Port pro GUI: `sudo firewall-cmd --add-port=8000/tcp --permanent && sudo
-firewall-cmd --reload`. `GET /api/stav` ukáže i stav strojů s Ollamou.
+`GET /api/stav` ukáže i stav strojů s Ollamou.
+
+### GUI pro ostatní: HTTPS na portu 8090 (nginx v kontejneru)
+
+Uživatelé chodí na **`https://<server>.sukl.cz:8090/`** (Swagger `/docs`).
+TLS ukončuje kontejner `localsemantic-nginx` a předává na uvicorn na hostu
+přes **unixový socket `run/api.sock`**. Na serveru je tak otevřený **jediný
+port, 8090**; port 8000 se tu nepoužívá vůbec (ten je jen pro vývoj na
+notebooku).
+
+```bash
+# .env: COMPOSE_PROFILES=server, GUI_PORT, TLS_CERT_DIR, TLS_CERT, TLS_KEY, API_UPSTREAM (vzor v .env.example)
+docker compose up -d                                          # s profilem "server" spustí i nginx
+mkdir -p run && uv run uvicorn api:app --uds run/api.sock --proxy-headers --forwarded-allow-ips='*'
+curl -s https://$(hostname -f):8090/api/stav                  # ověření včetně certifikátu
+```
+
+- **Certifikát** `*.sukl.cz` se čte přímo z `/opt/nginx/cert/` (`sukl.cz.crt`
+  = certifikát + mezilehlá CA, `sukl.cz.key`). Oba soubory už **jsou ve
+  formátu PEM**, nic se nepřevádí. Platí do 17. 3. 2027. Po výměně souborů:
+  `docker exec localsemantic-nginx nginx -s reload` – API se nerestartuje.
+- **Port 8090** zveřejňuje Docker sám, `firewall-cmd` na serveru není
+  potřeba (stejně jako u ostatních aplikací tady); povolení v síti je věc
+  správců.
+- Kdo přijde na port 8090 přes `http://`, je přesměrován na `https://`.
+- Přímo na API (bez nginxu) se ze serveru dá sáhnout takhle:
+  `curl --unix-socket run/api.sock http://x/api/stav`.
+- Složka `run/` je připojená do kontejneru; socket v ní zakládá uvicorn
+  při startu (práva 666, aby do něj nginx mohl psát).
+- Nastavení nginxu: `nginx/localsemantic.conf.template` (čekání na odpověď
+  180 s – hledání při souběhu stojí ve frontě na router).
 
 Evaluace je kontrola, že přenos nic nezměnil: jiná čísla = jiná data,
 jiný model, nebo nefunkční fulltext.
@@ -158,8 +211,23 @@ jiný model, nebo nefunkční fulltext.
 
 ## 7. Služba a měsíční běh (až bude ruční běh ověřený)
 
-- API jako služba systemd (`ExecStart=… uv run uvicorn api:app --host
-  0.0.0.0 --port 8000`, `EnvironmentFile=…/.env`, `WorkingDirectory`).
+- **API jako služba systemd:** jednotka je v `systemd/localsemantic-api.service`
+  (uživatel a cesty jsou v ní napsané pro `/opt/ailocal`).
+
+  ```bash
+  pkill -f 'uvicorn api:app'          # zastavit ručně spuštěné API (drží socket)
+  sudo cp systemd/localsemantic-api.service /etc/systemd/system/
+  sudo systemctl daemon-reload
+  sudo systemctl enable --now localsemantic-api
+  systemctl status localsemantic-api
+  curl -s https://$(hostname -f):8090/api/stav
+  ```
+
+  Po změně kódu `sudo systemctl restart localsemantic-api`, log
+  `journalctl -u localsemantic-api -f`. Jednotka pouští uvicorn přes
+  `bash` a `.env` načítá `uv` – SELinux nedovolí systemd spustit program
+  z domovského adresáře napřímo. Příkaz z jednotky je 9. 10. vyzkoušený
+  jako dočasná služba (`systemd-run`) a téhož dne nainstalovaný.
 - Pipeline: `extrakce_all.py --vse` z cronu jednou měsíčně. Má zámek, log
   a návratové kódy (`docs/pipeline_prehled.md`). **Pozor:** krok 4 plní
   databázi od nuly (~40 min) a krok 3 stojí peníze – rozpočtový strop je

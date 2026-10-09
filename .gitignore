@@ -8,6 +8,7 @@ key.yaml
 *.key
 pgpass
 logs/
+run/
 # benchmarky: SKRIPTY do gitu ano, vygenerovane vystupy ne (2. 10. 2026 –
 # drive bylo ignorovane cele benchmarky/ a skripty v gitu chybely)
 benchmarky/**/*.json

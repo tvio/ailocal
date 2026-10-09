@@ -5,6 +5,37 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-09 — Přenos na server: obnova DB z dumpu, databáze musela mimo disk Dockeru
+
+Postup z `provoz_prenos_na_server.md` by na serveru zaplnil kořenový disk.
+
+| | naměřeno |
+|---|---|
+| dump (`pg_dump -Fc`) | 2,9 GB (postup čekal ~4 GB) |
+| databáze po obnově | 5,6 GB (`pg_database_size`), adresář 6,4 GB už před stavbou HNSW |
+| volno na `/` (tam má Docker volumes) | 9,9 GB, sdílené s dalšími aplikacemi |
+| volno na `/opt` | 25 GB před obnovou, 18 GB po ní |
+| obnova celkem (`-j 3`, 4 jádra, 7 GB RAM) | pod 30 min; z toho index HNSW 6–16 min (neměřeno přesněji) |
+| chyby v logu obnovy | 0 |
+| evaluace po přenosu | 18/20, 69 %, 5/6 – stejně jako na notebooku |
+
+- **`docker cp` dumpu do kontejneru + volume = 2,9 + ~7 GB na `/`** při 9,9 GB
+  volných. Řešení: `PGDATA_DIR` v `.env` (bind mount `data/pgdata` na `/opt`)
+  a dump čte pomocný kontejner přes připojený soubor, nic se nekopíruje.
+- Vlastní image s hunspellem se na serveru použil poprvé. Kontrolní dotaz
+  vrací `'pálení':1 'pálený':1 'žáha':2` (postup uváděl bez `'pálený'`);
+  na evaluaci to vliv nemá.
+- SELinux je `Enforcing`, ale Docker běží bez jeho podpory – připojené
+  soubory fungují bez `:z`.
+- Pro stavbu HNSW nastaveno `maintenance_work_mem=1GB` a vypnuté souběžné
+  stavění (kontejner má `/dev/shm` 64 MB). S výchozím nastavením neměřeno.
+
+**Pro měsíční job:** `extrakce_4_db.py --korpus` plní od nuly do téhož
+adresáře – na `/opt` zbývá 18 GB, potřeba místa při přeplnění není změřená
+(`todo.md` TOP 4).
+
+---
+
 ## 2026-10-07 — Víc uživatelů: Spark vyřizuje router po jednom; rozdělování zátěže mezi stroje
 
 Před nasazením na server: co se stane, když hledá víc lidí naráz.
