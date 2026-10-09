@@ -58,6 +58,11 @@ Pořadí (plán z 2. 10.; starší úkoly do 25. 9. jsou v `docs/archiv_todo_202
 - [ ] `extrakce_4_db.py`: přírůstek po SPC místo TRUNCATE, zaniklá SPC označit
       (dnes i oprava jednoho léku znamená `--obnov-sekci` celé sekce)
 - [ ] Změněná SPC poznat (identita + otisk PDF) → jen ta do extrakce
+- [ ] **Měsíční aktualizace jako celek není hotová** (7. 10., odloženo):
+      krok 1 nové vydání SÚKL pozná a stáhne seznam, detaily i úhrady,
+      ale přes skutečnou změnu vydání to nikdy neběželo; změněný obsah
+      SPC se nepozná, DB se plní celá znovu. Popisek v GUI „…za září" je
+      natvrdo – brát z `data/pool_leciv.meta.json`.
 - [ ] Konfigurace z prostředí: Ollama, Docling Serve, Postgres, OpenAI, rozpočet
       (Ollama už ano: `OLLAMA_UZLY`, `OLLAMA_SOUBEZNE`, `HLEDANI_TIMEOUT_S`)
 - [ ] Souhrn běhu jako JSON pro monitoring

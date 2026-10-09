@@ -30,7 +30,7 @@ serveru ho postaví krok 6 pipeline jako symlinky.
 ```bash
 curl -s http://10.6.38.10:11434/api/version      # Ollama na Sparku (hledání)
 curl -s http://10.6.38.10:5001/version           # Docling Serve (krok 1 pipeline) – na notebooku šel jen tunelem!
-curl -sI https://api.openai.com | head -1        # extrakce (krok 3)
+curl -s -o /dev/null -w "%{http_code}\n" https://api.openai.com/v1/models   # extrakce (krok 3): 401 = dosah je (bez klíče); holá adresa vrací 421
 curl -sI https://prehledy.sukl.gov.cz | head -1  # seznam léčiv a SPC (krok 1)
 curl -sI https://www.ema.europa.eu | head -1     # EU dokumenty (krok 1)
 ```
@@ -65,13 +65,44 @@ Na serveru `chmod 600 key.yaml`. Běh extrakce klíč před startem ověří.
 
 ## 3. Data korpusu
 
-Z notebooku (PowerShell; Windows má `tar` i `ssh`). Proudem, ne `scp -r` –
-jsou to statisíce malých souborů:
+Z notebooku (Windows má `tar` i `ssh`). Jedním archivem, ne `scp -r` –
+jsou to statisíce malých souborů.
+
+**Rouru `tar … | ssh …` NEPOUŠTĚT ve Windows PowerShellu 5.1.** Ten bere
+výstup programu jako text: celých 4,7 GB načte do paměti, láme na řádky
+a překóduje. Běží to hodiny a spadne na přetečení paměti (stalo se
+8. 10.); kdyby doběhlo, archiv je poškozený.
+
+Pouští se **JEDNA z variant A / B**, ne obě.
+
+**Varianta A – proudem, jeden příkaz.** Zabalí, přenese i rozbalí
+najednou, na disk nic neukládá. Roura musí běžet v `cmd`, odtud
+`cmd /c` a zdvojené uvozovky kolem příkazu pro server:
 
 ```powershell
 cd C:\python\ailocal
-tar -cf - data/spc data/detaily_leciv data/pool_leciv.json data/pool_leciv.meta.json data/hrazene_scau.json data/ciselnik_latky.json | ssh uzivatel@server "tar -xf - -C ~/ailocal"
+cmd /c "tar -cf - data/spc data/detaily_leciv data/pool_leciv.json data/pool_leciv.meta.json data/hrazene_scau.json data/ciselnik_latky.json | ssh uzivatel@server ""tar -xf - -C ~/ailocal"""
 ```
+
+(Přímo v okně `cmd` – výzva `C:\…>` – bez `cmd /c` a s jednoduchými
+uvozovkami: `… | ssh uzivatel@server "tar -xf - -C ~/ailocal"`.)
+
+**Varianta B – přes soubor, tři kroky (spolehlivější).** Když spojení
+spadne, zopakuje se jen `scp`, balit znovu není potřeba.
+
+```powershell
+cd C:\python\ailocal
+# 1) jen zabalí do souboru na notebooku, nic nepřenáší
+tar -cf C:\temp\spc.tar data/spc data/detaily_leciv data/pool_leciv.json data/pool_leciv.meta.json data/hrazene_scau.json data/ciselnik_latky.json
+# 2) přenese soubor
+scp C:\temp\spc.tar uzivatel@server:~/ailocal/
+# 3) rozbalí na serveru a soubor smaže
+ssh uzivatel@server "cd ~/ailocal && tar -xf spc.tar && rm spc.tar"
+```
+
+Varianta B potřebuje ~5 GB volného místa na notebooku i na serveru navíc
+a složku `C:\temp`.
+Zbytky po spadlém pokusu na serveru nevadí, rozbalení je přepíše.
 
 Přenese se i stav konverze (`data/spc/_stav.sqlite`) a extrakce
 (`data/spc/_extrakce/stav.sqlite`), takže pipeline na serveru naváže a nic
@@ -89,7 +120,8 @@ uv run python extrakce_all.py --stav     # konverze 5 897 ok, sekce 5 880, extra
 ```bash
 docker compose build && docker compose up -d
 docker exec localsemantic-postgres psql -U localsemantic -d localsemantic -Atc "select to_tsvector('czech_unaccent','pálení žáhy')"
-# musí vrátit 'pálení':1 'žáha':2  – tedy „žáhy" převedené na „žáha"
+# musí vrátit 'pálení':1 'pálený':1 'žáha':2  – tedy „žáhy" převedené na „žáha"
+# („pálení" má ve slovníku dva základní tvary, oba na pozici 1 – to je správně)
 ```
 
 Tahle kontrola je důležitá: kontejner na notebooku běží ze základního image

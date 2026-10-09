@@ -5,6 +5,48 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-08 — Přenos dat: roura `tar | ssh` ve Windows PowerShellu nefunguje
+
+Návod na přenos posílal 4,7 GB `data/spc` příkazem `tar -cf - … | ssh …`
+přímo v PowerShellu. Běželo to velmi dlouho a spadlo na přetečení.
+Windows PowerShell 5.1 předává výstup programu do roury jako text: vše
+načte do paměti a překóduje, binární data tak poškodí. Oprava
+v `docs/provoz_prenos_na_server.md`: rouru pouštět přes `cmd /c`, nebo
+udělat archiv na disk a přenést ho přes `scp`.
+
+---
+
+## 2026-10-07 — Celý registr: ~3 000 SPC navíc, extrakce v cloudu ~4–6 $
+
+Otázka: kolik SPC a peněz by stálo přidat i NEobchodovaná léčiva.
+Počítáno ze zářijového seznamu (`data/pool_leciv.json`, 69 759 kódů),
+dokumenty odhadnuté přes registrační čísla (EU sloučená na přípravek).
+
+| | kódů | registrací ≈ SPC |
+|---|---|---|
+| celý seznam, platné stavy | 68 325 | 8 873 |
+| obchodované (dnešní korpus) | 9 196 | 5 831 (skutečně 5 880 SPC, +1 %) |
+| neobchodované | 59 129 | 7 816, z toho 4 774 už v korpusu |
+| **registrace bez jediného obchodovaného balení** | – | **3 042** (699 EU, 2 343 CZ) |
+
+- **60 tisíc „léčiv" jsou kódy balení, ne dokumenty.** Většina
+  neobchodovaných kódů patří k registraci, jejíž SPC už máme (jiná
+  velikost balení). Nových dokumentů je ~3 040, korpus by narostl
+  z 5 880 na ~8 900 SPC (+52 %).
+- **Cena extrakce:** jeden průchod dnešního korpusu = 37,3 M vstupních
+  a 25,0 M výstupních tokenů = 8,11 $ přes Batch, tedy **0,00138 $ na
+  SPC** (EU 0,00142, CZ 0,00137 – skoro stejně). 3 040 SPC ≈ **4,2 $**.
+  Skutečně zaplaceno bylo 11,00 $ (×1,36: opakování, smyčky,
+  přeextrahování dávkování a indikací) → s rezervou **~5,7 $**.
+- **Nejistoty:** počet je odhad z registračních čísel; přesně by to dalo
+  volání `dokumenty-metadata` na každý kód (59 tis. volání). Část
+  registrací SPC v API nemá (u obchodovaných 85 kódů z 8 863). Kromě
+  cloudu přibude převod přes Docling Serve, embeddingy (+~1 h) a ~3 GB DB.
+- „Hrazené" (8 607 kódů) je jiná množina než „obchodované" (9 196) –
+  korpus je postavený na obchodovaných.
+
+---
+
 ## 2026-10-07 — Víc uživatelů: Spark vyřizuje router po jednom; rozdělování zátěže mezi stroje
 
 Před nasazením na server: co se stane, když hledá víc lidí naráz.
