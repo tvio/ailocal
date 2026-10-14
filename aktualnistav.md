@@ -1,3 +1,41 @@
+# STAV K 14.10.2026 — DROBNOSTI PO JEDNÁNÍ S IT: HLEDÁNÍ, GUI, PRAVIDLA
+
+**Nic neběží na pozadí.** Vše commitnuté a pushnuté (`b1e0655`, `4042012`).
+Služba `localsemantic-api` restartovaná 14. 10. v 16:11 – změny jsou
+naživo. Podrobně po řádcích: `changelog.md` 14. 10.
+
+## Hotovo 14. 10.
+- Stránkování už znovu nehledá – výsledek 10 min v mezipaměti API
+  (stejný dotaz se 10 min nehledá znovu, i u jiného uživatele).
+- Řazení: přesné shody (1,000) abecedně nahoře, ostatní podle shody
+  (ne RRF); výběr filtrem (látka, název…) abecedně a úplný; API vrací
+  až 200 léků (dřív 50). Evaluace 18/20, přesnost 68 % (dřív 69 %).
+- GUI: blok „Jak hledat – příklady" (31 ověřených dotazů, klik hledá),
+  posuvníky prahu a zvýraznění pryč.
+- `CLAUDE.md`: na serveru bez schválení jen čtení; zaveden `changelog.md`.
+  `.claude/settings.json` allow/ask; `settings.local.json` mimo git.
+  Git: token a identita `tvio` nastavené jen pro tohle repo.
+
+## ⚠ K ROZMYŠLENÍ – NEZAPOMENOUT
+**Má A–Z u shod 1,000 vůbec smysl?** Abecední pořadí je předvídatelné,
+ale o kvalitě nic neříká a dává nahoru nemocniční / diagnostické léky:
+„mám horečku" → radiofarmakum 2-[18F]-FDG první, „horečka dítě šest let"
+→ injekční CEFTAZIDIME, „mám rýmu" 4/5 → 2/5 v evaluaci. Varianty:
+(a) nechat A–Z, (b) uvnitř 1,000 nejdřív OTC / běžné formy, pak A–Z
+(todo bod 0.1), (c) vrátit RRF. **Rozhodnutí je na uživateli, NEDĚLAT
+bez něj.** Před změnou změřit (`porovnani` na parafrázích jako 14. 10.,
+poznatky 14. 10.).
+
+## Na řadě (todo bod 0)
+- 0.1 radiofarmaka a léky po operaci níž, OTC výš (souvisí s výše –
+  zatím jen nápad, nerozhodnuto)
+- 0.2 statistika tokenů OpenAI do konce roku
+- 0.3 „nejde hledání podle konkrétního věku" – 14. 10. v testech šlo
+  (slovem i číslem); zjistit, který dotaz uživateli nefungoval
+- 0.4 klik na ATC skupinu → všechny léky skupiny
+- Hledací slovník: heslo `bolest` přidává obecné `bolest`/`bolesti` →
+  falešné shody 1,000 (todo bod 1) – úprava slovníku je na uživateli
+
 # STAV K 9.10.2026 — APLIKACE JE NA SERVERU, DATABÁZE OBNOVENÁ Z DUMPU
 
 - **9. 10. (server, `/opt/ailocal`):** dump obnoven do kontejneru
