@@ -2,15 +2,13 @@
 
 // Stav obrazovky. `dotaz === null` znamena uvodni vypis leciv, jinak vysledky
 // hledani - obojI se kresli TOUZ funkci, protoze API vraci stejny tvar.
-const PRAH_VYCHOZI = 0.60;   // namerena hodnota, viz hledani_evaluace.py --prahy
+// Prah se v GUI nenastavuje (posuvnik odebran 14. 10.) - posila se namerena
+// hodnota, viz hledani_evaluace.py --prahy.
+const PRAH_VYCHOZI = 0.60;
 const stav = { dotaz: null, sekce: "", prah: PRAH_VYCHOZI,
                strana: 1, razeni: "nazev", smer: "asc", naStrance: 10 };
 
 const $ = (id) => document.getElementById(id);
-const prahEl = $("prah");
-const prahOut = $("prah-hodnota");
-const jistotaEl = $("jistota");
-const jistotaOut = $("jistota-hodnota");
 
 const ESC = { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" };
 const esc = (s) => String(s === null || s === undefined ? "" : s).replace(/[&<>"']/g, (c) => ESC[c]);
@@ -85,7 +83,10 @@ function vykresli(d) {
   const th = $("th-nalezeno");
   if (th) th.textContent = !d.dotaz ? "Nalezeno"
     : d.cely_usek ? "Nalezeno (souhrn sekce)"
-    : d.vyber_filtrem ? "Nalezeno (podle názvu, látky nebo kódu)" : "Nalezeno (nejlepší shoda)";
+    : d.vyber_filtrem ? "Nalezeno (podle názvu, látky nebo kódu, abecedně)"
+    : d.presnych ? "Nalezeno (" + d.presnych + " " + (d.presnych === 1 ? "přesná shoda" :
+        d.presnych < 5 ? "přesné shody" : "přesných shod") + " abecedně, pak nejlepší shoda)"
+    : "Nalezeno (nejlepší shoda)";
   $("telo").innerHTML = d.radky.map((r, i) =>
     radek(r, i, d.cely_usek, d.usek_orezan, d.vyber_filtrem)).join("");
   // Cteni sekce s 1-2 leky ("davkovani vibrocil"): rozbalit rovnou,
@@ -100,7 +101,6 @@ function vykresli(d) {
   vykresliAtc(d.atc_navrh);
   vykresliStrankovani(d);
   oznacRazeni();
-  prebarvi();
 
   if (!d.radky.length) {
     $("hlaska").className = "hlaska";
@@ -198,11 +198,9 @@ function radek(r, i, celyUsek, orezan, bezSkore) {
 
   // Rozbaluje CELY radek, ne jen sipka - kliknuti kamkoliv do radku je to,
   // co clovek zkusi jako prvni. Sipka zustava jako vizualni voditko.
-  // data-cosine drzi skore, aby slo prebarvit BEZ noveho hledani
   // U CTENI SEKCE ("dávkování helicid") vybral radky filtr lek + sekce,
   // ne podobnost. Cosine je tam sum (do vektoru jde jen nazev leku) a jeho
-  // zobrazeni vypadalo jako vysledek pod prahem - shoda zustava prazdna
-  // a radek se podle jistoty nebarvi.
+  // zobrazeni vypadalo jako vysledek pod prahem - shoda zustava prazdna.
   // Totez plati, kdyz dotaz byl jen nazev / latka / kod (bezSkore): leky
   // vybral SQL filtr nad registrem, podobnost se meri proti radku identity
   // leku a „paracetamol" vs. PARALEN 0,65 vypada jako slaba shoda.
@@ -499,18 +497,6 @@ function vykresliStrankovani(d) {
   el.innerHTML = b.join("");
 }
 
-// Prebarveni podle jistoty. Delá se v prohlizeci nad uz nactenymi daty -
-// posun jezdce NESMI poslat novy dotaz na model, je to jen zvyrazneni.
-function prebarvi() {
-  const mez = Number(jistotaEl.value);
-  document.querySelectorAll("tbody tr.klikaci").forEach((tr) => {
-    const c = tr.dataset.cosine;
-    const je = c !== "" && Number(c) >= mez;
-    tr.classList.toggle("jiste", je);
-    tr.classList.toggle("hranicni", c !== "" && !je);
-  });
-}
-
 function oznacRazeni() {
   document.querySelectorAll("th[data-sort]").forEach((th) => {
     const je = !stav.dotaz && th.dataset.sort === stav.razeni;
@@ -577,9 +563,6 @@ $("btn-reset").addEventListener("click", () => {
   $("sekce").value = "";
   stav.dotaz = null;
   stav.sekce = "";
-  stav.prah = PRAH_VYCHOZI;
-  prahEl.value = PRAH_VYCHOZI;
-  prahOut.textContent = PRAH_VYCHOZI.toFixed(2);
   stav.strana = 1;
   stav.razeni = "nazev";
   stav.smer = "asc";
@@ -588,27 +571,75 @@ $("btn-reset").addEventListener("click", () => {
   nacti();
 });
 
+// --- priklady hledani ---------------------------------------------------------
+// Jeden priklad na kazdy hledaci vzor z docs/prezentace_scenare.md (tahak).
+// KAZDY PRIKLAD JE OVERENY na prvni strance vysledku (14. 10. 2026, dvakrat
+// kvuli routeru) - bez nesmyslu na prvni strance. Vyrazene, protoze tam
+// nesmysl byl: „mám horečku" (radiofarmakum 2-[18F]-FDG nahore),
+// „lék začíná ibal na bolest zubů" (holá „bolest" u gelu), „hrazený lék na
+// předpis na cukrovku" (holá „léčba"), „lék přibližně koldreks" (ZOLADEX).
+// Pri zmene hledani nebo dat priklady znovu projit.
+const PRIKLADY = [
+  ["Laik píše po svém", [
+    ["pálí mě žáha", "laické slovo najde i odborné „pyróza“"],
+    ["mám reflux", "slovo „reflux“ v textu nemusí být"],
+    ["bolí mě v krku", ""],
+    ["nemůžu dýchat nosem", ""]]],
+  ["Výdej a hrazení", [
+    ["hrazený lék na reflux", "hrazené pojišťovnou"],
+    ["lék na předpis na nespavost", "jen na předpis"],
+    ["lék na předpis hrazený na vysoký tlak", "na předpis a hrazené"],
+    ["volně prodejný lék na pálení žáhy", "bez předpisu"]]],
+  ["Účinná látka, síla, kód", [
+    ["všechny léky s paracetamolem", "úplný seznam abecedně"],
+    ["volně prodejný lék s paracetamolem", "látka + výdej"],
+    ["lék s ibuprofenem", ""],
+    ["paralen 500mg", "přesná síla"],
+    ["0218102", "kód SÚKL"]]],
+  ["Celá sekce jednoho léku", [
+    ["dávkování vibrocil", "tabulka dávek podle věku"],
+    ["nežádoucí účinky paralen", "seskupené podle četnosti"],
+    ["kontraindikace aspirin", ""]]],
+  ["Nežádoucí účinky", [
+    ["velmi časté nežádoucí účinky ibalgin", "jen daná četnost"],
+    ["vzácné nežádoucí účinky paralen", ""],
+    ["po kterém léku můžou vypadávat vlasy", "napříč všemi léky"],
+    ["paralen bolest hlavy", "lék + příznak"]]],
+  ["Věk pacienta", [
+    ["suchý kašel dítě pět let", "věk slovem"],
+    ["volně prodejný lék na horečku pro dítě 5 let", "věk číslem + výdej"],
+    ["kašel u tříletého dítěte", ""],
+    ["bolí mě v krku pro dospělé", "bez dětských přípravků"]]],
+  ["Podle názvu léku", [
+    ["lék přibližně zirtek", "překlepy a výslovnost"],
+    ["lék přibližně oftalmoframikoin", ""],
+    ["lék začíná oxy", "abecedně"],
+    ["lék končí na fen", ""],
+    ["lék obsahuje grip", ""],
+    ["lék začíná nuro na horečku", "název + příznak"]]],
+  ["Když nic nenajde", [
+    ["recept na svíčkovou", "systém si nevymýšlí"]]],
+];
 
-// Posun jen prekresluje cislo; hledat se jde az pri pusteni mysi (change),
-// jinak by kazdy krok posuvniku poslal dotaz na model.
-prahEl.addEventListener("input", () => {
-  prahOut.textContent = Number(prahEl.value).toFixed(2);
-});
-prahEl.addEventListener("change", () => {
-  stav.prah = Number(prahEl.value);
-  if (stav.dotaz) { stav.strana = 1; nacti(); }
-});
-jistotaEl.addEventListener("input", () => {
-  jistotaOut.textContent = Number(jistotaEl.value).toFixed(2);
-  prebarvi();                       // hned, bez dotazu na server
-});
+function vykresliPriklady() {
+  $("priklady-obsah").innerHTML = PRIKLADY.map(([nadpis, polozky]) =>
+    '<div class="priklady-skupina"><h4>' + esc(nadpis) + "</h4><ul>" +
+    polozky.map(([q, pozn]) =>
+      '<li><a href="#" class="priklad" data-q="' + esc(q) + '">' + esc(q) + "</a>" +
+      (pozn ? ' <span class="tise">– ' + esc(pozn) + "</span>" : "") + "</li>").join("") +
+    "</ul></div>").join("");
+}
 
-$("btn-prah-vychozi").addEventListener("click", () => {
-  prahEl.value = PRAH_VYCHOZI;
-  prahOut.textContent = PRAH_VYCHOZI.toFixed(2);
-  stav.prah = PRAH_VYCHOZI;
-  if (stav.dotaz) { stav.strana = 1; nacti(); }
+// Klik = vlozit do pole a rovnou hledat (jako by clovek stiskl Hledat).
+$("priklady-obsah").addEventListener("click", (e) => {
+  const a = e.target.closest("a.priklad");
+  if (!a) return;
+  e.preventDefault();
+  $("dotaz").value = a.dataset.q;
+  $("form").requestSubmit();
+  window.scrollTo(0, 0);
 });
+vykresliPriklady();
 
 $("sekce").addEventListener("change", () => {
   if (stav.dotaz) { stav.sekce = $("sekce").value; stav.strana = 1; nacti(); }

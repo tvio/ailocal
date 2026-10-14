@@ -15,3 +15,6 @@ benchmarky/**/*.json
 benchmarky/**/*.jsonl
 benchmarky/**/vystupy/
 benchmarky/**/__pycache__/
+
+# Claude Code: osobni povoleni pro tento stroj (spolecna pravidla jsou v .claude/settings.json)
+.claude/settings.local.json

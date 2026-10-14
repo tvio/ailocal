@@ -609,6 +609,13 @@ NAZEV_SEKCE = {"indikace": "Terapeutické indikace",
                "atributy": "identita léku (z API SÚKL)"}
 
 
+# PRESNA SHODA: cosine, od ktereho je text radku s dotazem TOTOZNY (v GUI
+# 1,000). Mezi takovymi leky podobnost nic nerozlisuje - poradi RRF mezi
+# nimi urcovalo jen nahodne poradi z DB (KLACID „zápal plic" 11. ze
+# shodnych 1,000). Proto jdou nahoru a abecedne; zbytek podle skore.
+SHODA_PRESNA = 0.9995
+
+
 @dataclass
 class LecivoVysledek:
     """Jeden LEK s nejlepsi pasazi jako dukazem, proc se trefil."""
@@ -621,6 +628,11 @@ class LecivoVysledek:
     @property
     def skore(self) -> float:
         return self.nejlepsi.rrf
+
+    @property
+    def presna(self) -> bool:
+        """Nejlepsi pasaz je s dotazem totozna (cosine 1,000)."""
+        return self.nejlepsi.cosine >= SHODA_PRESNA
 
     @property
     def pasazi(self) -> int:
@@ -641,11 +653,24 @@ class LecivoVysledek:
 
 
 def seskup(vysledky: list["Vysledek"], *, leciv: int = 10,
-           pasazi_na_lecivo: int = 3, abecedne: "bool | dict" = False) -> list[LecivoVysledek]:
+           pasazi_na_lecivo: int = 3, abecedne: "bool | dict" = False,
+           poradi_dokumentu: bool = False) -> list[LecivoVysledek]:
     """Seskupi radky po lecivech. Poradi leku urcuje jeho NEJLEPSI pasaz.
 
-    abecedne=True: dotaz byl JEN vzor nazvu („lek zacina oxy") - semantika
-    nema co merit a poradi podle skore by bylo nahodne.
+    poradi_dokumentu=True: cteni sekce (Odpoved.cely_usek) - pasaze ani
+    leky se neprerazuji, zustava poradi, v jakem je vratil hledej().
+
+    abecedne=True: leky vybral presny filtr („lek zacina oxy", nazev,
+    latka, kod - viz je_vyber_filtrem) - semantika nema co merit a poradi
+    podle skore by bylo nahodne.
+
+    Jinak: leky s PRESNOU shodou (cosine 1,000, SHODA_PRESNA) nahore
+    abecedne, ostatni podle SHODY (cosine nejlepsi pasaze - to cislo vidi
+    uzivatel; RRF jen pri shode). Podle RRF to vypadalo nahodne (0,838 pod
+    0,792), na parafrazich je to 68 % proti 69 % (poznatky 14. 10.).
+    Plati jen mezi kandidaty, ktere hledani
+    vratilo (top KANDIDATU podle podobnosti) - je-li shod 1,000 vic, o tom,
+    ktere se do vyberu vejdou, rozhoduje dal poradi v DB.
     """
     podle_leku: dict[str, list[Vysledek]] = {}
     for v in vysledky:
@@ -653,19 +678,32 @@ def seskup(vysledky: list["Vysledek"], *, leciv: int = 10,
 
     ven = []
     for kod, polozky in podle_leku.items():
-        polozky.sort(key=lambda v: -v.rrf)
+        # Dukazem je pasaz s nejvyssi shodou - podle ni lek stoji v poradi.
+        if not poradi_dokumentu:
+            polozky.sort(key=lambda v: (-v.cosine, -v.rrf))
         ven.append(LecivoVysledek(
             kod_sukl=kod, nazev=polozky[0].nazev, sila=polozky[0].sila,
             nejlepsi=polozky[0], dalsi=polozky[1:pasazi_na_lecivo]))
 
-    if isinstance(abecedne, dict):
+    if poradi_dokumentu:
+        pass
+    elif isinstance(abecedne, dict):
         # „lek priblizne XXX": nejpodobnejsi nazev nahore, pak abecedne
         ven.sort(key=lambda l: (-abecedne.get(l.kod_sukl, 0.0), l.nazev or "", l.sila or ""))
     elif abecedne:
         ven.sort(key=lambda l: (l.nazev or "", l.sila or ""))
     else:
-        ven.sort(key=lambda l: -l.skore)
+        ven.sort(key=lambda l: (0, l.nazev or "", l.sila or "", 0.0, 0.0) if l.presna
+                 else (1, "", "", -l.nejlepsi.cosine, -l.skore))
     return ven[:leciv]
+
+
+def je_vyber_filtrem(filtr: "Filtr | None", odp: "Odpoved") -> bool:
+    """Vybral leky JEN presny filtr (nazev, latka, kod, sila, ATC) a zadny
+    priznak? Pak se hleda jen v radcich identity (atributy) a cosine nic
+    nemeri - stejne jako u vzoru nazvu se radi abecedne."""
+    return bool(filtr is not None and filtr.je_presny() and not odp.cely_usek
+                and odp.vysledky and all(v.sekce == "atributy" for v in odp.vysledky))
 
 
 def je_abecedne(filtr: "Filtr | None") -> bool:

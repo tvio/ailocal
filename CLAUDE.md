@@ -79,7 +79,8 @@ změna pořadí, co musí být v konfiguraci).
 | soubor | k čemu | kdy do něj psát |
 |---|---|---|
 | **`poznatky.md`** | deník měření, **nejnovější nahoře**. Co se ukázalo jinak, než se čekalo – vždy s naměřenými čísly. | po každém měření, nálezu nebo slepé uličce |
-| **`aktualnistav.md`** | stav teď + další krok | **na konci každé práce** – práce se často přerušuje |
+| **`changelog.md`** | **co se v aplikaci změnilo** – nové funkce a opravy, fakticky, jeden řádek na změnu, **nejnovější nahoře** | **po každé hotové změně kódu nebo chování**, i drobné |
+| **`aktualnistav.md`** | stav teď + další krok – předávka mezi dny u větší rozpracované práce | **na konci každé práce** – práce se často přerušuje; u drobností stačí changelog |
 | **`todo.md`** | úkoly, nahoře prioritní | když vznikne úkol nebo se nějaký dokončí |
 | `CLAUDE.md` | tenhle soubor: mapa a miny | když se změní pravidlo, struktura projektu nebo seznam benchmarků |
 | `README.md` | vstup pro člověka: co to je, jak to pustit, kde co hledat | když se změní spuštění nebo struktura |
@@ -135,6 +136,23 @@ Embeddingy jsou jiný produkt a jsou o dva řády levnější — zákaz míří
 chat. I tak měř jen na vzorku.
 
 Hesla k Postgresu, pgAdminu a Ollamě jsou v **`docs/provoz_pristupy.md`**.
+
+### Server: bez schválení jen ČTENÍ
+
+**Na serveru běží i jiné aplikace a musí zůstat funkční.** Mimo soubory
+projektu (`/opt/ailocal`) smí Claude bez schválení **jen číst**. Každý
+příkaz, který něco mění, nejdřív navrhni a počkej na schválení – i když
+se týká jen kontejnerů nebo služby localsemantic.
+
+| bez ptaní (čtení) | jen se schválením (mění stav) |
+|---|---|
+| `docker ps`, `docker logs`, `docker inspect`, `docker images`, `docker volume ls`, `docker compose ps / config / logs` | `docker compose up / down / restart / build / pull`, `docker run / stop / rm / exec` se zápisem, `docker volume / network / system …` (hlavně `prune` a `down -v` – zasáhnou i cizí věci) |
+| `systemctl status`, `journalctl`, `ss`, `df`, `free`, `ps`, `crontab -l`, `getenforce`, `firewall-cmd --list-*` | `systemctl start / stop / restart / enable / daemon-reload`, `sudo`, `dnf / yum`, `crontab -e`, `firewall-cmd` se změnou, `kill` procesů, úpravy v `/etc`, `mount`, `chown / chmod` mimo projekt |
+| `SELECT` přes `psql` v kontejneru | zápis do DB mimo běžné skripty pipeline (`TRUNCATE`, `DROP`, `ALTER`…) |
+
+Skripty projektu (`uv run python …`) se pouštějí jako dřív; pozor na
+ty, které mažou DB nebo stojí peníze (`extrakce_4_db.py --korpus`,
+`extrakce_all.py --vse`, `extrakce_3_json.py --beh`) – ty taky schválit.
 
 ---
 
@@ -313,9 +331,16 @@ uv run python hledani_evaluace.py
 
 ## Zápisky — povinné, v kořeni projektu
 
-- **`poznatky.md`** — každý poznatek s datem, **nejnovější nahoře**,
-  vždy s naměřenými čísly. Když něco vyjde jinak, než se čekalo,
-  patří to sem.
-- **`aktualnistav.md`** — při ukončení práce zapiš přesný stav: co je
-  rozpracované a jaký je další krok. Práce se často přerušuje.
-- **`todo.md`** — úkoly; prioritní nahoře.
+Každý zápis patří jen do jednoho souboru podle toho, CO to je:
+
+- **`changelog.md`** — **CO SE ZMĚNILO.** Každá hotová nová funkce nebo
+  oprava, i drobná: datum, jeden řádek, kterého souboru / části aplikace
+  se týká. Bez rozboru a čísel – ta patří do poznatků (odkaz stačí).
+- **`poznatky.md`** — **CO JSME ZJISTILI.** Objevy a měření s datem,
+  **nejnovější nahoře**, vždy s naměřenými čísly. Když něco vyjde jinak,
+  než se čekalo, patří to sem.
+- **`aktualnistav.md`** — **KDE JSME SKONČILI.** Souhrn mezi dny u větší
+  práce: co je rozpracované a jaký je další krok. Drobnost, která je
+  hotová, sem nepatří – stačí changelog.
+- **`todo.md`** — úkoly; prioritní nahoře. Hotový úkol smazat (zápis
+  o něm je v changelogu).

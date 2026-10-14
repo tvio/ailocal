@@ -29,8 +29,12 @@
       <button type="submit" id="btn-hledat">Hledat</button>
       <button type="button" id="btn-reset" class="druhotne">Reset</button>
     </div>
+    <details class="nastaveni" id="priklady">
+      <summary>Jak hledat – příklady (kliknutím se hned vyhledají)</summary>
+      <div class="priklady-obsah" id="priklady-obsah"></div>
+    </details>
     <details class="nastaveni">
-      <summary>Nastavení hledání (sekce, práh podobnosti, zvýraznění)</summary>
+      <summary>Omezit na sekci</summary>
     <div class="radek-filtr">
       <label for="sekce">Omezit na sekci:</label>
       <select id="sekce">
@@ -41,23 +45,6 @@
         <option value="nezadouci_ucinky">Nežádoucí účinky</option>
       </select>
       <span class="tise">platí jen na sekční výsledky; filtry z dotazu (Rx/OTC, hrazení, látka) platí dál</span>
-    </div>
-    <div class="radek-filtr">
-      <label for="prah">Práh podobnosti:</label>
-      <input id="prah" type="range" min="0" max="0.9" step="0.05" value="0.60">
-      <output id="prah-hodnota">0.60</output>
-      <button type="button" id="btn-prah-vychozi" class="druhotne maly">0,60</button>
-      <span class="tise">naměřená hodnota je 0,60; nižší pustí víc šumu, vyšší může vyhodit správné.
-        U přesných filtrů (název, látka, síla, ATC, frekvence) se neuplatňuje.</span>
-    </div>
-    <div class="radek-filtr">
-      <label for="jistota">Zvýraznit od:</label>
-      <input id="jistota" type="range" min="0.5" max="0.9" step="0.01" value="0.60">
-      <output id="jistota-hodnota">0.60</output>
-      <span class="legenda"><span class="vzorek jiste"></span> spolehlivé</span>
-      <span class="legenda"><span class="vzorek hranicni"></span> hraniční</span>
-      <span class="tise">jen zvýraznění, nic nefiltruje — při 0,60 je zvýrazněno
-        8 z 10 správných odpovědí a 1 z 8 šumu</span>
     </div>
     </details>
   </form>

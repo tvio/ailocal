@@ -383,9 +383,11 @@ nevstupuje. Důsledek (32 léků): MAALOX s podobností 0,481 skončil nad
 ACIFEINEM s 0,524, protože měl lepší místo ve fulltextu; nepomohla váha
 0,95 ani `k = 5`.
 
-Známá vada na celém trhu: desítky řádků mají cosine přesně 1,000 (stejný
-text u různých léků) a RRF mezi nimi řadí podle náhodného pořadí z DB
-(`todo.md`: shodné hodnoty = stejné pořadí).
+Na celém trhu mají desítky řádků cosine přesně 1,000 (stejný text nebo
+klíč u různých léků, „kopřivka" 40 léků z 50) a RRF mezi nimi řadilo
+podle náhodného pořadí z DB. **Od 14. 10. se to řeší až při seskupení
+po lécích** (oddíl 9): léky s přesnou shodou jdou nahoru abecedně
+a ostatní se řadí podle shody, ne podle RRF.
 
 ### Cosine (`--zpusob cosine`)
 
@@ -444,6 +446,31 @@ jednoho léku.
 Hledá se proto **s rezervou** a teprve pak se seskupuje po `kod_sukl`.
 U každého léku se ukáže **nejlépe skórující pasáž jako důkaz**, proč se
 trefil; další shody jsou v rozbalení (CLI `--pasaze`).
+
+**Pořadí léků** (`seskup()` v `common/hledani.py`, od 14. 10.):
+
+| situace | pořadí |
+|---|---|
+| lék má pasáž s cosine ≥ 0,9995 (v GUI 1,000, `SHODA_PRESNA`) | **nahoře, abecedně** (název, síla); důkazem je ta přesná pasáž |
+| ostatní (např. 0,8) | pod nimi **podle shody** (cosine nejlepší pasáže – číslo, které uživatel vidí), při rovnosti podle RRF |
+| čtení sekce (`cely_usek`) | pořadí dokumentu, nic se nepřeřazuje (`poradi_dokumentu`) |
+| výběr jen přesným filtrem (název, látka, kód, síla, ATC – `je_vyber_filtrem`) nebo vzor názvu | **celé abecedně a celé** – bez stropu 50 léků („paracetamol" 67 z 67) |
+
+Mezi shodami 1,000 podobnost nic nerozlišuje, pořadí bylo náhodné. Abecední
+pořadí je aspoň předvídatelné, ale **o kvalitě nic neříká**: u „mám rýmu"
+(22 léků s 1,000) jdou nahoru i ALYOSTAL PRICK nebo ERDOMED. Platí jen
+mezi kandidáty z hledání (top 100 podle podobnosti) – je-li shod 1,000
+víc, které se vejdou, rozhoduje dál pořadí v DB. API vrací počet
+v poli `presnych`, GUI ho píše do záhlaví sloupce.
+
+**RRF tedy pořadí léků už neurčuje** – rozhoduje jen o tom, které řádky
+se dostanou do výběru (`limit` v `hledej`), a o pořadí při stejné shodě.
+Podle RRF vypadal seznam náhodně (na 5. straně „mám rýmu" 0,838 pod
+0,792). Na parafrázích: RRF 69 %, shoda 68 % (poznatky 14. 10.).
+
+API hledá výchozí **200 léků** (`leciv`, dřív 50 – výsledek končil na
+5. stránce). Skutečný strop je dán kandidáty: top 100 řádků podle
+podobnosti + fulltext; „mám rýmu" 177 léků, „kopřivka" 100.
 
 Extrakty jsou v DB jednou za SPC, u **zástupce** (nejmenší kód SÚKL).
 Víc balení téhož léku se tedy ve výsledcích neopakuje; řádek identity

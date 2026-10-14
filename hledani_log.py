@@ -123,7 +123,7 @@ def main() -> int:
 
     # --- 5. prah + seskupeni -------------------------------------------
     o2 = hledej(dotaz_text, filtr=filtr, limit=200, prah=a.prah, puvodni_dotaz=dotaz)
-    skupiny = seskup(o2.vysledky, leciv=10,
+    skupiny = seskup(o2.vysledky, leciv=10, poradi_dokumentu=o2.cely_usek,
                      pasazi_na_lecivo=200 if o2.cely_usek else 3)
 
     cara("5. PRAH A SESKUPENI PO LECIVECH")

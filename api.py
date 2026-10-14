@@ -15,6 +15,7 @@ frontend ukazuje "aplikace startuje".
 
 import logging
 import threading
+import time
 from pathlib import Path
 
 import psycopg
@@ -193,6 +194,10 @@ class Odpoved(BaseModel):
                      "registrem; cosine a fulltext se pocitaji nad radkem identity "
                      "leku, urcuji jen poradi a o kvalite nalezu nic nerikaji - GUI "
                      "je neukazuje."))
+    presnych: int = Field(
+        0, description=("kolik leku ma pasaz s dotazem TOTOZNOU (cosine 1,000). "
+                        "Ty jsou na zacatku seznamu serazene abecedne, ostatni "
+                        "podle skore."))
     atc_navrh: list[Lecivo] = Field(
         default_factory=list,
         description="Zachranna sit podle ATC skupiny - NENI to nalez v SPC")
@@ -311,7 +316,9 @@ def hledat(
                      f"Jedna z: {', '.join(VSECHNY_SEKCE)}")),
     strana: int = Query(1, ge=1),
     prah: float = Query(0.60, ge=0.0, le=1.0),
-    leciv: int = Query(50, ge=1, le=200, description="kolik léčiv celkem hledat"),
+    # Vychozi = strop: GUI strankuje a uzivatel ceka vsechno nad prahem.
+    # Do 14. 10. bylo 50 a vysledek koncil na 5. strance bez vysvetleni.
+    leciv: int = Query(200, ge=1, le=200, description="kolik léčiv celkem hledat"),
     pasazi: int = Query(3, ge=1, le=10, description="pasáží na léčivo"),
     na_strance: int = Query(NA_STRANCE, ge=5, le=200,
                             description="kolik léčiv na stránku (GUI: 10/25/50/100)"),
@@ -327,6 +334,62 @@ def hledat(
     if sekce and sekce not in VSECHNY_SEKCE:
         raise HTTPException(400, f"neznámá sekce {sekce!r}")
 
+    # Strankovani a pocet na stranku jen vybiraji z hotoveho seznamu -
+    # znovu se nehleda (router ~1,5 s a neni deterministicky: strana 2
+    # by mohla byt z jineho hledani nez strana 1).
+    klic = (q, sekce, prah, leciv, pasazi)
+    o = _cache_hledani.get(klic)
+    if o is None:
+        o = _hledej_cele(q, sekce, prah, leciv, pasazi)
+        _cache_hledani.put(klic, o)
+
+    celkem = len(o.radky)
+    od = (strana - 1) * na_strance
+    return o.model_copy(update=dict(
+        strana=strana, na_strance=na_strance,
+        stran=max(1, -(-celkem // na_strance)),
+        radky=o.radky[od:od + na_strance]))
+
+
+class _CacheHledani:
+    """Posledni hledani v pameti procesu: klic -> cela odpoved (vsechny radky).
+
+    Plati CAS_S sekund; po zmene hledaciho slovniku se vyprazdni (slovnik
+    meni rozsireni dotazu). Kazdy proces API ma svou - pri vic workerech
+    se jen hleda o neco casteji, nic se nerozbije.
+    """
+    CAS_S = 600.0
+    MAX = 200
+
+    def __init__(self) -> None:
+        self._d: dict[tuple, tuple[float, "Odpoved"]] = {}
+        self._zamek = threading.Lock()
+
+    def get(self, klic: tuple) -> "Odpoved | None":
+        with self._zamek:
+            z = self._d.get(klic)
+            if z is None or time.monotonic() - z[0] > self.CAS_S:
+                self._d.pop(klic, None)
+                return None
+            return z[1]
+
+    def put(self, klic: tuple, odp: "Odpoved") -> None:
+        with self._zamek:
+            if len(self._d) >= self.MAX:
+                del self._d[min(self._d, key=lambda k: self._d[k][0])]
+            self._d[klic] = (time.monotonic(), odp)
+
+    def vyprazdni(self) -> None:
+        with self._zamek:
+            self._d.clear()
+
+
+_cache_hledani = _CacheHledani()
+
+
+def _hledej_cele(q: str, sekce: str | None, prah: float,
+                 leciv: int, pasazi: int) -> "Odpoved":
+    """Router + hledani; vraci odpoved se VSEMI radky (strankuje volajici)."""
     filtr, jistota, syrove = rozhodni(q)
     vynuceno = False
     if sekce:
@@ -336,11 +399,17 @@ def hledat(
     o = hledej(syrove.get("dotaz_text") or q, filtr=filtr,
                limit=leciv * pasazi + 40, prah=prah, puvodni_dotaz=q)
     # U cteni sekce se pasaze NEOREZAVAJI - cilem je ukazat ji celou.
-    from common.hledani import je_abecedne
-    skupiny = seskup(o.vysledky, leciv=leciv, abecedne=je_abecedne(filtr),
+    from common.hledani import je_abecedne, je_vyber_filtrem
+    vyber_filtrem = je_vyber_filtrem(filtr, o)
+    abecedne = je_abecedne(filtr) or vyber_filtrem
+    # Abecedni vypis musi byt UPLNY: s limitem 50 by „paracetamol" (67 leku)
+    # koncil u PARALENu a vypadal jako cely seznam. Strop = radku z hledej().
+    skupiny = seskup(o.vysledky, leciv=len(o.vysledky) if abecedne else leciv,
+                     abecedne=abecedne, poradi_dokumentu=o.cely_usek,
                      pasazi_na_lecivo=200 if o.cely_usek else pasazi)
 
-    nejlepsi_skore = skupiny[0].skore if skupiny else 0.0
+    # Prvni radek uz nemusi mit nejvyssi skore (presne shody A-Z nahore).
+    nejlepsi_skore = max((sk.skore for sk in skupiny), default=0.0)
     vsechny: list[Radek] = []
     for sk in skupiny:
         v = sk.nejlepsi
@@ -357,20 +426,17 @@ def hledat(
             nejlepsi=_nalez(v),
             dalsi=[_nalez(x) for x in sk.dalsi]))
 
-    celkem = len(vsechny)
-    od = (strana - 1) * na_strance
     return Odpoved(
         dotaz=q,
         router=Router(sekce=filtr.sekce, dotaz_text=syrove.get("dotaz_text"),
                       jistota=jistota, filtr_popis=filtr.popis() or None,
                       sekce_vynucena=vynuceno),
-        celkem=celkem, strana=strana, na_strance=na_strance,
-        stran=max(1, -(-celkem // na_strance)),
-        radky=vsechny[od:od + na_strance],
+        celkem=len(vsechny), strana=1, na_strance=len(vsechny) or 1, stran=1,
+        radky=vsechny,
         prah=o.prah, kandidatu_pred_prahem=o.kandidatu_pred_prahem,
         cely_usek=o.cely_usek, usek_orezan=o.usek_orezan,
-        vyber_filtrem=bool(filtr.je_presny() and not o.cely_usek and o.vysledky
-                           and all(v.sekce == "atributy" for v in o.vysledky)),
+        vyber_filtrem=vyber_filtrem,
+        presnych=0 if abecedne or o.cely_usek else sum(sk.presna for sk in skupiny),
         atc_navrh=_atc_navrh(syrove.get("dotaz_text") or q, filtr) if not vsechny else [])
 
 
@@ -518,6 +584,7 @@ def slovnik_pridej(p: NovaPolozkaSlovniku) -> list[PolozkaSlovniku]:
         dotazy.pridej(p.vyraz, formulace)
     except dotazy.ChybaSlovniku as e:
         raise HTTPException(_HTTP_SLOVNIK[e.kod], str(e))
+    _cache_hledani.vyprazdni()
     return _slovnik_vypis()
 
 
@@ -528,6 +595,7 @@ def slovnik_odeber(vyraz: str, formulace: str) -> list[PolozkaSlovniku]:
         dotazy.odeber(vyraz, formulace)
     except dotazy.ChybaSlovniku as e:
         raise HTTPException(_HTTP_SLOVNIK[e.kod], str(e))
+    _cache_hledani.vyprazdni()
     return _slovnik_vypis()
 
 

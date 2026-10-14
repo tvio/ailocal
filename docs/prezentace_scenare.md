@@ -8,9 +8,20 @@ dotazů změnily. Starší verze pro 32 léčiv je v gitu (commit `1aae11f` a st
 router → filtry → hledání, práh 0,60). V tabulkách jsou skutečné první
 výsledky ze 7. 10.
 Router je nedeterministický, pořadí se může mírně lišit – když se dotaz
-„pokazí", stačí ho zopakovat.
+„pokazí", stačí ho zopakovat s drobnou změnou textu (stejný text vrací
+10 minut uložený výsledek).
 
 ★ = doporučeno do prezentace.
+
+**Příklady přímo v GUI (14. 10.):** blok „Jak hledat – příklady" pod
+vyhledávacím polem má jeden ověřený dotaz na každý vzor z taháku (kap. 2);
+klik rovnou hledá. Seznam je v `static/app.js` (`PRIKLADY`). Pozor:
+od 14. 10. jsou přesné shody (1,000) řazené abecedně, takže první
+výsledky v tabulkách níž (ze 7. 10.) se můžou lišit. Kvůli tomu
+**nepoužívat** `mám horečku` / `horečka dítě šest let` (nahoře
+radiofarmakum 2-[18F]-FDG / injekční CEFTAZIDIME) ani `lék začíná ibal na
+bolest zubů` (holá „bolest" u gelu) – v GUI je místo nich `volně prodejný
+lék na horečku pro dítě 5 let`.
 
 ---
 
@@ -200,11 +211,13 @@ Další krkolomné názvy na zkoušku (všechny ověřené): `eufilin` (EUPHYLLI
 
 ## 5. Kdyby se to pokazilo během ukázky
 
-- **Divný výsledek** → zopakovat dotaz (router je nedeterministický).
-- **Špatná sekce** → rozbalit „Nastavení hledání" pod vyhledávacím polem
+- **Divný výsledek** → zopakovat dotaz s **drobnou změnou textu** (router
+  je nedeterministický). Stejný text se 10 minut nehledá znovu – API vrátí
+  uložený výsledek (mezipaměť od 14. 10., `docs/hledani_gui_api.md`).
+- **Špatná sekce** → rozbalit „Omezit na sekci" pod vyhledávacím polem
   a vynutit sekci.
-- **Nic nenalezeno, ale mělo** → tamtéž posuvník prahu dolů (má smysl jen
-  u sémantického hledání; u filtrů a vzorů se neuplatní).
+- **Nic nenalezeno, ale mělo** → posuvník prahu v GUI od 14. 10. není;
+  zkusit jinou formulaci nebo příklad z „Jak hledat".
 - **GUI se chová postaru** → restart API + Ctrl+F5.
 - **Dlouho nic** → model se načítá (stavová hláška v GUI), počkat.
 - **Sloupec Shoda je prázdný** → není to chyba: u čtení sekce a u dotazů

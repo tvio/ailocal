@@ -294,8 +294,9 @@ def main() -> int:
     o = hledej(syrove.get("dotaz_text") or dotaz, filtr=filtr,
                puvodni_dotaz=dotaz,
                limit=REZERVA, prah=a.prah, **kw)
-    from common.hledani import je_abecedne
-    leciva = seskup(o.vysledky, leciv=a.leciv, abecedne=je_abecedne(filtr))
+    from common.hledani import je_abecedne, je_vyber_filtrem
+    leciva = seskup(o.vysledky, leciv=a.leciv, poradi_dokumentu=o.cely_usek,
+                    abecedne=je_abecedne(filtr) or je_vyber_filtrem(filtr, o))
 
     if a.json:
         print(json.dumps({

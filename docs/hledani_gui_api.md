@@ -44,7 +44,7 @@ Výpis léčiv (`/api/leciva`) model nepotřebuje a jede hned.
 | GET | `/api/stav` | jsou modely v paměti? + `uzly`: stav strojů s Ollamou (dostupnost, rozpracované dotazy, odezva, modely v paměti) |
 | GET | `/api/lecivo/{kod}/sekce/{sekce}` | všechny položky jedné sekce léku v pořadí dokumentu (GUI: „Ostatní indikace léku" v rozbalení, načítá se až při rozbalení) |
 | GET | `/api/leciva` | výpis korpusu (jen zástupci SPC), stránkovaný (`strana`, `na_strance` 5–200, GUI nabízí 10/25/50/100) a řaditelný |
-| GET | `/api/hledat` | sémantické hledání |
+| GET | `/api/hledat` | sémantické hledání. Celý výsledek se drží 10 min v paměti procesu (klíč: `q`, `sekce`, `prah`, `leciv`, `pasazi`) – **jiná `strana` nebo `na_strance` už znovu nehledá** (router ani embedding se nevolají, ~2 ms místo ~5 s). Změna hledacího slovníku paměť vyprázdní |
 | GET | `/api/pdf/{kod_sukl}` | původní SPC v PDF |
 | GET | `/api/slovnik` | hledací slovník: výraz uživatele → formulace z indikací (tabulka `slovnik_dotazu`), naposledy upravený výraz první |
 | GET | `/api/slovnik/formulace?q=` | které zjednodušené indikace v datech obsahují text (nabídka v GUI), s počtem léků |
@@ -103,20 +103,15 @@ Každá nalezená pasáž nese `strana_pdf`. Frontend otevírá
 `/api/pdf/{kod}#page=N` – fragment `#page=` umí vestavěný prohlížeč PDF,
 takže se dokument otevře **rovnou u nalezeného místa**. Ikona je 📝.
 
-### Práh podobnosti jde nastavit z obrazovky
+### Práh podobnosti
 
-Posuvník **Práh podobnosti** (0 – 0,9, krok 0,05) se posílá jako
-`?prah=`. Výchozí je **0,60**, tlačítko vedle ho vrátí. Hodnota je
-naměřená na 32 lécích a na celém trhu pouští falešné shody – přeměření
-je v `todo.md`.
-
-Posun posuvníku jen překresluje číslo; **hledá se až při puštění**
-(`change`, ne `input`) — jinak by každý krok posílal dotaz na model.
+GUI posílá vždy `?prah=0.60` (posuvník odebrán 14. 10.; přes API jde
+nastavit dál). Hodnota je naměřená na 32 lécích a na celém trhu pouští
+falešné shody – přeměření je v `todo.md`.
 
 **U přesných filtrů se práh neuplatňuje** (název, látka, síla, ATC,
 frekvence) — výběr už udělal filtr. API v tom případě vrátí `prah: 0.0`
-a blok routeru napíše *„práh neuplatněn (filtr je přesný)"*, aby to
-nevypadalo, že posuvník nefunguje.
+a blok routeru napíše *„práh neuplatněn (filtr je přesný)"*.
 
 ### Čtení sekce místo hledání v ní
 
@@ -132,7 +127,14 @@ a skóre (RRF, cosine, fulltext) v detailu schované ve dvou případech:
   kód SÚKL): léky vybral SQL filtr nad registrem (`nazev ILIKE`, účinná látka,
   síla, kód, ATC). Cosine a fulltext se počítají nad řádkem identity léku,
   určují jen POŘADÍ uvnitř výběru a „paracetamol" → PARALEN 0,65 vypadalo
-  jako slabá shoda. Záhlaví sloupce: „Nalezeno (podle názvu, látky nebo kódu)".
+  jako slabá shoda. Záhlaví sloupce: „Nalezeno (podle názvu, látky nebo kódu,
+  abecedně)". Seznam je abecední a úplný (bez stropu `leciv`).
+
+**Přesné shody (14. 10.):** léky s pasáží totožnou s dotazem (cosine 1,000)
+jsou nahoře abecedně, ostatní pod nimi podle shody (cosine), ne podle RRF.
+Výchozí `leciv` je 200 (dřív 50). Počet je v poli
+`presnych`, záhlaví: „Nalezeno (17 přesných shod abecedně, pak nejlepší
+shoda)". `odstup` se počítá vůči nejvyššímu skóre, ne vůči prvnímu řádku.
 
 Jakmile dotaz nese i příznak („paralen bolest hlavy"), shoda se ukazuje – tam
 měří podobnost příznaku s textem SPC.
@@ -178,8 +180,8 @@ Jeden soubor `static/app.js`, žádné závislosti.
 | prvek | chování |
 |---|---|
 | pole dotazu | placeholder `hrazené léky na reflux`, **Enter hledá** |
-| „Nastavení hledání" | zabalený blok (výchozí stav): omezení na sekci, posuvník prahu (0 – 0,9; hledá se až při puštění; tlačítko vrátí 0,60) a „Zvýraznit od" |
-| „Zvýraznit od" | jen obarví řádky podle shody (spolehlivé / hraniční), nic nefiltruje a neposílá dotaz |
+| „Jak hledat – příklady" | zabalený blok: jeden ověřený příklad na každý hledací vzor (`PRIKLADY` v `app.js`, podle `docs/prezentace_scenare.md`), seskupené po kategoriích; **klik vloží dotaz do pole a rovnou hledá** |
+| „Omezit na sekci" | zabalený blok: vynutí sekci a přebije router |
 | „Hledací slovník" | zabalený blok: návod, přidání výrazu s formulacemi z nabídky, seznam a odebrání |
 | stránkování | okénkem, výběr 10 / 25 / 50 / 100 na stránku |
 | Hledat / Reset | Reset vrátí úvodní výpis a zruší filtr sekce |
@@ -199,10 +201,8 @@ si je někdo nerozbalí.
 
 - řazení ve výsledcích hledání (teď jen relevance)
 - filtr Rx/OTC a hrazení klikáním (jde jen dotazem nebo přes API)
-- stránkování hledání načítá celý výsledek a stránkuje až v paměti
 - přihlášení pro úpravy hledacího slovníku
-- upozornění, když je v zabaleném „Nastavení hledání" něco jinak než
-  výchozí (vybraná sekce, posunutý práh)
+- upozornění, když je v zabaleném „Omezit na sekci" vybraná sekce
 - stav strojů s Ollamou je jen v `/api/stav`, v GUI vidět není
 - víc procesů API (uvicorn workers): každý proces si počítá vytížení
   strojů sám, o dotazech ostatních procesů neví

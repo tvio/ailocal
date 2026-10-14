@@ -5,6 +5,54 @@ Nejnovější nahoře.
 
 ---
 
+## 2026-10-14 — Příklady do GUI: přes 50 dotazů projito na 1. stránce, 31 vybráno
+
+Kandidáti ze scénářů přes `/api/hledat` (testovací instance), 1. stránka
+= 10 léků, finální seznam 31 dotazů dvakrát – počty výsledků v obou
+bězích shodné. Vyřazeno kvůli nesmyslu na 1. stránce:
+
+| dotaz | co je nahoře | příčina |
+|---|---|---|
+| `mám horečku`, `horečka pro dospělé` | 2-[18F]-FDG (radiofarmakum) | A–Z u 99 shod 1,000 |
+| `horečka dítě šest let` | CEFTAZIDIME, MEROPENEM (injekce) | A–Z |
+| `volně prodejný lék na bolest hlavy` | AESCIN TEVA „bolest (i rozšířená po těle)", ACYLPYRIN „mírné a středně silné bolesti" | slovník: „bolest" → varianty `bolest`, `bolesti` → klíč „bolesti" = 1,000 |
+| `lék začíná ibal na bolest zubů` | IBALGIN gel „místní léčba bolesti" 1,000 | totéž |
+| `hrazený lék na předpis na cukrovku` | HUMULIN N s indikací jen „léčba" | vada extrakce |
+| `lék přibližně koldreks`, `lék končí na cilin`, `lék začíná para na horečku` | ZOLADEX / samé injekce / infuze | podobnost názvu, A–Z |
+
+**Abecední řazení shod 1,000 z 14. 10. má cenu:** obecné nebo
+nemocniční shody, které RRF dřív odsunulo, jsou teď nahoře. Věk číslem
+i slovem funguje (`dítě 5 let` = `dítě pět let`, 92 = 92 výsledků).
+
+## 2026-10-14 — Shody 1,000 abecedně: celkově beze změny, po dotazech se to přelévá
+
+- **Shod 1,000 je hodně:** „kopřivka" 40 léků z 50, „mám rýmu" 22,
+  „zápal plic hrazený" 17. Přesná shoda vzniká i přes klíč nebo
+  slovníkovou variantu dotazu („ucpaný nos" u „mám rýmu").
+- **Evaluace** (`hledani_evaluace.py --korpus`, jeden běh) proti 9. 10.:
+  parafráze 18/20, přesnost **69 % = 69 %**, negativní 5/6. Po dotazech:
+  zácpa 1 → 4/5, žáha 3 → 4/5, ale **rýma 4 → 2/5** (nahoru jdou abecedně
+  COLDREX, CORYZALIA), alergie 2 → 1/5, cukrovka 5 → 4/5. **Není to šum:**
+  parafráze v evaluaci jdou bez routeru (`hledej` rovnou nad indikacemi),
+  jsou deterministické – posuny dělá jen řazení.
+- **Zbytek podle shody místo RRF** (stejné hledání, liší se jen řazení
+  léků, top 5 na 20 parafrázích):
+
+  | řazení | parafráze | přesnost |
+  |---|---|---|
+  | RRF (do 14. 10.) | 18/20 | 69 % |
+  | 1,000 A–Z + RRF | 18/20 | 69 % |
+  | **1,000 A–Z + shoda** (zavedeno) | 18/20 | **68 %** |
+  | jen shoda | 18/20 | 68 % |
+
+  Rozdíl je jeden lék („bolí mě klouby" 5 → 4/5). RRF tedy kvalitu
+  nepřidává a seznam podle něj vypadá náhodně (0,838 pod 0,792).
+- **API vracelo max. 50 léků** (výchozí `leciv`): „mám rýmu" má nad
+  prahem 177 léků, GUI skončilo na 5. stránce. Výchozí je teď 200.
+- **Skrytý strop u výběru filtrem:** „paracetamol" má 67 léků, API jich
+  vracelo 50 (`leciv`). Při řazení podle podobnosti to nebylo vidět,
+  abecedně by seznam „končil" u PARALENu. Abecední výpis je teď bez stropu.
+
 ## 2026-10-09 — Přenos na server: obnova DB z dumpu, databáze musela mimo disk Dockeru
 
 Postup z `provoz_prenos_na_server.md` by na serveru zaplnil kořenový disk.
