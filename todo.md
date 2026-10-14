@@ -10,8 +10,10 @@ rozhodnutí před během) jsou smazané – předchozí verze je v gitu
 U každého bodu je v závorce, **o co se opírá v kódu**.
 
 ## 0. Upravy a opravy vzesle s jednani s mgmt IT
+1. Dej pri hledani radifarkama a leky po operaci niz, vyse volne prodejne, pripadne podle ATC skupin?
 2. Udelat si stats do konce roku na openai tokeny
 3. Nejde hledani dle konrketniho veku.
+4. Co pridat kdyz kliknu na atc skupiny vsechny leky v teto atc skupine.
 ---
 
 ## 1. Kvalita hledání – nejasnosti, kde nevím, jestli to funguje dobře
